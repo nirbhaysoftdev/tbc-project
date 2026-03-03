@@ -1,0 +1,105 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Prisma 7: NO url here — lives in prisma.config.js only
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String     @id @default(uuid())
+  name          String
+  email         String     @unique
+  passwordHash  String
+  role          Role       @default(MEMBER)
+  profilePhoto  String?
+  status        UserStatus @default(ACTIVE)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  wallet       Wallet?
+  transactions Transaction[]
+  adminLogs    AdminLog[]    @relation("AdminLogs")
+  auditedLogs  AdminLog[]    @relation("AuditedUser")
+
+  @@map("users")
+}
+
+model Wallet {
+  id               String   @id @default(uuid())
+  userId           String   @unique
+  investmentAmount Float    @default(0)
+  profitAmount     Float    @default(0)
+  totalBalance     Float    @default(0)
+  currency         String   @default("EUR")
+  lastUpdated      DateTime @default(now()) @updatedAt
+  frozen           Boolean  @default(false)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("wallets")
+}
+
+model Transaction {
+  id          String            @id @default(uuid())
+  userId      String
+  type        TransactionType
+  description String
+  amount      Float
+  status      TransactionStatus @default(COMPLETED)
+  reference   String            @unique @default(uuid())
+  createdAt   DateTime          @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("transactions")
+}
+
+model AdminLog {
+  id        String   @id @default(uuid())
+  adminId   String
+  targetId  String?
+  action    String
+  details   Json?
+  timestamp DateTime @default(now())
+
+  admin      User  @relation("AdminLogs", fields: [adminId], references: [id])
+  targetUser User? @relation("AuditedUser", fields: [targetId], references: [id])
+
+  @@map("admin_logs")
+}
+
+model SystemConfig {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt
+
+  @@map("system_config")
+}
+
+enum Role {
+  MEMBER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  FROZEN
+  PENDING
+}
+
+enum TransactionType {
+  CREDIT
+  DEBIT
+}
+
+enum TransactionStatus {
+  COMPLETED
+  PENDING
+  FAILED
+}
