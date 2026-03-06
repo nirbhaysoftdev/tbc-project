@@ -71,9 +71,9 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <p style={{ textAlign: 'center', marginTop: 20, fontSize: 11, color: 'var(--text-muted)' }}>
+        {/* <p style={{ textAlign: 'center', marginTop: 20, fontSize: 11, color: 'var(--text-muted)' }}>
           Demo: antonino@trillionbc.com / Member@123
-        </p>
+        </p> */}
       </div>
     </div>
   );
