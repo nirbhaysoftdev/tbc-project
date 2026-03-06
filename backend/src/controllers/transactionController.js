@@ -1,7 +1,7 @@
 // src/controllers/transactionController.js
 
 const PDFDocument = require('pdfkit');
-
+const prisma = require('../utils/prismaClient');
 // ── Get transactions with filters ────────────
 const getTransactions = async (req, res) => {
   try {
