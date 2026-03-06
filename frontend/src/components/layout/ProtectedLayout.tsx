@@ -6,6 +6,8 @@ import { useAuth } from '@/lib/auth';
 import Sidebar   from './Sidebar';
 import Topbar    from './Topbar';
 import DevNotice from './DevNotice';
+import { SidebarProvider } from '@/lib/sidebar';
+
 
 interface Props {
   children:      React.ReactNode;
@@ -34,6 +36,7 @@ export default function ProtectedLayout({ children, requireAdmin = false }: Prop
   if (requireAdmin && user.role !== 'ADMIN') return null;
 
   return (
+     <SidebarProvider>
     <div className="app-layout">
       <Sidebar />
 
@@ -53,5 +56,6 @@ export default function ProtectedLayout({ children, requireAdmin = false }: Prop
         </div>
       </div>
     </div>
+    </SidebarProvider>
   );
 }

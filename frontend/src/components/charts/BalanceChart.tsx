@@ -47,7 +47,7 @@ export default function BalanceChart({ data }: Props) {
     plugins: {
       tooltip: {
         callbacks: {
-          label: (ctx) => `€ ${ctx.parsed.y.toLocaleString('de-DE')}`,
+         label: (ctx) => `€ ${ctx.parsed.y?.toLocaleString('de-DE') ?? '0'}`
         },
         backgroundColor: '#0e1529',
         borderColor:     'rgba(255,255,255,0.1)',

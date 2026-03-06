@@ -32,8 +32,12 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // ── Static uploads ────────────────────────────
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
-
+// ── Static uploads ────────────────────────────
+app.use('/uploads', (req, res, next) => {
+  res.header('Access-Control-Allow-Origin', 'http://localhost:3000');
+  res.header('Access-Control-Allow-Methods', 'GET');
+  next();
+}, express.static(path.join(__dirname, '../uploads')));
 // ── Global rate limiter ───────────────────────
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 min

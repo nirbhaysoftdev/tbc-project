@@ -6,8 +6,10 @@ import ProtectedLayout from '@/components/layout/ProtectedLayout';
 import { useAuth } from '@/lib/auth';
 import { profileAPI } from '@/lib/api';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:4000';
-
+const API_URL = process.env.NODE_ENV === 'production' 
+  ? (process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || '')
+  : '';
+  
 function SettingsContent() {
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const { user, refresh } = useAuth();

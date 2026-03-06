@@ -1,7 +1,7 @@
 'use client';
-// src/components/layout/Topbar.tsx
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useSidebar } from '../../lib/sidebar';
 
 const NAV_ITEMS = [
   { label: 'Dashboard',    href: '/dashboard' },
@@ -13,12 +13,24 @@ const NAV_ITEMS = [
 
 export default function Topbar() {
   const pathname = usePathname();
+  const { setOpen } = useSidebar();
 
   return (
     <header className="topbar">
+      {/* Mobile hamburger — only visible on mobile */}
+      <button className="topbar-hamburger" onClick={() => setOpen(true)} aria-label="Open menu">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
+          <line x1="3" y1="6"  x2="21" y2="6"/>
+          <line x1="3" y1="12" x2="21" y2="12"/>
+          <line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+
       {/* Logo */}
       <div className="topbar-logo">
-        <div className="topbar-logo-icon">TBC</div>
+        <div className="topbar-logo-icon">
+          <img src="/images/tbc-logo-1.png" alt="TBC Logo" />
+        </div>
         <div>
           <span className="topbar-brand">TRILLION</span>
           <span className="topbar-sub">BUSINESS COMMUNITY</span>

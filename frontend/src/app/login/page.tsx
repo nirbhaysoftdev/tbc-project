@@ -31,13 +31,7 @@ export default function LoginPage() {
       <div className="login-card">
         {/* Logo */}
         <div className="login-logo">
-          <div style={{
-            width: 56, height: 56, borderRadius: '50%', margin: '0 auto 16px',
-            background: 'linear-gradient(135deg,#1a2550,#0d173a)',
-            border: '2px solid #c8a84b',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 18, fontWeight: 800, color: '#c8a84b',
-          }}>TBC</div>
+             <img src="/images/tbc-logo-1.png" alt="TBC Logo" />
           <p className="login-brand">TRILLION</p>
           <p className="login-sub">BUSINESS COMMUNITY</p>
         </div>

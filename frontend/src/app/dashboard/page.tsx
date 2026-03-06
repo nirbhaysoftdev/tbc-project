@@ -38,7 +38,7 @@ export default function DashboardPage() {
       <div className="welcome-row">
         <h1 className="welcome-title">Welcome back, {firstName}!</h1>
         <div className="welcome-balance">
-          <span className="welcome-amount">
+          {/* <span className="welcome-amount">
             {wallet ? formatEur(wallet.totalBalance) : '€ –'}
           </span>
           <button className="welcome-toggle">
@@ -47,7 +47,7 @@ export default function DashboardPage() {
               <line x1="3" y1="12" x2="21" y2="12"/>
               <line x1="3" y1="18" x2="21" y2="18"/>
             </svg>
-          </button>
+          </button> */}
         </div>
       </div>
 
