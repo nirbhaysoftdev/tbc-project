@@ -14,6 +14,7 @@ const transactionRoutes = require('./routes/transactions');
 const adminRoutes       = require('./routes/admin');
 const profileRoutes     = require('./routes/profile');
 const systemRoutes      = require('./routes/system');
+const withdrawRoutes = require('./routes/withdraw');
 
 const app  = express();
 const PORT = process.env.PORT || 4000;
@@ -60,6 +61,7 @@ app.use('/api/transactions', transactionRoutes);
 app.use('/api/admin',        adminRoutes);
 app.use('/api/profile',      profileRoutes);
 app.use('/api/system',       systemRoutes);
+app.use('/api/withdraw',    withdrawRoutes);
 
 // ── Health check ──────────────────────────────
 app.get('/api/health', (req, res) => {

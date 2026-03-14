@@ -20,9 +20,9 @@ function PortfolioContent() {
           { label:'Investment',    value: formatEur(wallet?.investmentAmount || 0), color:'var(--accent-blue)' },
           { label:'Profit',        value: formatEur(wallet?.profitAmount     || 0), color:'var(--green)' },
           { label:'Total Balance', value: formatEur(wallet?.totalBalance     || 0), color:'var(--accent-gold)' },
-          { label:'ROI',           value: wallet?.investmentAmount > 0
-              ? `+${((wallet.profitAmount / wallet.investmentAmount)*100).toFixed(1)}%` : '0%',
-            color: 'var(--green)' },
+          // { label:'ROI',           value: wallet?.investmentAmount > 0
+          //     ? `+${((wallet.profitAmount / wallet.investmentAmount)*100).toFixed(1)}%` : '0%',
+          //   color: 'var(--green)' },
         ].map(({ label, value, color }) => (
           <div key={label} className="admin-stat-card">
             <p className="admin-stat-label">{label}</p>

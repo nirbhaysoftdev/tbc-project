@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import { useAuth } from '@/lib/auth';
 import { dashboardAPI, formatEur } from '@/lib/api';
 import DebitCard from '@/components/cards/DebitCard';
+import WithdrawModal from '@/components/withdraw/WithdrawModal';
 
 // Import chart dynamically (no SSR) because Chart.js needs window
 const BalanceChart = dynamic(() => import('@/components/charts/BalanceChart'), { ssr: false });
@@ -17,6 +18,7 @@ export default function DashboardPage() {
   const [chartData, setChartData] = useState<any[]>([]);
   const [period,    setPeriod]    = useState('1Y');
   const [loading,   setLoading]   = useState(true);
+  const [showWithdraw, setShowWithdraw] = useState(false);
 
   useEffect(() => {
     dashboardAPI.getSummary().then(r => {
@@ -37,18 +39,29 @@ export default function DashboardPage() {
       {/* Welcome row */}
       <div className="welcome-row">
         <h1 className="welcome-title">Welcome back, {firstName}!</h1>
-        <div className="welcome-balance">
-          {/* <span className="welcome-amount">
-            {wallet ? formatEur(wallet.totalBalance) : '€ –'}
-          </span>
-          <button className="welcome-toggle">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
-              <line x1="3" y1="6"  x2="21" y2="6"/>
-              <line x1="3" y1="12" x2="21" y2="12"/>
-              <line x1="3" y1="18" x2="21" y2="18"/>
-            </svg>
-          </button> */}
-        </div>
+       <div className="welcome-balance">
+  <button
+    onClick={() => setShowWithdraw(true)}
+    style={{
+      padding: '10px 20px',
+      background: 'rgba(224,82,82,0.15)',
+      border: '1px solid rgba(224,82,82,0.3)',
+      borderRadius: 'var(--radius-sm)',
+      color: 'var(--red)',
+      fontSize: 13,
+      fontWeight: 600,
+      cursor: 'pointer',
+      display: 'flex',
+      alignItems: 'center',
+      gap: 8,
+    }}>
+    <svg viewBox="0 0 24 24" width="14" height="14" fill="none"
+      stroke="currentColor" strokeWidth="2">
+      <path d="M12 5v14M5 12l7-7 7 7"/>
+    </svg>
+    Withdraw Funds
+  </button>
+</div>
       </div>
 
       {/* Balance card */}
@@ -138,6 +151,21 @@ export default function DashboardPage() {
             </tbody>
           </table>
         </div>
+      )}
+
+      
+{/* Withdraw Modal */}
+      {showWithdraw && (
+        <WithdrawModal
+          balance={wallet?.totalBalance || 0}
+          userName={summary?.user?.name || user?.name || ''}
+          onClose={() => setShowWithdraw(false)}
+          onSuccess={() => {
+            setShowWithdraw(false);
+            // refresh summary
+            dashboardAPI.getSummary().then(r => setSummary(r.data));
+          }}
+        />
       )}
     </div>
   );

@@ -87,3 +87,13 @@ export const downloadBlob = (blob: Blob, filename: string) => {
   a.click();
   window.URL.revokeObjectURL(url);
 };
+
+// Withdraw
+// ── Withdraw ──────────────────────────────────
+export const withdrawAPI = {
+  create:          (data: any)    => api.post('/withdraw', data),
+  getMyRequests:   ()             => api.get('/withdraw/my'),
+  getAllRequests:   ()             => api.get('/withdraw/admin/all'),
+  approve:         (id: string)   => api.put(`/withdraw/admin/${id}/approve`, {}),
+  reject:          (id: string)   => api.put(`/withdraw/admin/${id}/reject`, {}),
+};
