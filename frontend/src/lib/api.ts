@@ -77,7 +77,10 @@ export const systemAPI = {
 
 // ── Helpers ───────────────────────────────────
 export const formatEur = (n: number) =>
-  `€ ${n.toLocaleString('de-DE', { minimumFractionDigits: 0 })}`;
+  `€ ${n.toLocaleString('en-IE', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2
+  })}`;
 
 export const downloadBlob = (blob: Blob, filename: string) => {
   const url = window.URL.createObjectURL(blob);
