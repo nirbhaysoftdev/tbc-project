@@ -9,6 +9,7 @@ const API_URL = process.env.NODE_ENV === 'production'
   : '';
 
 const NAV_ITEMS = [
+  { label: 'Community',    href: '/community',    icon: CommIcon },
   { label: 'Dashboard',    href: '/dashboard',    icon: DashIcon },
   { label: 'Portfolio',    href: '/portfolio',    icon: PortfolioIcon },
   { label: 'Transactions', href: '/transactions', icon: TxIcon },
@@ -38,13 +39,21 @@ export default function Sidebar() {
       </div>
 
       <nav className="sidebar-nav">
-        {NAV_ITEMS.map(({ label, href, icon: Icon }) => (
-          <Link key={href} href={href} onClick={onNav}
-            className={`nav-item ${pathname === href ? 'active' : ''}`}>
-            <Icon />
-            <span>{label}</span>
-          </Link>
-        ))}
+        {NAV_ITEMS
+  .filter(item => {
+    if (user?.role === 'ADMIN') {
+      // hide wallet-only member pages
+      return !['/dashboard', '/portfolio', '/cards'].includes(item.href);
+    }
+    return true;
+  })
+  .map(({ label, href, icon: Icon }) => (
+    <Link key={href} href={href} onClick={onNav}
+      className={`nav-item ${pathname === href ? 'active' : ''}`}>
+      <Icon />
+      <span>{label}</span>
+    </Link>
+))}
         {user?.role === 'ADMIN' && (
          
           <>
@@ -108,6 +117,9 @@ export default function Sidebar() {
   );
 }
 
+function CommIcon() {
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>;
+}
 function DashIcon() {
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3" strokeLinecap="round"/></svg>;
 }

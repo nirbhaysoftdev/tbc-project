@@ -4,31 +4,176 @@ generator client {
   provider = "prisma-client-js"
 }
 
-// Prisma 7: NO url here — lives in prisma.config.js only
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id            String     @id @default(uuid())
-  name          String
-  email         String     @unique
-  passwordHash  String
-  role          Role       @default(MEMBER)
-  profilePhoto  String?
-  status        UserStatus @default(ACTIVE)
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
+// ─── ENUMS ────────────────────────────────────────────────────────────────────
 
-  wallet       Wallet?
-  transactions Transaction[]
-  adminLogs    AdminLog[]    @relation("AdminLogs")
-  auditedLogs  AdminLog[]    @relation("AuditedUser")
-  withdrawRequests WithdrawRequest[]
+enum Role {
+  MEMBER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  FROZEN
+  PENDING
+  REJECTED
+}
+
+enum KycStatus {
+  NOT_SUBMITTED
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum MembershipTier {
+  BASIC
+  PREMIUM
+  ENTERPRISE
+  ELITE
+}
+
+enum TransactionType {
+  CREDIT
+  DEBIT
+}
+
+enum TransactionStatus {
+  COMPLETED
+  PENDING
+  FAILED
+}
+
+enum TransactionCategory {
+  INVESTMENT
+  WITHDRAWAL
+  PROFIT
+  PROFIT_ADJUSTMENT
+  ADMIN_CREDIT
+  ADMIN_DEBIT
+}
+
+enum WithdrawStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum PostType {
+  DEAL
+  NETWORK
+  EVENT
+  HIRING
+  INSIGHT
+}
+
+enum ProjectStatus {
+  DRAFT
+  ACTIVE
+  FUNDED
+  CLOSED
+  CANCELLED
+}
+
+enum InvestmentStatus {
+  PENDING
+  CONFIRMED
+  REFUNDED
+}
+
+// ─── CORE USER ────────────────────────────────────────────────────────────────
+
+model User {
+  id            String         @id @default(uuid())
+  name          String
+  email         String         @unique
+  passwordHash  String
+  role          Role           @default(MEMBER)
+  profilePhoto  String?
+  status        UserStatus     @default(PENDING)
+  membershipTier MembershipTier @default(BASIC)
+  kycStatus     KycStatus      @default(NOT_SUBMITTED)
+  walletEnabled Boolean        @default(false)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  // Wallet (optional — not all community members have a wallet)
+  wallet              Wallet?
+  transactions        Transaction[]
+  withdrawRequests    WithdrawRequest[]
+
+  // Community
+  profile             Profile?
+  membership          Membership?
+  posts               Post[]
+  comments            Comment[]
+  likes               Like[]
+  sentMessages        Message[]            @relation("SentMessages")
+  receivedMessages    Message[]            @relation("ReceivedMessages")
+  eventRegistrations  EventRegistration[]
+  notifications       Notification[]
+
+  // Deal Room
+  projectsOwned       Project[]            @relation("ProjectOwner")
+  investments         Investment[]
+
+  // MMS — KYC & KPI
+  kycDocuments        KycDocument[]
+  kpiLogs             UserKpiLog[]
+  kpiSummary          UserKpiSummary?
+
+  // Admin
+  adminLogs           AdminLog[]           @relation("AdminLogs")
+  auditedLogs         AdminLog[]           @relation("AuditedUser")
 
   @@map("users")
 }
+
+// ─── PROFILE ──────────────────────────────────────────────────────────────────
+
+model Profile {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  bio             String?
+  company         String?
+  industry        String?
+  country         String?
+  city            String?
+  phone           String?
+  linkedIn        String?
+  website         String?
+  interests       String[]
+  jobTitle        String?
+  experienceYears Int?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("profiles")
+}
+
+// ─── MEMBERSHIP ───────────────────────────────────────────────────────────────
+
+model Membership {
+  id        String         @id @default(uuid())
+  userId    String         @unique
+  tier      MembershipTier @default(BASIC)
+  status    String         @default("ACTIVE") // ACTIVE, SUSPENDED, EXPIRED
+  joinedAt  DateTime       @default(now())
+  renewedAt DateTime?
+  expiresAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("memberships")
+}
+
+// ─── WALLET (SALBANK) ─────────────────────────────────────────────────────────
 
 model Wallet {
   id               String   @id @default(uuid())
@@ -46,41 +191,20 @@ model Wallet {
 }
 
 model Transaction {
-  id          String            @id @default(uuid())
-  userId      String
-  type        TransactionType
-  description String
-  amount      Float
-  status      TransactionStatus @default(COMPLETED)
-  reference   String            @unique @default(uuid())
-  createdAt   DateTime          @default(now())
+  id           String               @id @default(uuid())
+  userId       String
+  type         TransactionType
+  category     TransactionCategory?
+  description  String
+  amount       Float
+  balanceAfter Float?
+  status       TransactionStatus    @default(COMPLETED)
+  reference    String               @unique @default(uuid())
+  createdAt    DateTime             @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("transactions")
-}
-
-model AdminLog {
-  id        String   @id @default(uuid())
-  adminId   String
-  targetId  String?
-  action    String
-  details   Json?
-  timestamp DateTime @default(now())
-
-  admin      User  @relation("AdminLogs", fields: [adminId], references: [id])
-  targetUser User? @relation("AuditedUser", fields: [targetId], references: [id])
-
-  @@map("admin_logs")
-}
-
-model SystemConfig {
-  id        String   @id @default(uuid())
-  key       String   @unique
-  value     String
-  updatedAt DateTime @updatedAt
-
-  @@map("system_config")
 }
 
 model WithdrawRequest {
@@ -104,32 +228,262 @@ model WithdrawRequest {
   @@map("withdraw_requests")
 }
 
+// ─── COMMUNITY FEED ───────────────────────────────────────────────────────────
 
-enum WithdrawStatus {
-  PENDING
-  APPROVED
-  REJECTED
+model Post {
+  id          String   @id @default(uuid())
+  authorId    String
+  type        PostType @default(INSIGHT)
+  title       String?
+  content     String
+  location    String?
+  // Deal-specific
+  dealAmount  Float?
+  dealIRR     Float?
+  dealSpots   Int?
+  // Event-specific
+  eventDate   DateTime?
+  imageUrl    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  author   User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  comments Comment[]
+  likes    Like[]
+
+  @@map("posts")
 }
 
+model Comment {
+  id        String   @id @default(uuid())
+  postId    String
+  authorId  String
+  content   String
+  createdAt DateTime @default(now())
 
-enum Role {
-  MEMBER
-  ADMIN
+  post   Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@map("comments")
 }
 
-enum UserStatus {
-  ACTIVE
-  FROZEN
-  PENDING
+model Like {
+  id        String   @id @default(uuid())
+  postId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@map("likes")
 }
 
-enum TransactionType {
-  CREDIT
-  DEBIT
+// ─── EVENTS ───────────────────────────────────────────────────────────────────
+
+model Event {
+  id           String   @id @default(uuid())
+  title        String
+  description  String?
+  type         String   @default("NETWORKING") // WEBINAR, WORKSHOP, GALA, ROUNDTABLE, NETWORKING
+  startDate    DateTime
+  endDate      DateTime
+  location     String?
+  isOnline     Boolean  @default(false)
+  maxAttendees Int?
+  imageUrl     String?
+  createdBy    String
+  createdAt    DateTime @default(now())
+
+  registrations EventRegistration[]
+
+  @@map("events")
 }
 
-enum TransactionStatus {
-  COMPLETED
-  PENDING
-  FAILED
+model EventRegistration {
+  id           String   @id @default(uuid())
+  eventId      String
+  userId       String
+  registeredAt DateTime @default(now())
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+  @@map("event_registrations")
+}
+
+// ─── MESSAGING ────────────────────────────────────────────────────────────────
+
+model Message {
+  id         String   @id @default(uuid())
+  senderId   String
+  receiverId String
+  content    String
+  read       Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  sender   User @relation("SentMessages",     fields: [senderId],   references: [id], onDelete: Cascade)
+  receiver User @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@map("messages")
+}
+
+// ─── NOTIFICATIONS ────────────────────────────────────────────────────────────
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  type      String   // NEW_POST, NEW_MESSAGE, DEAL_UPDATE, EVENT_REMINDER, PROFIT_DISTRIBUTED
+  title     String
+  message   String
+  read      Boolean  @default(false)
+  link      String?
+  data      Json?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+// ─── DEAL ROOM ────────────────────────────────────────────────────────────────
+
+model Project {
+  id               String        @id @default(uuid())
+  ownerId          String
+  title            String
+  description      String
+  category         String
+  targetAmount     Float
+  raisedAmount     Float         @default(0)
+  minInvestmentPct Float         @default(5) // minimum % (e.g. 5%)
+  shareType        String        @default("LIMITED") // LIMITED or TOTAL
+  status           ProjectStatus @default(DRAFT)
+  riskLevel        String        @default("MEDIUM") // LOW, MEDIUM, HIGH
+  fundingDeadline  DateTime
+  targetIRR        Float?
+  location         String?
+  imageUrl         String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  owner       User              @relation("ProjectOwner", fields: [ownerId], references: [id])
+  documents   ProjectDocument[]
+  investments Investment[]
+  milestones  Milestone[]
+
+  @@map("projects")
+}
+
+model ProjectDocument {
+  id         String   @id @default(uuid())
+  projectId  String
+  name       String
+  fileUrl    String
+  type       String   // PITCH_DECK, FINANCIALS, LEGAL, RISK_ASSESSMENT
+  uploadedAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("project_documents")
+}
+
+model Investment {
+  id              String           @id @default(uuid())
+  projectId       String
+  investorId      String
+  amount          Float
+  sharePercentage Float
+  status          InvestmentStatus @default(PENDING)
+  notes           String?
+  investedAt      DateTime         @default(now())
+
+  project  Project @relation(fields: [projectId], references: [id])
+  investor User    @relation(fields: [investorId], references: [id])
+
+  @@map("investments")
+}
+
+model Milestone {
+  id          String    @id @default(uuid())
+  projectId   String
+  title       String
+  description String?
+  targetDate  DateTime
+  amount      Float
+  status      String    @default("PENDING") // PENDING, COMPLETED, MISSED
+  completedAt DateTime?
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("milestones")
+}
+
+// ─── ADMIN LOGS ───────────────────────────────────────────────────────────────
+
+model AdminLog {
+  id        String   @id @default(uuid())
+  adminId   String
+  targetId  String?
+  action    String
+  details   Json?
+  timestamp DateTime @default(now())
+
+  admin      User  @relation("AdminLogs",   fields: [adminId],  references: [id])
+  targetUser User? @relation("AuditedUser", fields: [targetId], references: [id])
+
+  @@map("admin_logs")
+}
+
+// ─── SYSTEM ───────────────────────────────────────────────────────────────────
+
+model SystemConfig {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt
+
+  @@map("system_config")
+}
+
+// ─── MMS — KYC DOCUMENTS ──────────────────────────────────────────────────────
+
+model KycDocument {
+  id           String   @id @default(uuid())
+  userId       String
+  documentType String   // id_proof | business_proof
+  documentUrl  String
+  status       String   @default("pending") // pending | approved | rejected
+  uploadedAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("kyc_documents")
+}
+
+// ─── MMS — KPI TRACKING ───────────────────────────────────────────────────────
+
+model UserKpiLog {
+  id         String   @id @default(uuid())
+  userId     String
+  actionType String   // login | investment | referral | event_participation
+  score      Int
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_kpi_logs")
+}
+
+model UserKpiSummary {
+  userId      String   @id
+  totalScore  Int      @default(0)
+  lastUpdated DateTime @default(now()) @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_kpi_summary")
 }

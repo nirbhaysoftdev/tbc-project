@@ -13,73 +13,209 @@ async function query(sql, params) {
 }
 
 async function main() {
-  console.log('🌱 Seeding database...');
+  console.log("🌱 Seeding database...");
 
   const now = new Date();
 
   // ── Admin ─────────────────────────────────────────────
-  const adminPass = await bcrypt.hash('Admin@123', 12);
-  await query(`
+  const adminPass = await bcrypt.hash("Admin@123", 12);
+  await query(
+    `
     INSERT INTO users (id, name, email, "passwordHash", role, status, "createdAt", "updatedAt")
     VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
     ON CONFLICT (email) DO UPDATE SET name = EXCLUDED.name
-  `, [uuidv4(), 'TBC Admin', 'admin@trillionbc.com', adminPass, 'ADMIN', 'ACTIVE', now, now]);
-  console.log('✅ Admin created: admin@trillionbc.com');
+  `,
+    [
+      uuidv4(),
+      "TBC Admin",
+      "admin@trillionbc.com",
+      adminPass,
+      "ADMIN",
+      "ACTIVE",
+      now,
+      now,
+    ],
+  );
+  console.log("✅ Admin created: admin@trillionbc.com");
 
   // ── Member ────────────────────────────────────────────
-  const memberPass = await bcrypt.hash('Member@123', 12);
-  await query(`
+  const memberPass = await bcrypt.hash("Member@123", 12);
+  await query(
+    `
     INSERT INTO users (id, name, email, "passwordHash", role, status, "createdAt", "updatedAt")
     VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
     ON CONFLICT (email) DO UPDATE SET name = EXCLUDED.name
-  `, [uuidv4(), 'Antonino Salafia', 'antonino@trillionbc.com', memberPass, 'MEMBER', 'ACTIVE', now, now]);
-  console.log('✅ Member created: antonino@trillionbc.com');
+  `,
+    [
+      uuidv4(),
+      "Antonino Salafia",
+      "antonino@trillionbc.com",
+      memberPass,
+      "MEMBER",
+      "ACTIVE",
+      now,
+      now,
+    ],
+  );
+  console.log("✅ Member created: antonino@trillionbc.com");
 
-  const [member] = await query(`SELECT id FROM users WHERE email = $1`, ['antonino@trillionbc.com']);
+  const [member] = await query(`SELECT id FROM users WHERE email = $1`, [
+    "antonino@trillionbc.com",
+  ]);
 
   // ── Wallet ────────────────────────────────────────────
-  await query(`
+  await query(
+    `
     INSERT INTO wallets (id, "userId", "investmentAmount", "profitAmount", "totalBalance", currency, "lastUpdated", frozen)
     VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
     ON CONFLICT ("userId") DO UPDATE
       SET "investmentAmount" = EXCLUDED."investmentAmount",
           "profitAmount"     = EXCLUDED."profitAmount",
           "totalBalance"     = EXCLUDED."totalBalance"
-  `, [uuidv4(), member.id, 110000, 33000, 143000, 'EUR', now, false]);
-  console.log('✅ Wallet created: €143,000');
+  `,
+    [uuidv4(), member.id, 110000, 33000, 143000, "EUR", now, false],
+  );
+  console.log("✅ Wallet created: €143,000");
 
   // ── Transactions ──────────────────────────────────────
   const txns = [
-    { type: 'CREDIT', description: 'Initial Investment',     amount: 110000, status: 'COMPLETED', date: '2024-01-15' },
-    { type: 'CREDIT', description: 'Q1 Profit Distribution', amount: 11000,  status: 'COMPLETED', date: '2024-04-01' },
-    { type: 'CREDIT', description: 'Q2 Profit Distribution', amount: 11000,  status: 'COMPLETED', date: '2024-07-01' },
-    { type: 'CREDIT', description: 'Q3 Profit Distribution', amount: 11000,  status: 'COMPLETED', date: '2024-10-01' },
-    { type: 'DEBIT',  description: 'Withdrawal Request',      amount: 2000,   status: 'COMPLETED', date: '2024-11-15' },
-    { type: 'CREDIT', description: 'Bonus Allocation',        amount: 3000,   status: 'COMPLETED', date: '2024-12-01' },
-    { type: 'CREDIT', description: 'Year-End Profit',         amount: 5000,   status: 'PENDING',   date: '2025-01-01' },
+    {
+      type: "CREDIT",
+      description: "Initial Investment",
+      amount: 110000,
+      status: "COMPLETED",
+      date: "2024-01-15",
+    },
+    {
+      type: "CREDIT",
+      description: "Q1 Profit Distribution",
+      amount: 11000,
+      status: "COMPLETED",
+      date: "2024-04-01",
+    },
+    {
+      type: "CREDIT",
+      description: "Q2 Profit Distribution",
+      amount: 11000,
+      status: "COMPLETED",
+      date: "2024-07-01",
+    },
+    {
+      type: "CREDIT",
+      description: "Q3 Profit Distribution",
+      amount: 11000,
+      status: "COMPLETED",
+      date: "2024-10-01",
+    },
+    {
+      type: "DEBIT",
+      description: "Withdrawal Request",
+      amount: 2000,
+      status: "COMPLETED",
+      date: "2024-11-15",
+    },
+    {
+      type: "CREDIT",
+      description: "Bonus Allocation",
+      amount: 3000,
+      status: "COMPLETED",
+      date: "2024-12-01",
+    },
+    {
+      type: "CREDIT",
+      description: "Year-End Profit",
+      amount: 5000,
+      status: "PENDING",
+      date: "2025-01-01",
+    },
   ];
 
+  let investment = 0;
+  let profit = 0;
+  let runningBalance = 0;
+
   for (const tx of txns) {
-    const ref = 'SEED-' + tx.description.replace(/\s+/g, '-').toUpperCase();
-    await query(`
-      INSERT INTO transactions (id, "userId", type, description, amount, status, reference, "createdAt")
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
-      ON CONFLICT (reference) DO NOTHING
-    `, [uuidv4(), member.id, tx.type, tx.description, tx.amount, tx.status, ref, new Date(tx.date)]);
+    const ref = "SEED-" + tx.description.replace(/\s+/g, "-").toUpperCase();
+
+    // 🧠 Determine category
+    let category = "INVESTMENT";
+
+    if (tx.description.includes("Profit")) category = "PROFIT";
+    if (tx.description.includes("Withdrawal")) category = "WITHDRAWAL";
+    if (tx.description.includes("Bonus")) category = "PROFIT";
+
+    // 💰 Apply logic
+    if (tx.type === "CREDIT") {
+      if (category === "INVESTMENT") {
+        investment += tx.amount;
+      } else {
+        profit += tx.amount;
+      }
+    } else {
+      let remaining = tx.amount;
+
+      // Deduct from profit first
+      if (profit >= remaining) {
+        profit -= remaining;
+        remaining = 0;
+      } else {
+        remaining -= profit;
+        profit = 0;
+      }
+
+      // Then investment
+      if (remaining > 0) {
+        investment = Math.max(0, investment - remaining);
+      }
+    }
+
+    runningBalance = investment + profit;
+
+    await query(
+      `
+    INSERT INTO transactions (
+      id, "userId", type, category, description, amount,
+      "balanceAfter", status, reference, "createdAt"
+    )
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+    ON CONFLICT (reference) DO NOTHING
+  `,
+      [
+        uuidv4(),
+        member.id,
+        tx.type,
+        category,
+        tx.description,
+        tx.amount,
+        runningBalance,
+        tx.status,
+        ref,
+        new Date(tx.date),
+      ],
+    );
   }
-  console.log('✅ Transactions seeded');
+
+  console.log("✅ Transactions seeded");
 
   // ── Dev notice ────────────────────────────────────────
-  await query(`
+  await query(
+    `
     INSERT INTO system_config (id, key, value, "updatedAt")
     VALUES ($1,$2,$3,$4)
     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
-  `, [uuidv4(), 'dev_notice', '⚠️  Development Mode — Full feature available in next release.', now]);
-  console.log('✅ Dev notice seeded');
+  `,
+    [
+      uuidv4(),
+      "dev_notice",
+      "⚠️  Development Mode — Full feature available in next release.",
+      now,
+    ],
+  );
+  console.log("✅ Dev notice seeded");
 
-  console.log('\n🎉 Seed complete!');
-  console.log('   Admin:  admin@trillionbc.com  /  Admin@123');
-  console.log('   Member: antonino@trillionbc.com  /  Member@123\n');
+  console.log("\n🎉 Seed complete!");
+  console.log("   Admin:  admin@trillionbc.com  /  Admin@123");
+  console.log("   Member: antonino@trillionbc.com  /  Member@123\n");
 }
 
 main()

@@ -80,40 +80,66 @@ const approveRequest = async (req, res) => {
     }
 
     // Debit wallet
-    const wallet = await prisma.wallet.findUnique({ where: { userId: request.userId } });
-    if (wallet.totalBalance < request.amount) {
-      return res.status(400).json({ error: 'Insufficient balance' });
-    }
+  const result = await prisma.$transaction(async (tx) => {
+  const wallet = await tx.wallet.findUnique({
+    where: { userId: request.userId },
+  });
 
-    const newTotal      = wallet.totalBalance     - request.amount;
-    const newInvestment = wallet.investmentAmount  - request.amount > 0
-      ? wallet.investmentAmount - request.amount : 0;
-    const newProfit     = wallet.profitAmount      - request.amount > 0
-      ? wallet.profitAmount     - request.amount : 0;
+  if (!wallet) throw new Error("Wallet not found");
 
-    await prisma.$transaction([
-      prisma.wallet.update({
-        where: { userId: request.userId },
-        data:  {
-          totalBalance:     newTotal,
-          investmentAmount: newInvestment,
-          profitAmount:     newProfit,
-        },
-      }),
-      prisma.withdrawRequest.update({
-        where: { id },
-        data:  { status: 'APPROVED' },
-      }),
-      prisma.transaction.create({
-        data: {
-          userId:      request.userId,
-          type:        'DEBIT',
-          description: `Withdrawal - ${request.reason}`,
-          amount:      request.amount,
-          status:      'COMPLETED',
-        },
-      }),
-    ]);
+  if (wallet.totalBalance < request.amount) {
+    throw new Error("Insufficient balance");
+  }
+
+  let newInvestment = wallet.investmentAmount;
+  let newProfit = wallet.profitAmount;
+  let remaining = request.amount;
+
+  // ✅ Deduct from profit first
+  if (newProfit >= remaining) {
+    newProfit -= remaining;
+    remaining = 0;
+  } else {
+    remaining -= newProfit;
+    newProfit = 0;
+  }
+
+  // ✅ Then deduct from investment
+  if (remaining > 0) {
+    newInvestment = Math.max(0, newInvestment - remaining);
+  }
+
+  const newBalance = newInvestment + newProfit;
+
+  // 1. Update wallet
+  await tx.wallet.update({
+    where: { userId: request.userId },
+    data: {
+      investmentAmount: newInvestment,
+      profitAmount: newProfit,
+      totalBalance: newBalance,
+    },
+  });
+
+  // 2. Update withdraw request
+  await tx.withdrawRequest.update({
+    where: { id },
+    data: { status: "APPROVED" },
+  });
+
+  // 3. Create transaction (WITH CATEGORY + BALANCE)
+  await tx.transaction.create({
+    data: {
+      userId: request.userId,
+      type: "DEBIT",
+      category: "WITHDRAWAL", // 👈 IMPORTANT (after schema update)
+      amount: request.amount,
+      balanceAfter: newBalance,
+      description: `Withdrawal - ${request.reason}`,
+      status: "COMPLETED",
+    },
+  });
+});
 
     res.json({ message: 'Request approved and balance updated' });
   } catch (err) {

@@ -18,8 +18,9 @@ const authenticate = async (req, res, next) => {
       select: { id: true, role: true, status: true, email: true, name: true },
     });
 
-    if (!user)                    return res.status(401).json({ error: 'User not found' });
-    if (user.status === 'FROZEN') return res.status(403).json({ error: 'Account is frozen' });
+    if (!user)                      return res.status(401).json({ error: 'User not found' });
+    if (user.status === 'FROZEN')   return res.status(403).json({ error: 'Account is frozen' });
+    if (user.status === 'REJECTED') return res.status(403).json({ error: 'Membership application rejected' });
 
     req.user = user;
     next();
@@ -36,4 +37,17 @@ const requireAdmin = (req, res, next) => {
   next();
 };
 
-module.exports = { authenticate, requireAdmin };
+// ── Require ACTIVE status ─────────────────────
+// Blocks PENDING users from accessing platform routes.
+// (Onboarding routes /api/user/* bypass this — they only use authenticate.)
+const requireActive = (req, res, next) => {
+  if (req.user?.status !== 'ACTIVE') {
+    return res.status(403).json({
+      error: 'Account pending approval. Complete your profile and KYC.',
+      status: req.user?.status,
+    });
+  }
+  next();
+};
+
+module.exports = { authenticate, requireAdmin, requireActive };

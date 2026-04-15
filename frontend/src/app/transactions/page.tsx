@@ -10,25 +10,30 @@ function TransactionsContent() {
   const [pagination,   setPag]    = useState<any>({});
   const [loading,      setLoading] = useState(true);
   const [filters,      setFilters] = useState({
-    type: '', status: '', from: '', to: '', page: '1',
+    type: '', status: '',category: '', from: '', to: '', page: '1',
   });
 
   const fetchTx = async (f = filters) => {
+    
     setLoading(true);
     try {
       const params: Record<string,string> = { page: f.page };
       if (f.type)   params.type   = f.type;
+      if (f.category)   params.category   = f.category;
       if (f.status) params.status = f.status;
       if (f.from)   params.from   = f.from;
       if (f.to)     params.to     = f.to;
       const res = await transactionsAPI.getAll(params);
       setTx(res.data.transactions);
       setPag(res.data.pagination);
+      console.log("API RESPONSE:", res.data);
     } catch {}
     setLoading(false);
   };
 
-  useEffect(() => { fetchTx(); }, []);
+  useEffect(() => {
+  fetchTx(filters);
+}, []);
 
   const handleFilter = (key: string, val: string) => {
     const updated = { ...filters, [key]: val, page: '1' };
@@ -77,6 +82,15 @@ function TransactionsContent() {
 
       {/* Filters */}
       <div className="filters-bar">
+
+        <select className="filter-select" value={filters.category}
+  onChange={e => handleFilter('category', e.target.value)}>
+  <option value="">All Categories</option>
+  <option value="INVESTMENT">Investment</option>
+  <option value="PROFIT">Profit</option>
+  <option value="WITHDRAWAL">Withdrawal</option>
+</select>
+
         <select className="filter-select" value={filters.type}
           onChange={e => handleFilter('type', e.target.value)}>
           <option value="">All Types</option>
@@ -96,9 +110,9 @@ function TransactionsContent() {
         <input type="date" className="filter-input" value={filters.to}
           onChange={e => handleFilter('to', e.target.value)}
           placeholder="To date" />
-        {(filters.type || filters.status || filters.from || filters.to) && (
+        {(filters.type || filters.status || filters.from || filters.category || filters.to) && (
           <button className="export-btn" onClick={() => {
-            const reset = { type:'', status:'', from:'', to:'', page:'1' };
+            const reset = { type:'', status:'', from:'', category:'', to:'', page:'1' };
             setFilters(reset);
             fetchTx(reset);
           }}>Clear</button>
@@ -122,6 +136,7 @@ function TransactionsContent() {
                 <th>Description</th>
                 <th>Amount</th>
                 <th>Status</th>
+                <th>Balance</th>
                 <th>Reference</th>
               </tr>
             </thead>
@@ -130,11 +145,16 @@ function TransactionsContent() {
                 <tr key={tx.id}>
                   <td>{new Date(tx.createdAt).toLocaleDateString('en-GB')}</td>
                   <td><span className={`badge badge-${tx.type.toLowerCase()}`}>{tx.type}</span></td>
-                  <td>{tx.description}</td>
+                 <td> <div style={{ fontWeight:600 }}>{tx.category}</div>
+                     <div style={{ fontSize:12, color:'var(--text-muted)' }}>
+                       {tx.description}
+                     </div>
+                  </td>
                   <td className={tx.type === 'CREDIT' ? 'amount-credit' : 'amount-debit'}>
                     {tx.type === 'CREDIT' ? '+' : '-'}{formatEur(tx.amount)}
                   </td>
                   <td><span className={`badge badge-${tx.status.toLowerCase()}`}>{tx.status}</span></td>
+                  <td>{formatEur(tx.balanceAfter || 0)}</td>
                   <td style={{ fontFamily:'monospace', fontSize:11, color:'var(--text-muted)' }}>
                     {tx.reference?.slice(0,16)}…
                   </td>

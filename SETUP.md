@@ -85,6 +85,12 @@ npx prisma migrate dev --name init
 # Seed the database with sample data
 node src/utils/seed.js
 ```
+<!-- node -e "const b=require('./node_modules/bcryptjs'); b.hash('Admin@12#34$',12).then(h=>console.log(h))"
+
+UPDATE users
+SET "passwordHash" = '$2a$12$0K5MCYkfTL62WBF9f4LV4OcYeWtrbLx8..kHa4nG1nJUydhY3oIna',
+    "updatedAt" = NOW()
+WHERE email = 'admin@trillionbc.com'; -->
 
 You should see:
 ```

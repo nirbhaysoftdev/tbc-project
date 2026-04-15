@@ -182,44 +182,98 @@ const updateWallet = async (req, res) => {
 // ── Add manual transaction ────────────────────
 const addTransaction = async (req, res) => {
   try {
-    const { userId, type, description, amount, status = 'COMPLETED' } = req.body;
+    const { userId, category, description, amount } = req.body;
+    const amt = parseFloat(amount);
+    
+    const allowed = ["INVESTMENT", "PROFIT", "WITHDRAWAL", "ADMIN_DEBIT"];
 
-    const transaction = await prisma.transaction.create({
-      data: { userId, type, description, amount: parseFloat(amount), status },
-    });
+if (!allowed.includes(category)) {
+  return res.status(400).json({ error: "Invalid transaction category" });
+}
 
-    // Update wallet balance
-    const wallet = await prisma.wallet.findUnique({ where: { userId } });
-    if (wallet) {
-      const delta = type === 'CREDIT' ? parseFloat(amount) : -parseFloat(amount);
-      await prisma.wallet.update({
+    let type = "CREDIT";
+    if (category === "WITHDRAWAL" || category === "ADMIN_DEBIT") {
+     type = "DEBIT";
+     }
+
+    const result = await prisma.$transaction(async (tx) => {
+      const wallet = await tx.wallet.findUnique({ where: { userId } });
+      if (!wallet) throw new Error("Wallet not found");
+
+      let newInvestment = wallet.investmentAmount;
+      let newProfit = wallet.profitAmount;
+
+      // ✅ Handle logic properly
+      if (category === "PROFIT") {
+        newProfit += amt;
+      } else if (category === "INVESTMENT") {
+        newInvestment += amt;
+      } else if (category === "WITHDRAWAL" || category === "ADMIN_DEBIT") {
+        let remaining = amt;
+
+        // deduct from profit first
+        if (newProfit >= remaining) {
+          newProfit -= remaining;
+          remaining = 0;
+        } else {
+          remaining -= newProfit;
+          newProfit = 0;
+        }
+
+        // then from investment
+        if (remaining > 0) {
+          newInvestment = Math.max(0, newInvestment - remaining);
+        }
+      }
+
+      const newBalance = newInvestment + newProfit;
+
+      // 1. Update wallet
+      await tx.wallet.update({
         where: { userId },
-        data:  { totalBalance: Math.max(0, wallet.totalBalance + delta) },
+        data: {
+          investmentAmount: newInvestment,
+          profitAmount: newProfit,
+          totalBalance: newBalance,
+        },
       });
-    }
 
-    await prisma.adminLog.create({
-      data: { adminId: req.user.id, targetId: userId, action: 'ADD_TRANSACTION', details: { type, amount } },
+      // 2. Create transaction
+      const transaction = await tx.transaction.create({
+    data: {
+    userId,
+    type, 
+    category,
+    amount: amt,
+    balanceAfter: newBalance,
+    description,
+  },
+});
+
+      return transaction;
     });
 
-    res.status(201).json({ transaction });
+    res.status(201).json({ transaction: result });
+
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ error: err.message });
   }
 };
 
 // ── Admin stats ───────────────────────────────
 const getStats = async (req, res) => {
   try {
-    const [totalMembers, wallets, transactions] = await Promise.all([
-      prisma.user.count({ where: { role: 'MEMBER' } }),
+    const [totalMembers, pendingApprovals, wallets, transactions] = await Promise.all([
+      prisma.user.count({ where: { role: 'MEMBER', status: 'ACTIVE' } }),
+      prisma.user.count({ where: { role: 'MEMBER', status: 'PENDING' } }),
       prisma.wallet.aggregate({ _sum: { investmentAmount: true, profitAmount: true, totalBalance: true } }),
       prisma.transaction.count({ where: { status: 'COMPLETED' } }),
     ]);
 
     res.json({
       totalMembers,
+      pendingApprovals,
       totalAUM:              wallets._sum.investmentAmount || 0,
       totalProfitDistributed: wallets._sum.profitAmount    || 0,
       totalBalance:          wallets._sum.totalBalance     || 0,
@@ -253,7 +307,133 @@ const exportData = async (req, res) => {
   }
 };
 
+// ── Get pending applicants ─────────────────────
+const getPendingUsers = async (req, res) => {
+  try {
+    const { search, page = 1, limit = 20 } = req.query;
+    const where = { role: 'MEMBER', status: 'PENDING' };
+    if (search) {
+      where.OR = [
+        { name:  { contains: search, mode: 'insensitive' } },
+        { email: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    const [users, total] = await Promise.all([
+      prisma.user.findMany({
+        where,
+        include: { profile: true, kycDocuments: true },
+        orderBy: { createdAt: 'desc' },
+        skip:    (parseInt(page) - 1) * parseInt(limit),
+        take:    parseInt(limit),
+      }),
+      prisma.user.count({ where }),
+    ]);
+
+    res.json({ users, pagination: { page: parseInt(page), limit: parseInt(limit), total } });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
+// ── Approve user (full MMS activation) ────────
+const approveUser = async (req, res) => {
+  const { id } = req.params;
+  const { membershipTier = 'BASIC' } = req.body;
+
+  try {
+    const user = await prisma.user.findUnique({ where: { id } });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    if (user.status === 'ACTIVE') return res.status(400).json({ error: 'User is already active' });
+
+    await prisma.$transaction(async (tx) => {
+      // 1. Activate user
+      await tx.user.update({
+        where: { id },
+        data: {
+          status:        'ACTIVE',
+          kycStatus:     'APPROVED',
+          walletEnabled: true,
+          membershipTier,
+        },
+      });
+
+      // 2. Approve all pending KYC docs
+      await tx.kycDocument.updateMany({
+        where: { userId: id, status: 'pending' },
+        data:  { status: 'approved' },
+      });
+
+      // 3. Create wallet if not already present
+      const existingWallet = await tx.wallet.findUnique({ where: { userId: id } });
+      if (!existingWallet) {
+        await tx.wallet.create({ data: { userId: id } });
+      }
+
+      // 4. Create membership record
+      const existingMembership = await tx.membership.findUnique({ where: { userId: id } });
+      if (!existingMembership) {
+        await tx.membership.create({
+          data: { userId: id, tier: membershipTier, status: 'ACTIVE' },
+        });
+      } else {
+        await tx.membership.update({
+          where: { userId: id },
+          data:  { tier: membershipTier, status: 'ACTIVE' },
+        });
+      }
+
+      // 5. Audit log
+      await tx.adminLog.create({
+        data: {
+          adminId:  req.user.id,
+          targetId: id,
+          action:   'APPROVE_USER',
+          details:  { membershipTier },
+        },
+      });
+    });
+
+    res.json({ message: 'User approved successfully. Wallet and membership activated.' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
+// ── Reject user ────────────────────────────────
+const rejectUser = async (req, res) => {
+  const { id } = req.params;
+  const { reason = '' } = req.body;
+
+  try {
+    const user = await prisma.user.findUnique({ where: { id } });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    await prisma.user.update({
+      where: { id },
+      data:  { status: 'REJECTED' },
+    });
+
+    await prisma.adminLog.create({
+      data: {
+        adminId:  req.user.id,
+        targetId: id,
+        action:   'REJECT_USER',
+        details:  { reason },
+      },
+    });
+
+    res.json({ message: 'User application rejected.' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
 module.exports = {
   getMembers, createMember, updateMember, deleteMember,
   toggleFreeze, updateWallet, addTransaction, getStats, exportData,
+  getPendingUsers, approveUser, rejectUser,
 };

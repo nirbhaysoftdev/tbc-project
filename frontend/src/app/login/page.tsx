@@ -1,6 +1,7 @@
 'use client';
 // src/app/login/page.tsx
 import { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 
@@ -18,7 +19,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await login(email, password);
-      router.push('/dashboard');
+      router.push('/community');
     } catch (err: any) {
       setError(err.response?.data?.error || 'Login failed. Please try again.');
     } finally {
@@ -71,9 +72,12 @@ export default function LoginPage() {
           </button>
         </form>
 
-        {/* <p style={{ textAlign: 'center', marginTop: 20, fontSize: 11, color: 'var(--text-muted)' }}>
-          Demo: antonino@trillionbc.com / Member@123
-        </p> */}
+        <p style={{ textAlign: 'center', marginTop: 18, fontSize: 13, color: 'var(--text-muted)' }}>
+          Not a member?{' '}
+          <Link href="/register" style={{ color: 'var(--accent-blue)', fontWeight: 500 }}>
+            Join the Circle
+          </Link>
+        </p>
       </div>
     </div>
   );

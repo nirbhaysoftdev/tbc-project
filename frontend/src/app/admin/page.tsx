@@ -8,6 +8,8 @@ import { adminAPI, systemAPI, formatEur, downloadBlob } from '@/lib/api';
 function AdminContent() {
   const [stats,   setStats]   = useState<any>(null);
   const [members, setMembers] = useState<any[]>([]);
+  const [pending, setPending] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<'members' | 'pending'>('members');
   const [search,  setSearch]  = useState('');
   const [loading, setLoading] = useState(true);
 
@@ -16,30 +18,55 @@ function AdminContent() {
   const [noticeSaved,   setNoticeSaved]   = useState(false);
   const [noticeLoading, setNoticeLoading] = useState(false);
 
-  // Modals — Add Member is DISABLED (no modal opens)
+  // Modals
   const [showAddTx,    setShowAddTx]    = useState(false);
   const [showWallet,   setShowWallet]   = useState(false);
+  const [showApprove,  setShowApprove]  = useState(false);
   const [selectedUser, setSelectedUser] = useState<any>(null);
 
   // Forms
-  const [txForm,     setTxForm]     = useState({ userId:'', type:'CREDIT', description:'', amount:'' });
-  const [walletForm, setWalletForm] = useState({ investmentAmount:'', profitAmount:'' });
-  const [formMsg,    setFormMsg]    = useState('');
+  const [txForm,       setTxForm]       = useState({ userId:'', type:'CREDIT',category:'INVESTMENT', description:'', amount:'' });
+  const [walletForm,   setWalletForm]   = useState({ investmentAmount:'', profitAmount:'' });
+  const [approveForm,  setApproveForm]  = useState({ membershipTier:'BASIC', rejectReason:'' });
+  const [formMsg,      setFormMsg]      = useState('');
+  const [approveMode,  setApproveMode]  = useState<'approve' | 'reject'>('approve');
 
-  useEffect(() => {
-    Promise.all([
-      adminAPI.getStats().then(r => setStats(r.data)),
-      adminAPI.getMembers().then(r => setMembers(r.data.members)),
-      systemAPI.getNotice().then(r => setNoticeText(r.data?.text || '')),
-    ]).finally(() => setLoading(false));
-  }, []);
+  const loadAll = () => Promise.all([
+    adminAPI.getStats().then(r => setStats(r.data)),
+    adminAPI.getMembers().then(r => setMembers(r.data.members)),
+    adminAPI.getPending().then(r => setPending(r.data.users)),
+    systemAPI.getNotice().then(r => setNoticeText(r.data?.text || '')),
+  ]).finally(() => setLoading(false));
 
-  const refreshMembers = () =>
+  useEffect(() => { loadAll(); }, []);
+
+  const refreshMembers = () => {
     adminAPI.getMembers({ search }).then(r => setMembers(r.data.members));
+    adminAPI.getPending().then(r => setPending(r.data.users));
+    adminAPI.getStats().then(r => setStats(r.data));
+  };
 
   const handleSearch = (val: string) => {
     setSearch(val);
     adminAPI.getMembers({ search: val }).then(r => setMembers(r.data.members));
+  };
+
+  const handleApproveOrReject = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedUser) return;
+    try {
+      if (approveMode === 'approve') {
+        await adminAPI.approveUser(selectedUser.id, { membershipTier: approveForm.membershipTier });
+        setFormMsg(`${selectedUser.name} approved successfully.`);
+      } else {
+        await adminAPI.rejectUser(selectedUser.id, approveForm.rejectReason);
+        setFormMsg(`${selectedUser.name}'s application rejected.`);
+      }
+      setTimeout(() => { setShowApprove(false); setFormMsg(''); }, 2000);
+      refreshMembers();
+    } catch (err: any) {
+      setFormMsg(err.response?.data?.error || 'Action failed.');
+    }
   };
 
   // ── Save dev notice text to DB ────────────
@@ -57,7 +84,7 @@ function AdminContent() {
     e.preventDefault();
     await adminAPI.addTransaction(txForm);
     setFormMsg('Transaction added successfully!');
-    setTxForm({ userId:'', type:'CREDIT', description:'', amount:'' });
+    setTxForm({ userId:'', type:'CREDIT',category:'INVESTMENT', description:'', amount:'' });
     refreshMembers();
     adminAPI.getStats().then(r => setStats(r.data));
   };
@@ -161,16 +188,39 @@ function AdminContent() {
       {/* ── Stats Grid ── */}
       <div className="admin-grid">
         {[
-          { label: 'Total Members',      value: stats?.totalMembers || 0 },
+          { label: 'Active Members',     value: stats?.totalMembers || 0 },
+          { label: 'Pending Approvals',  value: stats?.pendingApprovals || 0, highlight: (stats?.pendingApprovals || 0) > 0 },
           { label: 'Total AUM',          value: formatEur(stats?.totalAUM || 0) },
           { label: 'Total Profit Paid',  value: formatEur(stats?.totalProfitDistributed || 0) },
-          { label: 'Total Balance',      value: formatEur(stats?.totalBalance || 0) },
           { label: 'Total Transactions', value: stats?.totalTransactions || 0 },
         ].map(s => (
-          <div key={s.label} className="admin-stat-card">
+          <div key={s.label} className="admin-stat-card"
+            style={(s as any).highlight ? { borderColor: 'rgba(200,168,75,0.4)', background: 'rgba(200,168,75,0.06)' } : {}}>
             <p className="admin-stat-label">{s.label}</p>
-            <p className="admin-stat-value">{s.value}</p>
+            <p className="admin-stat-value"
+              style={(s as any).highlight ? { color: 'var(--accent-gold)' } : {}}>
+              {s.value}
+            </p>
           </div>
+        ))}
+      </div>
+
+      {/* ── Tab Switcher ── */}
+      <div style={{ display: 'flex', gap: 4, marginBottom: 16, borderBottom: '1px solid var(--border)', paddingBottom: 0 }}>
+        {(['members', 'pending'] as const).map(tab => (
+          <button key={tab}
+            onClick={() => setActiveTab(tab)}
+            style={{
+              padding: '9px 20px', fontSize: 13, fontWeight: 600,
+              background: 'none', border: 'none', cursor: 'pointer',
+              borderBottom: activeTab === tab ? '2px solid var(--accent-blue)' : '2px solid transparent',
+              color: activeTab === tab ? 'var(--text-primary)' : 'var(--text-muted)',
+              marginBottom: -1,
+            }}>
+            {tab === 'pending'
+              ? `Pending Approvals${pending.length > 0 ? ` (${pending.length})` : ''}`
+              : 'Active Members'}
+          </button>
         ))}
       </div>
 
@@ -216,83 +266,133 @@ function AdminContent() {
         </div>
       </div>
 
-      {/* ── Members Table ── */}
-      <div style={{ display:'flex', gap:8, alignItems:'center', marginBottom:12 }}>
-        <input className="filter-input" placeholder="Search members…"
-          value={search} onChange={e => handleSearch(e.target.value)}
-          style={{ flex:1, maxWidth:320 }} />
-        <button className="export-btn" onClick={() => { setShowAddTx(true); setFormMsg(''); }}>
-          + Add Transaction
-        </button>
-      </div>
+      {/* ── Active Members Tab ── */}
+      {activeTab === 'members' && (
+        <>
+          <div style={{ display:'flex', gap:8, alignItems:'center', marginBottom:12 }}>
+            <input className="filter-input" placeholder="Search members…"
+              value={search} onChange={e => handleSearch(e.target.value)}
+              style={{ flex:1, maxWidth:320 }} />
+            <button className="export-btn" onClick={() => { setShowAddTx(true); setFormMsg(''); }}>
+              + Add Transaction
+            </button>
+          </div>
 
-      <div className="tx-table-wrap">
-        <table className="tx-table">
-          <thead>
-            <tr>
-              <th>Member</th>
-              <th>Email</th>
-              <th>Status</th>
-              <th>Investment</th>
-              <th>Profit</th>
-              <th>Total Balance</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {members.length === 0 ? (
+          <div className="tx-table-wrap">
+            <table className="tx-table">
+              <thead>
+                <tr>
+                  <th>Member</th><th>Email</th><th>Status</th>
+                  <th>Investment</th><th>Profit</th><th>Total Balance</th><th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {members.length === 0 ? (
+                  <tr><td colSpan={7} style={{ textAlign:'center', padding:32, color:'var(--text-muted)' }}>No members found.</td></tr>
+                ) : members.map((m: any) => (
+                  <tr key={m.id}>
+                    <td style={{ fontWeight:600, color:'var(--text-primary)' }}>{m.name}</td>
+                    <td>{m.email}</td>
+                    <td>
+                      <span className={`badge ${m.status === 'ACTIVE' ? 'badge-completed' : 'badge-failed'}`}>
+                        {m.status}
+                      </span>
+                    </td>
+                    <td>{formatEur(m.wallet?.investmentAmount || 0)}</td>
+                    <td className="amount-credit">+{formatEur(m.wallet?.profitAmount || 0)}</td>
+                    <td style={{ fontWeight:700, color:'var(--text-primary)' }}>{formatEur(m.wallet?.totalBalance || 0)}</td>
+                    <td>
+                      <button
+                        style={{
+                          padding:'4px 10px', fontSize:11, borderRadius:6, cursor:'pointer',
+                          border:     m.status === 'FROZEN' ? '1px solid rgba(76,217,138,0.3)' : '1px solid rgba(224,82,82,0.3)',
+                          background: m.status === 'FROZEN' ? 'rgba(76,217,138,0.1)'           : 'rgba(224,82,82,0.1)',
+                          color:      m.status === 'FROZEN' ? 'var(--green)'                   : 'var(--red)',
+                        }}
+                        onClick={() => handleFreeze(m.id)}>
+                        {m.status === 'FROZEN' ? 'Unfreeze' : 'Freeze'}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+
+      {/* ── Pending Approvals Tab ── */}
+      {activeTab === 'pending' && (
+        <div className="tx-table-wrap">
+          <table className="tx-table">
+            <thead>
               <tr>
-                <td colSpan={7} style={{ textAlign:'center', padding:32, color:'var(--text-muted)' }}>
-                  No members found.
-                </td>
+                <th>Applicant</th><th>Email</th><th>Company</th>
+                <th>KYC Status</th><th>Docs</th><th>Applied</th><th>Actions</th>
               </tr>
-            ) : members.map((m: any) => (
-              <tr key={m.id}>
-                <td style={{ fontWeight:600, color:'var(--text-primary)' }}>{m.name}</td>
-                <td>{m.email}</td>
-                <td>
-                  <span className={`badge ${m.status === 'ACTIVE' ? 'badge-completed' : 'badge-failed'}`}>
-                    {m.status}
-                  </span>
-                </td>
-                <td>{formatEur(m.wallet?.investmentAmount || 0)}</td>
-                <td className="amount-credit">+{formatEur(m.wallet?.profitAmount || 0)}</td>
-                <td style={{ fontWeight:700, color:'var(--text-primary)' }}>
-                  {formatEur(m.wallet?.totalBalance || 0)}
-                </td>
-                <td>
-                  <div style={{ display:'flex', gap:6 }}>
-                    {/* Edit wallet — FUNCTIONAL */}
-                    <button className="export-btn" style={{ padding:'4px 10px', fontSize:11 }}
-                      onClick={() => {
-                        setSelectedUser(m);
-                        setWalletForm({
-                          investmentAmount: String(m.wallet?.investmentAmount || 0),
-                          profitAmount:     String(m.wallet?.profitAmount || 0),
-                        });
-                        setShowWallet(true);
-                        setFormMsg('');
-                      }}>
-                      Edit Wallet
-                    </button>
-                    {/* Freeze / Unfreeze — FUNCTIONAL */}
-                    <button
-                      style={{
-                        padding:     '4px 10px', fontSize:11, borderRadius:6, cursor:'pointer',
-                        border:      m.status === 'FROZEN' ? '1px solid rgba(76,217,138,0.3)' : '1px solid rgba(224,82,82,0.3)',
-                        background:  m.status === 'FROZEN' ? 'rgba(76,217,138,0.1)' : 'rgba(224,82,82,0.1)',
-                        color:       m.status === 'FROZEN' ? 'var(--green)' : 'var(--red)',
-                      }}
-                      onClick={() => handleFreeze(m.id)}>
-                      {m.status === 'FROZEN' ? 'Unfreeze' : 'Freeze'}
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {pending.length === 0 ? (
+                <tr><td colSpan={7} style={{ textAlign:'center', padding:32, color:'var(--text-muted)' }}>
+                  No pending applications.
+                </td></tr>
+              ) : pending.map((u: any) => (
+                <tr key={u.id}>
+                  <td style={{ fontWeight:600, color:'var(--text-primary)' }}>{u.name}</td>
+                  <td>{u.email}</td>
+                  <td>{u.profile?.company || <span style={{ color:'var(--text-muted)' }}>—</span>}</td>
+                  <td>
+                    <span className={`badge ${
+                      u.kycStatus === 'PENDING'       ? 'badge-pending' :
+                      u.kycStatus === 'NOT_SUBMITTED' ? 'badge-failed'  : 'badge-completed'
+                    }`}>
+                      {u.kycStatus === 'NOT_SUBMITTED' ? 'Not Submitted' : u.kycStatus}
+                    </span>
+                  </td>
+                  <td>{u.kycDocuments?.length || 0}</td>
+                  <td style={{ color:'var(--text-muted)', fontSize:12 }}>
+                    {new Date(u.createdAt).toLocaleDateString()}
+                  </td>
+                  <td>
+                    <div style={{ display:'flex', gap:6 }}>
+                      <button
+                        style={{
+                          padding:'4px 12px', fontSize:11, borderRadius:6, cursor:'pointer',
+                          border:'1px solid rgba(76,217,138,0.3)',
+                          background:'rgba(76,217,138,0.1)', color:'var(--green)',
+                        }}
+                        onClick={() => {
+                          setSelectedUser(u);
+                          setApproveMode('approve');
+                          setApproveForm({ membershipTier:'BASIC', rejectReason:'' });
+                          setFormMsg('');
+                          setShowApprove(true);
+                        }}>
+                        Approve
+                      </button>
+                      <button
+                        style={{
+                          padding:'4px 12px', fontSize:11, borderRadius:6, cursor:'pointer',
+                          border:'1px solid rgba(224,82,82,0.3)',
+                          background:'rgba(224,82,82,0.1)', color:'var(--red)',
+                        }}
+                        onClick={() => {
+                          setSelectedUser(u);
+                          setApproveMode('reject');
+                          setApproveForm({ membershipTier:'BASIC', rejectReason:'' });
+                          setFormMsg('');
+                          setShowApprove(true);
+                        }}>
+                        Reject
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {/* ── Add Transaction Modal ── */}
       {showAddTx && (
@@ -320,6 +420,25 @@ function AdminContent() {
                   <option value="DEBIT">Debit (money out)</option>
                 </select>
               </div>
+
+    <div className="form-group">
+      <label className="form-label">CATEGORY</label>
+        <select className="filter-select" style={{ width:'100%' }} value={txForm.category}
+          onChange={e => {
+            const category = e.target.value;
+            let type = "CREDIT";
+            if (category === "WITHDRAWAL" || category === "ADMIN_DEBIT") { type = "DEBIT";
+            }
+            setTxForm(p => ({...p, category, type, }));
+            }}
+          >
+       <option value="INVESTMENT">Investment</option>
+        <option value="PROFIT">Profit</option>
+        <option value="WITHDRAWAL">Withdrawal</option>
+       <option value="ADMIN_DEBIT">Deduction</option>
+    </select>
+  </div>
+
               <div className="form-group">
                 <label className="form-label">DESCRIPTION</label>
                 <input required className="form-input" value={txForm.description}
@@ -343,6 +462,62 @@ function AdminContent() {
                 <button type="submit" className="btn-primary"
                   style={{ width:'auto', padding:'10px 24px' }}>
                   Add Transaction
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Approve / Reject Modal ── */}
+      {showApprove && selectedUser && (
+        <div className="modal-overlay" onClick={() => setShowApprove(false)}>
+          <div className="modal-box" onClick={e => e.stopPropagation()}>
+            <p className="modal-title">
+              {approveMode === 'approve' ? `Approve — ${selectedUser.name}` : `Reject — ${selectedUser.name}`}
+            </p>
+            <form onSubmit={handleApproveOrReject}>
+              {approveMode === 'approve' ? (
+                <div className="form-group">
+                  <label className="form-label">MEMBERSHIP TIER</label>
+                  <select className="filter-select" style={{ width:'100%' }}
+                    value={approveForm.membershipTier}
+                    onChange={e => setApproveForm(p => ({ ...p, membershipTier: e.target.value }))}>
+                    <option value="BASIC">Basic</option>
+                    <option value="PREMIUM">Premium</option>
+                    <option value="ENTERPRISE">Enterprise</option>
+                    <option value="ELITE">Elite</option>
+                  </select>
+                  <p style={{ fontSize:11, color:'var(--text-muted)', marginTop:8 }}>
+                    This will activate the account, approve KYC, and enable wallet access.
+                  </p>
+                </div>
+              ) : (
+                <div className="form-group">
+                  <label className="form-label">REJECTION REASON (optional)</label>
+                  <input className="form-input" placeholder="e.g. Incomplete documentation"
+                    value={approveForm.rejectReason}
+                    onChange={e => setApproveForm(p => ({ ...p, rejectReason: e.target.value }))} />
+                </div>
+              )}
+              {formMsg && (
+                <p style={{ color: approveMode === 'approve' ? 'var(--green)' : 'var(--red)', fontSize:12, marginBottom:8 }}>
+                  {formMsg}
+                </p>
+              )}
+              <div className="modal-actions">
+                <button type="button" className="btn-secondary" onClick={() => setShowApprove(false)}>
+                  Cancel
+                </button>
+                <button type="submit"
+                  style={{
+                    padding:'10px 24px', borderRadius:'var(--radius-sm)', fontSize:13, fontWeight:700,
+                    background: approveMode === 'approve' ? 'rgba(76,217,138,0.2)' : 'rgba(224,82,82,0.2)',
+                    border: approveMode === 'approve' ? '1px solid rgba(76,217,138,0.4)' : '1px solid rgba(224,82,82,0.4)',
+                    color: approveMode === 'approve' ? 'var(--green)' : 'var(--red)',
+                    cursor:'pointer',
+                  }}>
+                  {approveMode === 'approve' ? 'Confirm Approval' : 'Confirm Rejection'}
                 </button>
               </div>
             </form>

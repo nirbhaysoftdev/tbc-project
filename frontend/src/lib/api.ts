@@ -33,6 +33,8 @@ export default api;
 
 // ── Auth ──────────────────────────────────────
 export const authAPI = {
+  register: (name: string, email: string, password: string, extra?: Record<string, string>) =>
+    api.post('/auth/register', { name, email, password, ...extra }),
   login:  (email: string, password: string) => api.post('/auth/login', { email, password }),
   logout: ()                                 => api.post('/auth/logout'),
   me:     ()                                 => api.get('/auth/me'),
@@ -55,6 +57,9 @@ export const transactionsAPI = {
 export const adminAPI = {
   getStats:        ()                      => api.get('/admin/stats'),
   getMembers:      (params?: Record<string, string>) => api.get('/admin/members', { params }),
+  getPending:      (params?: Record<string, string>) => api.get('/admin/pending', { params }),
+  approveUser:     (id: string, data?: object) => api.post(`/admin/users/${id}/approve`, data ?? {}),
+  rejectUser:      (id: string, reason?: string) => api.post(`/admin/users/${id}/reject`, { reason }),
   createMember:    (data: FormData)        => api.post('/admin/members', data, { headers: { 'Content-Type': 'multipart/form-data' } }),
   updateMember:    (id: string, data: FormData) => api.put(`/admin/members/${id}`, data, { headers: { 'Content-Type': 'multipart/form-data' } }),
   deleteMember:    (id: string)            => api.delete(`/admin/members/${id}`),
@@ -62,6 +67,15 @@ export const adminAPI = {
   updateWallet:    (id: string, data: object) => api.put(`/admin/members/${id}/wallet`, data),
   addTransaction:  (data: object)          => api.post('/admin/transactions', data),
   exportData:      ()                      => api.get('/admin/export', { responseType: 'blob' }),
+};
+
+// ── MMS — User Onboarding ─────────────────────
+export const mmsAPI = {
+  submitProfile: (data: object)  => api.post('/user/profile', data),
+  submitKyc:     (data: FormData) =>
+    api.post('/user/kyc', data, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  getKycStatus:  ()              => api.get('/user/kyc'),
+  getKpi:        ()              => api.get('/user/kpi'),
 };
 
 // ── Profile ───────────────────────────────────
@@ -76,11 +90,14 @@ export const systemAPI = {
 };
 
 // ── Helpers ───────────────────────────────────
-export const formatEur = (n: number) =>
-  `€ ${n.toLocaleString('en-IE', {
+export const formatEur = (n?: number | null) => {
+  const safe = Number(n) || 0;
+
+  return `€ ${safe.toLocaleString('en-IE', {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2
   })}`;
+};
 
 export const downloadBlob = (blob: Blob, filename: string) => {
   const url = window.URL.createObjectURL(blob);
@@ -91,12 +108,58 @@ export const downloadBlob = (blob: Blob, filename: string) => {
   window.URL.revokeObjectURL(url);
 };
 
-// Withdraw
 // ── Withdraw ──────────────────────────────────
 export const withdrawAPI = {
-  create:          (data: any)    => api.post('/withdraw', data),
-  getMyRequests:   ()             => api.get('/withdraw/my'),
-  getAllRequests:   ()             => api.get('/withdraw/admin/all'),
-  approve:         (id: string)   => api.put(`/withdraw/admin/${id}/approve`, {}),
-  reject:          (id: string)   => api.put(`/withdraw/admin/${id}/reject`, {}),
+  create:        (data: any)  => api.post('/withdraw', data),
+  getMyRequests: ()           => api.get('/withdraw/my'),
+  getAllRequests: ()           => api.get('/withdraw/admin/all'),
+  approve:       (id: string) => api.put(`/withdraw/admin/${id}/approve`, {}),
+  reject:        (id: string) => api.put(`/withdraw/admin/${id}/reject`, {}),
+};
+
+// ── Community ──────────────────────────────────
+export const communityAPI = {
+  getStats:     ()                              => api.get('/community/stats'),
+  getFeed:      (params?: Record<string, string>) => api.get('/community/feed', { params }),
+  createPost:   (data: object)                  => api.post('/community/feed', data),
+  deletePost:   (id: string)                    => api.delete(`/community/feed/${id}`),
+  toggleLike:   (id: string)                    => api.post(`/community/feed/${id}/like`),
+  getComments:  (id: string)                    => api.get(`/community/feed/${id}/comments`),
+  addComment:   (id: string, content: string)   => api.post(`/community/feed/${id}/comments`, { content }),
+  getMembers:   (params?: Record<string, string>) => api.get('/community/members', { params }),
+  getMember:    (id: string)                    => api.get(`/community/members/${id}`),
+  updateProfile:(data: object)                  => api.put('/community/profile', data),
+  getNotifications:     ()                      => api.get('/community/notifications'),
+  markNotificationRead: (id: string)            => api.put(`/community/notifications/${id}/read`),
+};
+
+// ── Events ─────────────────────────────────────
+export const eventsAPI = {
+  getAll:             (params?: Record<string, string>) => api.get('/events', { params }),
+  getOne:             (id: string)              => api.get(`/events/${id}`),
+  create:             (data: object)            => api.post('/events', data),
+  update:             (id: string, data: object) => api.put(`/events/${id}`, data),
+  remove:             (id: string)              => api.delete(`/events/${id}`),
+  register:           (id: string)              => api.post(`/events/${id}/register`),
+  cancelRegistration: (id: string)              => api.delete(`/events/${id}/register`),
+};
+
+// ── Messages / Chat ─────────────────────────────
+export const messagesAPI = {
+  getConversations: ()                                   => api.get('/messages'),
+  getMessages:      (partnerId: string)                  => api.get(`/messages/${partnerId}`),
+  sendMessage:      (receiverId: string, content: string) => api.post('/messages', { receiverId, content }),
+  getUnreadCount:   ()                                   => api.get('/messages/unread'),
+};
+
+// ── Projects / Deal Room ────────────────────────
+export const projectsAPI = {
+  getAll:           (params?: Record<string, string>) => api.get('/projects', { params }),
+  getOne:           (id: string)              => api.get(`/projects/${id}`),
+  create:           (data: object)            => api.post('/projects', data),
+  update:           (id: string, data: object) => api.put(`/projects/${id}`, data),
+  remove:           (id: string)              => api.delete(`/projects/${id}`),
+  invest:           (id: string, data: object) => api.post(`/projects/${id}/invest`, data),
+  addMilestone:     (id: string, data: object) => api.post(`/projects/${id}/milestones`, data),
+  getMyInvestments: ()                        => api.get('/projects/my-investments'),
 };

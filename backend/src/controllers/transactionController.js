@@ -8,6 +8,7 @@ const getTransactions = async (req, res) => {
     const {
       type,
       status,
+      category,
       from,
       to,
       minAmount,
@@ -16,10 +17,15 @@ const getTransactions = async (req, res) => {
       limit = 20,
     } = req.query;
 
-    const where = { userId: req.user.id };
+   const where = {};
+
+if (req.user.role !== "ADMIN") {
+  where.userId = req.user.id;
+}
 
     if (type)      where.type   = type;
     if (status)    where.status = status;
+    if (category) where.category = category;
     if (from || to) {
       where.createdAt = {};
       if (from) where.createdAt.gte = new Date(from);
