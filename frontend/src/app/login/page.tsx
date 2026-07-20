@@ -75,7 +75,7 @@ export default function LoginPage() {
         <p style={{ textAlign: 'center', marginTop: 18, fontSize: 13, color: 'var(--text-muted)' }}>
           Not a member?{' '}
           <Link href="/register" style={{ color: 'var(--accent-blue)', fontWeight: 500 }}>
-            Join the Circle
+            Sign Up
           </Link>
         </p>
       </div>

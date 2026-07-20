@@ -240,29 +240,14 @@ function AdminContent() {
             <line x1="12" y1="17" x2="12.01" y2="17"/>
           </svg>
           <p style={{ fontSize:13, fontWeight:700, color:'#f59e0b' }}>
-            Development Notice (shown on all pages — stored in DB)
+            Development Notice (shown on all pages until get live)
           </p>
         </div>
         <p style={{ fontSize:11, color:'var(--text-muted)', marginBottom:10 }}>
-          This text appears in the top and bottom bars of every page. It is fetched directly from the
-          database — editing HTML files won&apos;t remove it. Clear the field and save to hide it.
+          This text appears in the top and bottom bars of every page. Use it to share important updates, maintenance alerts, or news with all users. 
         </p>
         <div style={{ display:'flex', gap:10 }}>
-          <input
-            className="form-input"
-            style={{ flex:1 }}
-            value={noticeText}
-            onChange={e => setNoticeText(e.target.value)}
-            placeholder="Enter notice text… (leave empty to hide)"
-          />
-          <button
-            className="btn-primary"
-            style={{ width:'auto', padding:'0 20px', fontSize:13, flexShrink:0 }}
-            onClick={handleSaveNotice}
-            disabled={noticeLoading}
-          >
-            {noticeLoading ? 'Saving…' : noticeSaved ? '✓ Saved!' : 'Save'}
-          </button>
+ 
         </div>
       </div>
 
