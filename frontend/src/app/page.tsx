@@ -58,7 +58,7 @@ const INDUSTRIES: { name: string; icon: string }[] = [
   { name: 'Digital',         icon: '📱' },
   { name: 'Trade',           icon: '🌍' },
   { name: 'Sports',          icon: '⚽' },
-  { name: 'Pet Care',        icon: '🐾' },
+  
 ];
 
 const FAQS: { q: string; a: string }[] = [
