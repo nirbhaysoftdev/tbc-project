@@ -26,7 +26,8 @@ interface User {
 interface AuthCtx {
   user:    User | null;
   loading: boolean;
-  login:   (email: string, password: string) => Promise<void>;
+  login:   (email: string, password: string) => Promise<User>;
+  applyToken: (token: string, user?: User) => Promise<void>;
   logout:  () => void;
   refresh: () => Promise<void>;
 }
@@ -61,6 +62,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('tbc_token', token);
     Cookies.set('tbc_token', token, { expires: 7 });
     setUser(u);
+    return u as User;
+  };
+
+  const applyToken = async (token: string, u?: User) => {
+    localStorage.setItem('tbc_token', token);
+    Cookies.set('tbc_token', token, { expires: 7 });
+    if (u) setUser(u);
+    else await refresh();
   };
 
   const logout = () => {
@@ -71,7 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, refresh }}>
+    <AuthContext.Provider value={{ user, loading, login, applyToken, logout, refresh }}>
       {children}
     </AuthContext.Provider>
   );

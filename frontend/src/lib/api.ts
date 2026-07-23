@@ -16,14 +16,25 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Redirect to login on 401
+// Redirect on 401 (bad token) and 403 PENDING (awaiting admin approval)
 api.interceptors.response.use(
   (res) => res,
   (err) => {
-    if (err.response?.status === 401 && typeof window !== 'undefined') {
-      Cookies.remove('tbc_token');
-      localStorage.removeItem('tbc_token');
-      window.location.href = '/login';
+    if (typeof window !== 'undefined') {
+      const status = err.response?.status;
+      const path   = window.location.pathname;
+
+      if (status === 401) {
+        Cookies.remove('tbc_token');
+        localStorage.removeItem('tbc_token');
+        if (path !== '/login') window.location.href = '/login';
+      } else if (
+        status === 403 &&
+        err.response?.data?.status === 'PENDING' &&
+        !path.startsWith('/onboarding')
+      ) {
+        window.location.href = '/onboarding/pending';
+      }
     }
     return Promise.reject(err);
   }
@@ -33,11 +44,14 @@ export default api;
 
 // ── Auth ──────────────────────────────────────
 export const authAPI = {
-  register: (name: string, email: string, password: string, extra?: Record<string, string>) =>
-    api.post('/auth/register', { name, email, password, ...extra }),
-  login:  (email: string, password: string) => api.post('/auth/login', { email, password }),
-  logout: ()                                 => api.post('/auth/logout'),
-  me:     ()                                 => api.get('/auth/me'),
+  register: (data: FormData) =>
+    api.post('/auth/register', data, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  sendOtp:   (email: string)                    => api.post('/auth/send-otp',   { email }),
+  verifyOtp: (email: string, code: string)      => api.post('/auth/verify-otp', { email, code }),
+  google:    (credential: string)               => api.post('/auth/google',     { credential }),
+  login:     (email: string, password: string)  => api.post('/auth/login',      { email, password }),
+  logout:    ()                                 => api.post('/auth/logout'),
+  me:        ()                                 => api.get('/auth/me'),
 };
 
 // ── Dashboard ─────────────────────────────────

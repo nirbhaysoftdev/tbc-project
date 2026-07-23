@@ -1,10 +1,10 @@
 // src/routes/events.js
 const express = require('express');
 const router  = express.Router();
-const { authenticate, requireAdmin } = require('../middleware/auth');
+const { authenticate, requireAdmin, requireActive } = require('../middleware/auth');
 const ctrl = require('../controllers/eventsController');
 
-router.use(authenticate);
+router.use(authenticate, requireActive);
 
 router.get('/',              ctrl.getEvents);
 router.get('/:id',           ctrl.getEvent);

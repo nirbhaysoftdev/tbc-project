@@ -1,6 +1,10 @@
 // src/controllers/adminController.js
 const bcrypt = require('bcryptjs');
 const prisma = require('../utils/prismaClient'); // Prisma 7 — uses adapter-pg singleton
+const {
+  sendAccountApprovedEmail,
+  sendAccountRejectedEmail,
+} = require('../services/mailer');
 
 // ── Get all members ───────────────────────────
 const getMembers = async (req, res) => {
@@ -395,6 +399,9 @@ const approveUser = async (req, res) => {
       });
     });
 
+    sendAccountApprovedEmail(user, membershipTier)
+      .catch((e) => console.error('approval email failed:', e.message));
+
     res.json({ message: 'User approved successfully. Wallet and membership activated.' });
   } catch (err) {
     console.error(err);
@@ -424,6 +431,9 @@ const rejectUser = async (req, res) => {
         details:  { reason },
       },
     });
+
+    sendAccountRejectedEmail(user, reason)
+      .catch((e) => console.error('rejection email failed:', e.message));
 
     res.json({ message: 'User application rejected.' });
   } catch (err) {

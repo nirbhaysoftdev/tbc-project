@@ -1,11 +1,11 @@
 // src/routes/community.js
 const express = require('express');
 const router  = express.Router();
-const { authenticate } = require('../middleware/auth');
+const { authenticate, requireActive } = require('../middleware/auth');
 const ctrl = require('../controllers/communityController');
 
-// All community routes require auth
-router.use(authenticate);
+// All community routes require an ACTIVE member
+router.use(authenticate, requireActive);
 
 // ── Stats ─────────────────────────────────────
 router.get('/stats', ctrl.getCommunityStats);

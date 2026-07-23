@@ -2,7 +2,26 @@
 const bcrypt = require('bcryptjs');
 const jwt    = require('jsonwebtoken');
 const { validationResult } = require('express-validator');
+const { OAuth2Client } = require('google-auth-library');
 const prisma = require('../utils/prismaClient');
+const otpService = require('../services/otpService');
+const {
+  sendWelcomePendingEmail,
+  sendAdminNewSignupNotification,
+} = require('../services/mailer');
+
+function signToken(user) {
+  return jwt.sign(
+    { userId: user.id, role: user.role },
+    process.env.JWT_SECRET,
+    { expiresIn: process.env.JWT_EXPIRES_IN || '7d' },
+  );
+}
+
+function safeUser(user) {
+  const { passwordHash, ...rest } = user;
+  return rest;
+}
 
 // ── Register (self-service community signup) ──
 const register = async (req, res) => {
@@ -11,61 +30,223 @@ const register = async (req, res) => {
     return res.status(400).json({ error: 'Invalid input', details: errors.array() });
   }
 
-  const { name, email, password, country, company, industry } = req.body;
+  // Multipart form data (files handled by multer): fields arrive as strings in req.body
+  const {
+    name,
+    email,
+    password,
+    accountType,          // 'PROFESSIONAL' | 'BUSINESS'
+    phone,
+    phoneCountry,
+    phoneDialCode,
+    country,
+    linkedIn,
+    residentId,           // number/text field
+    billingAddress,
+    tradeLicense,         // text field (fallback if no file)
+    vatNumber,
+    businessAddress,
+    website,
+  } = req.body;
+
+  const normEmail = String(email).toLowerCase().trim();
+
+  if (!['PROFESSIONAL', 'BUSINESS'].includes(accountType)) {
+    return res.status(400).json({ error: 'accountType must be PROFESSIONAL or BUSINESS' });
+  }
 
   try {
-    const existing = await prisma.user.findUnique({ where: { email } });
+    // Require prior OTP verification for this email
+    const verified = await otpService.isEmailRecentlyVerified(normEmail, 'SIGNUP', 60);
+    if (!verified) {
+      return res.status(400).json({ error: 'Email not verified. Please verify with the code sent to your inbox.' });
+    }
+
+    const existing = await prisma.user.findUnique({ where: { email: normEmail } });
     if (existing) {
       return res.status(400).json({ error: 'An account with this email already exists' });
     }
 
     const passwordHash = await bcrypt.hash(password, 12);
 
+    // File uploads (via multer.fields)
+    const files = req.files || {};
+    const cvUrl            = files.cv?.[0]            ? `/uploads/signup/${files.cv[0].filename}`            : null;
+    const residentIdUrl    = files.residentIdFile?.[0]? `/uploads/signup/${files.residentIdFile[0].filename}`: null;
+    const tradeLicenseUrl  = files.tradeLicense?.[0]  ? `/uploads/signup/${files.tradeLicense[0].filename}`  : null;
+
+    const profileData = {
+      country:        country || null,
+      phone:          phone || null,
+      phoneCountry:   phoneCountry || null,
+      phoneDialCode:  phoneDialCode || null,
+      linkedIn:       linkedIn || null,
+      website:        website || null,
+      cvUrl,
+      residentIdUrl,
+      billingAddress: billingAddress || null,
+      tradeLicenseUrl,
+      vatNumber:      vatNumber || null,
+      businessAddress: businessAddress || null,
+    };
+
     const user = await prisma.user.create({
       data: {
         name,
-        email,
+        email: normEmail,
         passwordHash,
-        role:          'MEMBER',
+        role: 'MEMBER',
         membershipTier: 'BASIC',
-        status:        'PENDING',
-        kycStatus:     'NOT_SUBMITTED',
+        status: 'PENDING',
+        kycStatus: 'NOT_SUBMITTED',
         walletEnabled: false,
-        // Create basic profile stub
-        profile: {
-          create: {
-            country:  country  || null,
-            company:  company  || null,
-            industry: industry || null,
-          },
-        },
+        accountType,
+        emailVerified: true,
+        profile: { create: profileData },
       },
       select: {
-        id: true, name: true, email: true,
-        role: true, status: true, kycStatus: true,
-        membershipTier: true, walletEnabled: true, profilePhoto: true,
+        id: true, name: true, email: true, role: true, status: true,
+        kycStatus: true, membershipTier: true, walletEnabled: true,
+        profilePhoto: true, accountType: true, emailVerified: true,
       },
     });
 
-    // Audit log
     await prisma.adminLog.create({
-      data: { adminId: user.id, action: 'SELF_REGISTER', details: { email } },
-    }).catch(() => {}); // non-blocking
+      data: { adminId: user.id, action: 'SELF_REGISTER', details: { email: normEmail, accountType } },
+    }).catch(() => {});
 
-    const token = jwt.sign(
-      { userId: user.id, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
-    );
+    sendWelcomePendingEmail(user).catch((e) => console.error('welcome email failed:', e.message));
+    sendAdminNewSignupNotification({ ...user, signupMethod: 'email' })
+      .catch((e) => console.error('admin notify failed:', e.message));
 
+    const token = signToken(user);
     res.status(201).json({
-      token,
-      user,
-      message: 'Registration successful. Please complete your profile and submit KYC for admin review.',
+      token, user,
+      message: 'Registration successful. Your application is pending admin review.',
     });
   } catch (err) {
     console.error('Register error:', err);
     res.status(500).json({ error: 'Server error' });
+  }
+};
+
+// ── Send OTP ──────────────────────────────────
+const sendOtp = async (req, res) => {
+  const { email } = req.body || {};
+  if (!email || typeof email !== 'string') {
+    return res.status(400).json({ error: 'Email is required' });
+  }
+  const normalized = email.toLowerCase().trim();
+
+  try {
+    // Block if a verified account already exists
+    const existing = await prisma.user.findUnique({ where: { email: normalized } });
+    if (existing) {
+      return res.status(400).json({ error: 'An account with this email already exists' });
+    }
+
+    const { expiresAt, expiresMinutes } = await otpService.issueOtp(normalized, 'SIGNUP');
+    res.json({
+      message: 'Verification code sent',
+      expiresAt,
+      expiresMinutes,
+    });
+  } catch (err) {
+    const status = err.status || 500;
+    if (status >= 500) console.error('sendOtp error:', err);
+    res.status(status).json({ error: err.message || 'Failed to send code' });
+  }
+};
+
+// ── Verify OTP ────────────────────────────────
+const verifyOtp = async (req, res) => {
+  const { email, code } = req.body || {};
+  if (!email || !code) {
+    return res.status(400).json({ error: 'Email and code are required' });
+  }
+  try {
+    await otpService.verifyOtp(email, code, 'SIGNUP');
+    res.json({ verified: true, message: 'Email verified' });
+  } catch (err) {
+    const status = err.status || 500;
+    if (status >= 500) console.error('verifyOtp error:', err);
+    res.status(status).json({ error: err.message || 'Verification failed' });
+  }
+};
+
+// ── Google Sign-in / Sign-up ──────────────────
+const googleAuth = async (req, res) => {
+  const { credential } = req.body || {};
+  if (!credential) return res.status(400).json({ error: 'Missing Google credential' });
+
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  if (!clientId) {
+    return res.status(500).json({ error: 'Google Sign-in is not configured on the server.' });
+  }
+
+  try {
+    const client = new OAuth2Client(clientId);
+    const ticket = await client.verifyIdToken({ idToken: credential, audience: clientId });
+    const payload = ticket.getPayload();
+    if (!payload?.email) {
+      return res.status(400).json({ error: 'Google account has no email' });
+    }
+    const email = payload.email.toLowerCase();
+    const googleId = payload.sub;
+    const name = payload.name || email.split('@')[0];
+
+    let user = await prisma.user.findFirst({
+      where: { OR: [{ googleId }, { email }] },
+      include: { wallet: true },
+    });
+
+    if (!user) {
+      // Create new user via Google — no password, PENDING status until admin approval
+      user = await prisma.user.create({
+        data: {
+          name,
+          email,
+          googleId,
+          emailVerified: Boolean(payload.email_verified),
+          role: 'MEMBER',
+          membershipTier: 'BASIC',
+          status: 'PENDING',
+          kycStatus: 'NOT_SUBMITTED',
+          profilePhoto: payload.picture || null,
+          profile: { create: {} },
+        },
+        include: { wallet: true },
+      });
+
+      sendWelcomePendingEmail(user).catch((e) => console.error('welcome email failed:', e.message));
+      sendAdminNewSignupNotification({ ...user, signupMethod: 'google' })
+        .catch((e) => console.error('admin notify failed:', e.message));
+    } else if (!user.googleId) {
+      // Link Google to existing email account
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          googleId,
+          emailVerified: true,
+          profilePhoto: user.profilePhoto || payload.picture || null,
+        },
+        include: { wallet: true },
+      });
+    }
+
+    if (user.status === 'FROZEN')  return res.status(403).json({ error: 'Your account has been frozen. Contact support.' });
+    if (user.status === 'REJECTED') return res.status(403).json({ error: 'Your membership application was not approved.' });
+
+    const token = signToken(user);
+    res.json({
+      token,
+      user: safeUser(user),
+      message: 'Signed in with Google',
+      needsAccountType: !user.accountType,  // frontend can prompt to pick professional/business
+    });
+  } catch (err) {
+    console.error('Google auth error:', err);
+    res.status(401).json({ error: 'Invalid Google credential' });
   }
 };
 
@@ -79,14 +260,13 @@ const login = async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    // Explicit select avoids referencing new columns (walletEnabled) that may
-    // not exist in the DB yet if migration hasn't been run.
     const user = await prisma.user.findUnique({
-      where:  { email },
+      where:  { email: String(email).toLowerCase().trim() },
       select: {
         id: true, name: true, email: true, passwordHash: true,
         role: true, status: true, kycStatus: true,
-        membershipTier: true, profilePhoto: true,
+        membershipTier: true, profilePhoto: true, walletEnabled: true,
+        emailVerified: true, accountType: true,
         wallet: { select: {
           investmentAmount: true, profitAmount: true,
           totalBalance: true, currency: true, frozen: true,
@@ -94,7 +274,7 @@ const login = async (req, res) => {
       },
     });
 
-    if (!user) {
+    if (!user || !user.passwordHash) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
@@ -110,13 +290,8 @@ const login = async (req, res) => {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
-    const token = jwt.sign(
-      { userId: user.id, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
-    );
+    const token = signToken(user);
 
-    // KPI — log login for active members only
     if (user.status === 'ACTIVE') {
       const kpiService = require('../services/kpiService');
       kpiService.logKpiAction(user.id, 'login').catch(() => {});
@@ -134,6 +309,8 @@ const login = async (req, res) => {
         walletEnabled:  user.walletEnabled  ?? false,
         membershipTier: user.membershipTier ?? 'BASIC',
         profilePhoto:   user.profilePhoto,
+        emailVerified:  user.emailVerified  ?? false,
+        accountType:    user.accountType,
         wallet:         user.wallet,
       },
     });
@@ -143,7 +320,7 @@ const login = async (req, res) => {
   }
 };
 
-// ── Logout (client-side token removal) ──────────
+// ── Logout ──────────────────────────────────────
 const logout = async (_req, res) => {
   res.json({ message: 'Logged out successfully' });
 };
@@ -151,9 +328,6 @@ const logout = async (_req, res) => {
 // ── Get current user ──────────────────────────
 const me = async (req, res) => {
   try {
-    // Use include (not select) so Prisma doesn't validate individual field names
-    // against the generated client — this lets the query work even if
-    // walletEnabled hasn't been migrated yet (it just comes back as undefined).
     const user = await prisma.user.findUnique({
       where:   { id: req.user.id },
       include: { wallet: true, profile: true },
@@ -161,15 +335,13 @@ const me = async (req, res) => {
 
     if (!user) return res.status(404).json({ error: 'User not found' });
 
-    // kpiSummary lives in a new table — wrap separately so a missing migration
-    // doesn't break the entire /me endpoint.
     let kpiSummary = null;
     try {
       kpiSummary = await prisma.userKpiSummary.findUnique({
         where:  { userId: req.user.id },
         select: { totalScore: true },
       });
-    } catch { /* table not yet migrated — skip silently */ }
+    } catch { /* skip */ }
 
     const { passwordHash, ...safe } = user;
     res.json({ ...safe, kpiSummary });
@@ -179,4 +351,4 @@ const me = async (req, res) => {
   }
 };
 
-module.exports = { register, login, logout, me };
+module.exports = { register, login, logout, me, sendOtp, verifyOtp, googleAuth };

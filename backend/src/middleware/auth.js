@@ -38,12 +38,13 @@ const requireAdmin = (req, res, next) => {
 };
 
 // ── Require ACTIVE status ─────────────────────
-// Blocks PENDING users from accessing platform routes.
-// (Onboarding routes /api/user/* bypass this — they only use authenticate.)
+// Blocks PENDING users from accessing member-only platform routes.
+// Onboarding (/api/user/*), profile edit (/api/profile), and auth (/api/auth/*)
+// bypass this — they only use authenticate.
 const requireActive = (req, res, next) => {
   if (req.user?.status !== 'ACTIVE') {
     return res.status(403).json({
-      error: 'Account pending approval. Complete your profile and KYC.',
+      error: 'Your account is pending admin approval.',
       status: req.user?.status,
     });
   }

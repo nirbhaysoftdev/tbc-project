@@ -1,10 +1,10 @@
 // src/routes/projects.js
 const express = require('express');
 const router  = express.Router();
-const { authenticate, requireAdmin } = require('../middleware/auth');
+const { authenticate, requireAdmin, requireActive } = require('../middleware/auth');
 const ctrl = require('../controllers/projectsController');
 
-router.use(authenticate);
+router.use(authenticate, requireActive);
 
 router.get('/my-investments',              ctrl.getMyInvestments);
 router.get('/',                            ctrl.getProjects);

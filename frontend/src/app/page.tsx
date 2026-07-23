@@ -29,7 +29,7 @@ const FEATURE_ICONS = ['👥', '💼', '🤝'];
 const ACTIVITY: { icon: string; who: string; what: string; time: string; tag: string; tone: 'gold' | 'blue' | 'green' }[] = [
   { icon: '🏢', who: 'Marco R.',      what: 'joined from Milan',                time: '42s',  tag: 'New Member', tone: 'blue'  },
   { icon: '💰', who: 'DealRoom · RE', what: '€2.4M round just closed',          time: '3m',   tag: 'Funded',     tone: 'gold'  },
-  { icon: '🤝', who: 'Sofia · Zurich', what: 'introduced to Alco Ventures',      time: '6m',   tag: 'Intro',      tone: 'blue'  },
+  { icon: '🤝', who: 'Sofia · Jo Corporate H.', what: 'introduced to Alco Ventures',      time: '6m',   tag: 'Intro',      tone: 'blue'  },
   { icon: '🚀', who: 'Green Capital', what: 'launched a new syndicate',         time: '11m',  tag: 'Live',       tone: 'green' },
   { icon: '📊', who: 'ASRA Holdings', what: 'shared Q3 healthcare thesis',      time: '17m',  tag: 'Insight',    tone: 'blue'  },
   { icon: '✍️',  who: 'Justyta K.',    what: 'signed the LOI on Villa Estate',  time: '22m',  tag: 'Signed',     tone: 'gold'  },
@@ -50,15 +50,67 @@ const FEATURES = [
   },
 ];
 
-const INDUSTRIES: { name: string; icon: string }[] = [
-  { name: 'Real Estate',     icon: '🏢' },
-  { name: 'Technology',      icon: '💻' },
-  { name: 'Healthcare',      icon: '🏥' },
-  { name: 'Food & Beverage', icon: '🍽️' },
-  { name: 'Digital',         icon: '📱' },
-  { name: 'Trade',           icon: '🌍' },
-  { name: 'Sports',          icon: '⚽' },
-  
+const INDUSTRIES: { name: string; icon: string; image: string }[] = [
+  {
+    name: 'Petrol, Oil & Gas',
+    icon: '🛢️',
+    image: '/images/sectors/oil-&-gas.jpg',
+  },
+  {
+    name: 'International Consulting',
+    icon: '🌐',
+    image: '/images/sectors/photo-1521737711867-e3b97375f902.avif',
+  },
+  {
+    name: 'Healthcare, Science & Research',
+    icon: '🧬',
+    image: '/images/sectors/photo-1576091160399-112ba8d25d1d.avif',
+  },
+  {
+    name: 'Trade & Finance',
+    icon: '💹',
+    image: '/images/sectors/photo-1611974789855-9c2a0a7236a3.avif',
+  },
+  {
+    name: 'Real Estate',
+    icon: '🏢',
+    image: '/images/sectors/photo-1560518883-ce09059eeffa.avif',
+  },
+  {
+    name: 'Building, Interior & Architecture',
+    icon: '📐',
+    image: '/images/sectors/photo-1487958449943-2429e8be8625.avif',
+  },
+  {
+    name: 'Movie Production',
+    icon: '🎬',
+    image: '/images/sectors/photo-1478720568477-152d9b164e26.avif',
+  },
+  {
+    name: 'Italian Fashion Consulting',
+    icon: '👗',
+    image: '/images/sectors/photo-1490481651871-ab68de25d43d.avif',
+  },
+  {
+    name: 'Sports Academy',
+    icon: '⚽',
+    image: '/images/sectors/photo-1461896836934-ffe607ba8211.avif',
+  },
+  {
+    name: 'Energy Division',
+    icon: '⚡',
+    image: '/images/sectors/photo-1509391366360-2e959784a276.avif',
+  },
+  {
+    name: 'Innovation & Technology',
+    icon: '💡',
+    image: '/images/sectors/photo-1518770660439-4636190af475.avif',
+  },
+  {
+    name: 'Academy & Training Courses',
+    icon: '🎓',
+    image: '/images/sectors/photo-1524178232363-1fb2b075b655.avif',
+  },
 ];
 
 const FAQS: { q: string; a: string }[] = [
@@ -237,11 +289,12 @@ export default function LandingPage() {
         <div className="lp-hero-copy lp-reveal">
           <div className="lp-eyebrow">
             <span className="lp-eyebrow-dot" />
-            The World's Most Exclusive Business Community
+            Where vision becomes measurable impact.
           </div>
           <h1 className="lp-hero-title">
-            Where vision becomes <span className="lp-hero-accent">measurable impact.</span>
+           The World's Most Exclusive <span className="lp-hero-accent">Business Community</span>
           </h1>
+      
           <p className="lp-hero-desc">
             A private ecosystem connecting real operators, investors, and innovators — combining
             community DealRooms, capital management, and global opportunity into one high-signal circle.
@@ -446,6 +499,17 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ── Floating Coin ───────────────── */}
+      <section className="lp-coin-showcase lp-reveal" aria-hidden>
+        <div className="lp-coin-halo" />
+        <img
+          src="/images/coin-front.png"
+          alt="TBC Coin"
+          className="lp-coin-image"
+        />
+        <div className="lp-coin-shadow" />
+      </section>
+
       {/* ── Mission / Vision split ──────── */}
       <section id="mission" className="lp-section lp-mission">
         <div className="lp-mission-grid">
@@ -570,8 +634,19 @@ export default function LandingPage() {
         <div className="lp-industries">
           {INDUSTRIES.map((ind, i) => (
             <div key={ind.name} className="lp-industry lp-reveal" style={{ transitionDelay: `${i * 60}ms` }}>
-              <span className="lp-industry-emoji">{ind.icon}</span>
-              <span className="lp-industry-name">{ind.name}</span>
+              <div className="lp-industry-media">
+                <img
+                  src={ind.image}
+                  alt={ind.name}
+                  className="lp-industry-image"
+                  loading="lazy"
+                />
+                <div className="lp-industry-overlay" />
+              </div>
+              <div className="lp-industry-content">
+                <span className="lp-industry-badge">{ind.icon}</span>
+                <span className="lp-industry-name">{ind.name}</span>
+              </div>
               <span className="lp-industry-line" />
             </div>
           ))}

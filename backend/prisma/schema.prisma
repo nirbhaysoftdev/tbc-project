@@ -30,6 +30,11 @@ enum KycStatus {
   REJECTED
 }
 
+enum AccountType {
+  PROFESSIONAL
+  BUSINESS
+}
+
 enum MembershipTier {
   BASIC
   PREMIUM
@@ -91,13 +96,16 @@ model User {
   id            String         @id @default(uuid())
   name          String
   email         String         @unique
-  passwordHash  String
+  passwordHash  String?
   role          Role           @default(MEMBER)
   profilePhoto  String?
   status        UserStatus     @default(PENDING)
   membershipTier MembershipTier @default(BASIC)
   kycStatus     KycStatus      @default(NOT_SUBMITTED)
   walletEnabled Boolean        @default(false)
+  accountType   AccountType?
+  emailVerified Boolean        @default(false)
+  googleId      String?        @unique
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 
@@ -144,17 +152,46 @@ model Profile {
   country         String?
   city            String?
   phone           String?
+  phoneCountry    String?  // ISO code, e.g. "IT"
+  phoneDialCode   String?  // e.g. "+39"
   linkedIn        String?
   website         String?
   interests       String[]
   jobTitle        String?
   experienceYears Int?
+
+  // Professional
+  cvUrl           String?
+  residentIdUrl   String?
+  billingAddress  String?
+
+  // Business
+  tradeLicenseUrl String?
+  vatNumber       String?
+  businessAddress String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("profiles")
+}
+
+// ─── EMAIL OTP ────────────────────────────────────────────────────────────────
+
+model EmailOtp {
+  id         String   @id @default(uuid())
+  email      String
+  codeHash   String
+  purpose    String   @default("SIGNUP") // SIGNUP | LOGIN | RESET
+  attempts   Int      @default(0)
+  consumedAt DateTime?
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+
+  @@index([email, purpose])
+  @@map("email_otps")
 }
 
 // ─── MEMBERSHIP ───────────────────────────────────────────────────────────────
