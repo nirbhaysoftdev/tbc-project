@@ -23,6 +23,8 @@ function getTransport() {
     port: Number(SMTP_PORT),
     secure: SMTP_SECURE === 'true',
     auth: { user: SMTP_USER, pass: SMTP_PASSWORD },
+    logger: true,                                                                                                                     
+    debug: true,
   });
   return cachedTransport;
 }
