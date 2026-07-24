@@ -252,7 +252,7 @@ function ProjectCard({ project, onInvest, onDelete, isAdmin }: { project: any; o
       </div>
 
       <div style={{ display: 'flex', gap: 8 }}>
-        <Link href={`/community/deal-room/${project.id}`} style={{ flex: 1 }}>
+        <Link href={`/community/deal-room/detail?id=${project.id}`} style={{ flex: 1 }}>
           <button className="comm-deal-btn" style={{ width: '100%' }}>View Details</button>
         </Link>
         {project.status === 'ACTIVE' && !project.myInvestment && !isAdmin && (

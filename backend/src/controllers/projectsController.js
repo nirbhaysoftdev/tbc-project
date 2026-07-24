@@ -200,7 +200,7 @@ const invest = async (req, res) => {
         type:    'DEAL_UPDATE',
         title:   'New investment',
         message: `${req.user.name} invested €${investAmt.toLocaleString()} in ${project.title}`,
-        link:    `/community/deal-room/${project.id}`,
+        link:    `/community/deal-room/detail?id=${project.id}`,
       },
     });
 
