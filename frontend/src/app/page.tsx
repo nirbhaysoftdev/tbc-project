@@ -147,7 +147,6 @@ const PARTNERS: { name: string; src: string }[] = [
   { name: 'ASRA',    src: '/images/partners/asra.png' },
   { name: 'Chef',    src: '/images/partners/chef.png' },
   { name: 'Alco',    src: '/images/partners/alco.png' },
-  { name: 'GLM',     src: '/images/partners/glm.png' },
   { name: 'Green',   src: '/images/partners/green.png' },
   { name: 'L1',      src: '/images/partners/l1.png' },
   { name: 'L2',      src: '/images/partners/l2.png' },
