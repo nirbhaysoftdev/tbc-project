@@ -32,7 +32,7 @@ const ACTIVITY: { icon: string; who: string; what: string; time: string; tag: st
   { icon: '🤝', who: 'Sofia · Jo Corporate H.', what: 'introduced to Alco Ventures',      time: '6m',   tag: 'Intro',      tone: 'blue'  },
   { icon: '🚀', who: 'Green Capital', what: 'launched a new syndicate',         time: '11m',  tag: 'Live',       tone: 'green' },
   { icon: '📊', who: 'ASRA Holdings', what: 'shared Q3 healthcare thesis',      time: '17m',  tag: 'Insight',    tone: 'blue'  },
-  { icon: '✍️',  who: 'Justyta K.',    what: 'signed the LOI on Villa Estate',  time: '22m',  tag: 'Signed',     tone: 'gold'  },
+  { icon: '✍️',  who: 'Justyta K.',    what: 'signed the LOI on Olla Estate',  time: '22m',  tag: 'Signed',     tone: 'gold'  },
 ];
 
 const FEATURES = [
@@ -139,7 +139,6 @@ const FAQS: { q: string; a: string }[] = [
 const PARTNERS: { name: string; src: string }[] = [
   { name: 'Benx',    src: '/images/partners/benx.png' },
   { name: 'EBN',     src: '/images/partners/ebn.png' },
-  { name: 'Villa',   src: '/images/partners/villa.png' },
   { name: 'BDM',     src: '/images/partners/bdm.png' },
   { name: 'Nat',     src: '/images/partners/nat.png' },
   
