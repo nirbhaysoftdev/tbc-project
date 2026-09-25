@@ -141,6 +141,7 @@ const PARTNERS: { name: string; src: string }[] = [
   { name: 'EBN',     src: '/images/partners/ebn.png' },
   { name: 'BDM',     src: '/images/partners/bdm.png' },
   { name: 'Nat',     src: '/images/partners/nat.png' },
+  { name: 'Sebex Aviations', src: '/images/partners/sebex-aviations.png' },
   
   { name: 'NWS',     src: '/images/partners/nws.png' },
   { name: 'ASRA',    src: '/images/partners/asra.png' },
@@ -155,6 +156,7 @@ const PARTNERS: { name: string; src: string }[] = [
   { name: 'Partner 18', src: '/images/partners/extra1.jpg' },
   { name: 'Partner 19', src: '/images/partners/extra2.png' },
   { name: 'Partner 20', src: '/images/partners/extra3.png' },
+  
 ];
 
 const STATS = [
