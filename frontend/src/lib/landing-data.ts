@@ -764,8 +764,11 @@ export type PartnerIndustry =
 export type Partner = { name?: string; src: string; category?: PartnerCategory; industry?: PartnerIndustry };
 
 export const PARTNERS: Partner[] = [
-  { name: 'BDM', src: '/images/partners/webp/jo-corp.png' ,  category: 'partner'},
+  { name: 'Jo-crop', src: '/images/partners/webp/jo-corp.png' ,  category: 'partner'},
   { name: 'Nat', src: '/images/partners/webp/nat.webp' ,  category: 'partner'},
+  { name: 'Sarni Oils', src: '/images/brands/Sarni.png' ,  category: 'partner', industry: 'Petrol Oil & Gas' },
+  { name: 'Villa Florio', src: '/images/brands/villa-fl.png' ,  category: 'partner', industry: 'Hotel & Restaurant' },
+  { name: 'Si Vallé', src: '/images/brands/su-vall.png' ,  category: 'partner' },
   { name: 'Sebex Aviations', src: '/images/partners/webp/sebex-aviations.webp' },
   { name: 'ASRA', src: '/images/partners/webp/arazsam.png' ,  category: 'partner'},
   { name: 'Alco', src: '/images/partners/webp/falcon-bio.png',  category: 'partner' },
@@ -782,9 +785,7 @@ export const PARTNERS: Partner[] = [
   { name: 'IVF Mediterranean Centre', src: '/images/brands/ivf.png',  category: 'partner', industry: 'Medical & Hospital' },
   { name: 'Commissionaria Falcon', src: '/images/brands/falcon-com.png' ,  category: 'partner', industry: 'Petrol Oil & Gas' },
    { name: 'Goethe', src: '/images/brands/goethe-.png' ,  category: 'partner', industry: 'Hotel & Restaurant' },
-     { name: 'Sarni Oils', src: '/images/brands/Sarni.png' ,  category: 'partner', industry: 'Petrol Oil & Gas' },
-      { name: 'Villa Florio', src: '/images/brands/villa-fl.png' ,  category: 'partner', industry: 'Hotel & Restaurant' },
-       { name: 'Si Vallé', src: '/images/brands/su-vall.png' ,  category: 'partner' },
+     
   // { name: 'National Council of Chartered Accountants and Accounting Experts', src: '/images/brands/cnca.webp', category: 'service' },
   { name: 'Sicily Restaurant', src: '/images/brands/sicily.png', category: 'brand', industry: 'Restaurant & cafe' },
 ];
