@@ -93,12 +93,12 @@ export default function Sidebar() {
 
   return (
     <>
-      {/* Desktop sidebar — always visible */}
+      {/* Desktop sidebar - always visible */}
       <aside className="sidebar">
         <SidebarContent />
       </aside>
 
-      {/* Mobile fullscreen overlay — toggled from Topbar */}
+      {/* Mobile fullscreen overlay - toggled from Topbar */}
       {open && (
         <div className="mobile-overlay" onClick={() => setOpen(false)}>
           <div className="mobile-panel" onClick={e => e.stopPropagation()}>

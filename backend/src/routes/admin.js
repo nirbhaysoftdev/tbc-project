@@ -25,7 +25,7 @@ const upload = multer({
 
 router.use(authenticate, requireAdmin);
 
-// ── MMS — Pending applicants & approval ──────────
+// ── MMS - Pending applicants & approval ──────────
 router.get('/pending',              adminController.getPendingUsers);
 router.post('/users/:id/approve',   adminController.approveUser);
 router.post('/users/:id/reject',    adminController.rejectUser);

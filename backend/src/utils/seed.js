@@ -207,7 +207,7 @@ async function main() {
     [
       uuidv4(),
       "dev_notice",
-      "⚠️  Development Mode — Full feature available in next release.",
+      "⚠️  Development Mode - Full feature available in next release.",
       now,
     ],
   );

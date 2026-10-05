@@ -35,7 +35,7 @@ export default function OnboardingProfilePage() {
   useEffect(() => {
     if (loading) return;
     if (!user) { router.replace('/login'); return; }
-    // Already active — skip onboarding
+    // Already active - skip onboarding
     if (user.status === 'ACTIVE') { router.replace('/dashboard'); return; }
   }, [user, loading, router]);
 

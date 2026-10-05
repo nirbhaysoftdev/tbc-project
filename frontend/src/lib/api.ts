@@ -83,7 +83,7 @@ export const adminAPI = {
   exportData:      ()                      => api.get('/admin/export', { responseType: 'blob' }),
 };
 
-// ── MMS — User Onboarding ─────────────────────
+// ── MMS - User Onboarding ─────────────────────
 export const mmsAPI = {
   submitProfile: (data: object)  => api.post('/user/profile', data),
   submitKyc:     (data: FormData) =>
@@ -97,7 +97,7 @@ export const profileAPI = {
   update: (data: FormData) => api.put('/profile', data, { headers: { 'Content-Type': 'multipart/form-data' } }),
 };
 
-// ── System (dev notice — always from DB) ──────
+// ── System (dev notice - always from DB) ──────
 export const systemAPI = {
   getNotice:    ()                    => api.get('/system/notice'),
   updateNotice: (text: string)        => api.put('/system/notice', { text }),

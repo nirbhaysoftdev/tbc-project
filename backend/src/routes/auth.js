@@ -41,7 +41,7 @@ const otpLimiter = rateLimit({
   message: { error: 'Too many requests. Please try again shortly.' },
 });
 
-// POST /api/auth/register  (multipart/form-data — CV, resident ID, trade license)
+// POST /api/auth/register  (multipart/form-data - CV, resident ID, trade license)
 router.post(
   '/register',
   signupUpload.fields([

@@ -140,8 +140,8 @@ function AdminContent() {
   </a>
 
   
-          {/* ADD MEMBER — visible but disabled.  */}
-          <div style={{ position:'relative' }} title="Coming Soon — Full feature available in next release">
+          {/* ADD MEMBER - visible but disabled.  */}
+          <div style={{ position:'relative' }} title="Coming Soon - Full feature available in next release">
             <button
               disabled
               style={{
@@ -325,7 +325,7 @@ function AdminContent() {
                 <tr key={u.id}>
                   <td style={{ fontWeight:600, color:'var(--text-primary)' }}>{u.name}</td>
                   <td>{u.email}</td>
-                  <td>{u.profile?.company || <span style={{ color:'var(--text-muted)' }}>—</span>}</td>
+                  <td>{u.profile?.company || <span style={{ color:'var(--text-muted)' }}>-</span>}</td>
                   <td>
                     <span className={`badge ${
                       u.kycStatus === 'PENDING'       ? 'badge-pending' :
@@ -392,7 +392,7 @@ function AdminContent() {
                   onChange={e => setTxForm(p => ({...p, userId:e.target.value}))} required>
                   <option value="">Select member…</option>
                   {members.map(m => (
-                    <option key={m.id} value={m.id}>{m.name} — {m.email}</option>
+                    <option key={m.id} value={m.id}>{m.name} - {m.email}</option>
                   ))}
                 </select>
               </div>
@@ -459,7 +459,7 @@ function AdminContent() {
         <div className="modal-overlay" onClick={() => setShowApprove(false)}>
           <div className="modal-box" onClick={e => e.stopPropagation()}>
             <p className="modal-title">
-              {approveMode === 'approve' ? `Approve — ${selectedUser.name}` : `Reject — ${selectedUser.name}`}
+              {approveMode === 'approve' ? `Approve - ${selectedUser.name}` : `Reject - ${selectedUser.name}`}
             </p>
             <form onSubmit={handleApproveOrReject}>
               {approveMode === 'approve' ? (
@@ -514,7 +514,7 @@ function AdminContent() {
       {showWallet && selectedUser && (
         <div className="modal-overlay" onClick={() => { setShowWallet(false); setFormMsg(''); }}>
           <div className="modal-box" onClick={e => e.stopPropagation()}>
-            <p className="modal-title">Edit Wallet — {selectedUser.name}</p>
+            <p className="modal-title">Edit Wallet - {selectedUser.name}</p>
             <p style={{ fontSize:12, color:'var(--text-muted)', marginBottom:16, marginTop:-10 }}>
               Changes will reflect immediately on the member&apos;s dashboard.
             </p>

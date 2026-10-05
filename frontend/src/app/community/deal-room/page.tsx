@@ -235,7 +235,7 @@ function ProjectCard({ project, onInvest, onDelete, isAdmin }: { project: any; o
           <div className="comm-project-stat-label">Risk</div>
         </div>
         <div>
-          <div className="comm-project-stat-val">{project.targetIRR ? `${project.targetIRR}%` : '—'}</div>
+          <div className="comm-project-stat-val">{project.targetIRR ? `${project.targetIRR}%` : '-'}</div>
           <div className="comm-project-stat-label">Target IRR</div>
         </div>
       </div>

@@ -34,16 +34,16 @@ const kycUpload = multer({
 // All routes require authentication (user can be PENDING during onboarding)
 router.use(authenticate);
 
-// POST /api/user/profile  — profile completion step
+// POST /api/user/profile  - profile completion step
 router.post('/profile', userController.submitProfile);
 
-// POST /api/user/kyc      — KYC document upload (up to 5 files)
+// POST /api/user/kyc      - KYC document upload (up to 5 files)
 router.post('/kyc', kycUpload.array('documents', 5), userController.submitKyc);
 
-// GET  /api/user/kyc      — get KYC status + document list
+// GET  /api/user/kyc      - get KYC status + document list
 router.get('/kyc', userController.getKycStatus);
 
-// GET  /api/user/kpi      — get KPI summary for current user
+// GET  /api/user/kpi      - get KPI summary for current user
 router.get('/kpi', userController.getKpi);
 
 module.exports = router;

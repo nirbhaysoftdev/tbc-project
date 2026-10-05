@@ -1,6 +1,6 @@
 'use client';
 // src/lib/useGoogleSignIn.ts
-// Lightweight vanilla Google Identity Services loader — no npm dep required.
+// Lightweight vanilla Google Identity Services loader - no npm dep required.
 import { useEffect, useRef, useState } from 'react';
 
 declare global {

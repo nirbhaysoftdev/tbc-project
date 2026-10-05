@@ -140,7 +140,7 @@ function WithdrawalsContent() {
       {selected && (
         <div className="modal-overlay" onClick={() => setSelected(null)}>
           <div className="modal-box" onClick={e => e.stopPropagation()} style={{ width: 500 }}>
-            <h2 className="modal-title">Withdrawal Request — {selected.user.name}</h2>
+            <h2 className="modal-title">Withdrawal Request - {selected.user.name}</h2>
 
             {[
               ['Member',       selected.user.name],

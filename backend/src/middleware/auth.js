@@ -1,6 +1,6 @@
 // src/middleware/auth.js
 const jwt = require('jsonwebtoken');
-const prisma = require('../utils/prismaClient'); // Prisma 7 — uses adapter-pg singleton
+const prisma = require('../utils/prismaClient'); // Prisma 7 - uses adapter-pg singleton
 
 // ── Verify JWT ────────────────────────────────
 const authenticate = async (req, res, next) => {
@@ -40,7 +40,7 @@ const requireAdmin = (req, res, next) => {
 // ── Require ACTIVE status ─────────────────────
 // Blocks PENDING users from accessing member-only platform routes.
 // Onboarding (/api/user/*), profile edit (/api/profile), and auth (/api/auth/*)
-// bypass this — they only use authenticate.
+// bypass this - they only use authenticate.
 const requireActive = (req, res, next) => {
   if (req.user?.status !== 'ACTIVE') {
     return res.status(403).json({

@@ -1,5 +1,5 @@
 'use client';
-// src/app/register/page.tsx — Multi-step signup with email OTP + Google
+// src/app/register/page.tsx - Multi-step signup with email OTP + Google
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -17,7 +17,7 @@ export default function RegisterPage() {
 
   const [step, setStep] = useState<Step>('basics');
 
-  // Step 1 — basics
+  // Step 1 - basics
   const [accountType, setAccountType]   = useState<AccountType>('PROFESSIONAL');
   const [name, setName]                 = useState('');
   const [email, setEmail]               = useState('');
@@ -26,7 +26,7 @@ export default function RegisterPage() {
   const [password, setPassword]         = useState('');
   const [confirm, setConfirm]           = useState('');
 
-  // Step 2 — details
+  // Step 2 - details
   const [cvFile, setCvFile]             = useState<File | null>(null);
   const [linkedIn, setLinkedIn]         = useState('');
   const [residentId, setResidentId]     = useState('');
@@ -38,7 +38,7 @@ export default function RegisterPage() {
   const [businessAddress, setBusinessAddress] = useState('');
   const [website, setWebsite]           = useState('');
 
-  // Step 3 — OTP
+  // Step 3 - OTP
   const [otpDigits, setOtpDigits]       = useState<string[]>(Array(6).fill(''));
   const [otpExpiresAt, setOtpExpiresAt] = useState<number | null>(null);
   const [resendIn, setResendIn]         = useState(0);
@@ -183,7 +183,7 @@ export default function RegisterPage() {
       return setError(err.response?.data?.error || 'Invalid code');
     }
 
-    // Verified — now register
+    // Verified - now register
     try {
       const fd = new FormData();
       fd.append('name', name.trim());
@@ -423,7 +423,7 @@ export default function RegisterPage() {
 
                   <FileField
                     label="Resident ID Document (optional)"
-                    hint="Scan / photo — PDF, JPG, PNG (max 10 MB)"
+                    hint="Scan / photo - PDF, JPG, PNG (max 10 MB)"
                     accept=".pdf,.jpg,.jpeg,.png,.webp"
                     file={residentIdFile}
                     onChange={setResidentIdFile}

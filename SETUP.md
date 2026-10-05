@@ -21,7 +21,7 @@ To install Homebrew (macOS package manager):
 
 ---
 
-## Step 1 — Start PostgreSQL
+## Step 1 - Start PostgreSQL
 
 ```bash
 # Start PostgreSQL service
@@ -37,7 +37,7 @@ source ~/.zshrc
 
 ---
 
-## Step 2 — Create the Database
+## Step 2 - Create the Database
 
 ```bash
 # Open PostgreSQL shell
@@ -52,7 +52,7 @@ GRANT ALL PRIVILEGES ON DATABASE tbc_db TO postgres;
 
 ---
 
-## Step 3 — Set Up the Backend
+## Step 3 - Set Up the Backend
 
 ```bash
 # Navigate to backend folder
@@ -120,7 +120,7 @@ curl http://localhost:4000/api/health
 
 ---
 
-## Step 4 — Set Up the Frontend
+## Step 4 - Set Up the Frontend
 
 Open a **new terminal tab/window**:
 
@@ -143,7 +143,7 @@ You should see: `✓ Ready on http://localhost:3000`
 
 ---
 
-## Step 5 — Open the App
+## Step 5 - Open the App
 
 1. Open your browser and go to: **http://localhost:3000**
 2. You'll be redirected to the login page

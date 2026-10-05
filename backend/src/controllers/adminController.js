@@ -1,6 +1,6 @@
 // src/controllers/adminController.js
 const bcrypt = require('bcryptjs');
-const prisma = require('../utils/prismaClient'); // Prisma 7 — uses adapter-pg singleton
+const prisma = require('../utils/prismaClient'); // Prisma 7 - uses adapter-pg singleton
 const {
   sendAccountApprovedEmail,
   sendAccountRejectedEmail,

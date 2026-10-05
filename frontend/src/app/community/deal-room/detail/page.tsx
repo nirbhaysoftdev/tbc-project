@@ -223,7 +223,7 @@ function DealDetailInner() {
         <div className="comm-project-card" style={{ padding: '14px 16px' }}>
           <div className="comm-project-stat-label">Target IRR</div>
           <div className="comm-project-stat-val" style={{ marginTop: 4 }}>
-            {project.targetIRR ? `${project.targetIRR}%` : '—'}
+            {project.targetIRR ? `${project.targetIRR}%` : '-'}
           </div>
         </div>
         <div className="comm-project-card" style={{ padding: '14px 16px' }}>

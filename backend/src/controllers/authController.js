@@ -201,7 +201,7 @@ const googleAuth = async (req, res) => {
     });
 
     if (!user) {
-      // Create new user via Google — no password, PENDING status until admin approval
+      // Create new user via Google - no password, PENDING status until admin approval
       user = await prisma.user.create({
         data: {
           name,

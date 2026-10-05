@@ -12,7 +12,7 @@ export default function OnboardingPendingPage() {
   useEffect(() => {
     if (loading) return;
     if (!user) { router.replace('/login'); return; }
-    // If admin already approved — go straight to dashboard
+    // If admin already approved - go straight to dashboard
     if (user.status === 'ACTIVE') { router.replace('/dashboard'); return; }
   }, [user, loading, router]);
 

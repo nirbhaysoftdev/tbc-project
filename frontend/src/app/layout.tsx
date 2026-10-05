@@ -4,9 +4,9 @@ import './globals.css';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://trillionbc.com';
 const SITE_NAME = 'Trillion Business Community';
-const SITE_TITLE = 'Trillion Business Community — Where Vision Becomes Measurable Impact';
+const SITE_TITLE = 'Trillion Business Community - A Private Business community for Owners';
 const SITE_DESCRIPTION =
-  'TBC is a private global ecosystem connecting elite operators, investors, and entrepreneurs — combining community DealRooms, capital management, and cross-industry opportunity into one high-signal circle.';
+  'A private business community where owners, operators and investors from twelve industries discover opportunities, find the partners and expertise a project needs, and build ventures together. Membership by application.';
 const OG_IMAGE = '/images/tbc-logo-1.png';
 
 export const metadata: Metadata = {
@@ -21,13 +21,14 @@ export const metadata: Metadata = {
     'Trillion Business Community',
     'TBC',
     'business community',
-    'investors network',
-    'entrepreneurs',
-    'DealRoom',
-    'private business network',
-    'global investors',
-    'C-level network',
-    'syndicate',
+    'business community',
+    'business owners',
+    'membership community',
+    'business partnerships',
+    'business collaboration',
+    'business opportunities',
+    'investors and entrepreneurs',
+    'Deal Room',
   ],
   authors: [{ name: SITE_NAME }],
   creator: SITE_NAME,
@@ -47,7 +48,7 @@ export const metadata: Metadata = {
         url: OG_IMAGE,
         width: 1200,
         height: 630,
-        alt: 'Trillion Business Community — a private circle of elite operators, investors, and entrepreneurs.',
+        alt: 'Trillion Business Community - a private business community for owners, operators and investors.',
       },
     ],
   },

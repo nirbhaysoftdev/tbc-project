@@ -10,3 +10,4 @@ uploads/
 .DS_Store
 frontend/out/
 frontend/.next/
+frontend/.next-build/

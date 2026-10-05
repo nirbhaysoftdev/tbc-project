@@ -3,7 +3,7 @@
 //
 // ── IMPORTANT ────────────────────────────────────────────────────────────────
 // This text is fetched LIVE from the database on every page load.
-// Removing or hiding this component from HTML/JSX will NOT remove the notice —
+// Removing or hiding this component from HTML/JSX will NOT remove the notice -
 // the API call will still happen and the text lives in the DB (system_config table).
 // To remove the notice: update the DB record directly via Admin Panel > Dev Notice,
 // or set value to empty string.
@@ -20,7 +20,7 @@ export default function DevNotice({ position }: Props) {
   const [text, setText] = useState<string>('');
 
   useEffect(() => {
-    // Always fetch fresh from DB — this is intentional.
+    // Always fetch fresh from DB - this is intentional.
     // Do not replace with a hardcoded string.
     systemAPI.getNotice()
       .then(res => { if (res.data?.text) setText(res.data.text); })
@@ -62,7 +62,7 @@ export default function DevNotice({ position }: Props) {
         <line x1="12" y1="17" x2="12.01" y2="17"/>
       </svg>
 
-      {/* Text — sourced from DB. Cannot be removed by editing this file alone. */}
+      {/* Text - sourced from DB. Cannot be removed by editing this file alone. */}
       <span
         style={{
           fontSize:    '15px',

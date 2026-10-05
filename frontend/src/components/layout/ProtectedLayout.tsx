@@ -39,7 +39,7 @@ export default function ProtectedLayout({
       return;
     }
 
-    // ⏳ PENDING user — redirect to onboarding flow
+    // ⏳ PENDING user - redirect to onboarding flow
     if (user.status === "PENDING" && user.role !== "ADMIN") {
       if (!pathname.startsWith("/onboarding")) {
         router.replace("/onboarding/pending");

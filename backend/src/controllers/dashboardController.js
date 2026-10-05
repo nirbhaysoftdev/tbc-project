@@ -1,5 +1,5 @@
 // src/controllers/dashboardController.js
-const prisma = require('../utils/prismaClient'); // Prisma 7 — uses adapter-pg singleton
+const prisma = require('../utils/prismaClient'); // Prisma 7 - uses adapter-pg singleton
 
 // ── Dashboard summary ─────────────────────────
 const getSummary = async (req, res) => {

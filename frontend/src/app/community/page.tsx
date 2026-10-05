@@ -1,5 +1,5 @@
 'use client';
-// src/app/community/page.tsx  — Community Feed (homepage after login)
+// src/app/community/page.tsx  - Community Feed (homepage after login)
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth';
@@ -285,7 +285,7 @@ export default function CommunityPage() {
               ].map(({ label, val }) => (
                 <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
                   <span style={{ color: 'var(--text-secondary)' }}>{label}</span>
-                  <span style={{ fontWeight: 600 }}>{val ?? '—'}</span>
+                  <span style={{ fontWeight: 600 }}>{val ?? '-'}</span>
                 </div>
               ))}
             </div>

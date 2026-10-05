@@ -101,7 +101,7 @@ app.listen(PORT, async () => {
     await prisma.$connect();
     console.log(`   🐘 PostgreSQL connected\n`);
   } catch (err) {
-    console.error(`   ✗  PostgreSQL NOT connected — ${err.message}`);
+    console.error(`   ✗  PostgreSQL NOT connected - ${err.message}`);
     console.error(`   Check DATABASE_URL in .env and ensure PostgreSQL is running.\n`);
   }
 });

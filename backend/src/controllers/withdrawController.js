@@ -68,7 +68,7 @@ const getAllRequests = async (req, res) => {
   }
 };
 
-// Admin approves request — debits balance
+// Admin approves request - debits balance
 const approveRequest = async (req, res) => {
   try {
     const { id } = req.params;

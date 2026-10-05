@@ -139,7 +139,7 @@ async function sendWelcomePendingEmail(user) {
   return sendMail({
     to: user.email,
     subject: 'Your TBC membership application is under review',
-    text: `Hi ${user.name || ''}, thank you for applying to join Trillion Business Community. Your account is pending admin review — we will email you as soon as it is approved.`,
+    text: `Hi ${user.name || ''}, thank you for applying to join Trillion Business Community. Your account is pending admin review - we will email you as soon as it is approved.`,
     html: welcomePendingHtml({ name: user.name }),
   });
 }
@@ -148,7 +148,7 @@ async function sendWelcomePendingEmail(user) {
 function accountApprovedHtml({ name, tier, loginUrl }) {
   const body = `
     <div style="font-size:14px;line-height:1.6;color:#aab0c0;">
-      Hi ${name || 'there'}, congratulations — your <strong style="color:#c8a84b;">${tier || 'BASIC'}</strong> membership at Trillion Business Community has been <strong style="color:#c8a84b;">approved</strong>.
+      Hi ${name || 'there'}, congratulations - your <strong style="color:#c8a84b;">${tier || 'BASIC'}</strong> membership at Trillion Business Community has been <strong style="color:#c8a84b;">approved</strong>.
     </div>
     <div style="font-size:14px;line-height:1.6;color:#aab0c0;padding-top:12px;">
       Your wallet is now active and you have full access to the member portal, community, and deal room.
@@ -158,7 +158,7 @@ function accountApprovedHtml({ name, tier, loginUrl }) {
     </div>`;
   return shell({
     title: 'Your membership is approved',
-    intro: 'Welcome to Trillion Business Community — your account is now active.',
+    intro: 'Welcome to Trillion Business Community - your account is now active.',
     bodyHtml: body,
     footerNote: 'Need help getting started? Reply to this email and our team will be in touch.',
   });
@@ -211,9 +211,9 @@ async function sendAccountRejectedEmail(user, reason) {
 function adminNewSignupHtml({ user, adminUrl }) {
   const details = `
     <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;">
-      ${detailRow('Name',         user.name || '—')}
+      ${detailRow('Name',         user.name || '-')}
       ${detailRow('Email',        user.email)}
-      ${detailRow('Account type', user.accountType || '—')}
+      ${detailRow('Account type', user.accountType || '-')}
       ${detailRow('Signup via',   user.signupMethod || 'email')}
       ${detailRow('Received',     new Date().toISOString().replace('T', ' ').slice(0, 19) + ' UTC')}
     </table>`;
@@ -237,7 +237,7 @@ async function sendAdminNewSignupNotification(user) {
   return sendMail({
     to,
     subject: `New TBC application: ${user.name || user.email}`,
-    text: `New membership application received.\n\nName: ${user.name || '—'}\nEmail: ${user.email}\nAccount type: ${user.accountType || '—'}\nSignup via: ${user.signupMethod || 'email'}\n\nOpen admin portal: ${adminUrl}`,
+    text: `New membership application received.\n\nName: ${user.name || '-'}\nEmail: ${user.email}\nAccount type: ${user.accountType || '-'}\nSignup via: ${user.signupMethod || 'email'}\n\nOpen admin portal: ${adminUrl}`,
     html: adminNewSignupHtml({ user, adminUrl }),
   });
 }

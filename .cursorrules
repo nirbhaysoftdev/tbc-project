@@ -21,8 +21,8 @@ Fall back to Grep/Glob/Read **only** when the graph doesn't cover what you need.
 
 | Tool | Use when |
 |------|----------|
-| `detect_changes` | Reviewing code changes — gives risk-scored analysis |
-| `get_review_context` | Need source snippets for review — token-efficient |
+| `detect_changes` | Reviewing code changes - gives risk-scored analysis |
+| `get_review_context` | Need source snippets for review - token-efficient |
 | `get_impact_radius` | Understanding blast radius of a change |
 | `get_affected_flows` | Finding which execution paths are impacted |
 | `query_graph` | Tracing callers, callees, imports, tests, dependencies |

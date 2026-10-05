@@ -105,7 +105,7 @@ export default function NetworkPage() {
                   {photo ? <img src={photo} alt={m.name} /> : m.name?.charAt(0).toUpperCase()}
                 </div>
                 <div className="comm-member-name">{m.name}</div>
-                <div className="comm-member-company">{m.profile?.company || '—'}</div>
+                <div className="comm-member-company">{m.profile?.company || '-'}</div>
                 <div style={{ display: 'flex', gap: 6, justifyContent: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
                   <span className={`comm-mbadge ${TIER_COLORS[m.membershipTier]}`}>{m.membershipTier}</span>
                   {m.profile?.industry && (

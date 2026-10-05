@@ -109,7 +109,7 @@ model User {
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 
-  // Wallet (optional — not all community members have a wallet)
+  // Wallet (optional - not all community members have a wallet)
   wallet              Wallet?
   transactions        Transaction[]
   withdrawRequests    WithdrawRequest[]
@@ -129,7 +129,7 @@ model User {
   projectsOwned       Project[]            @relation("ProjectOwner")
   investments         Investment[]
 
-  // MMS — KYC & KPI
+  // MMS - KYC & KPI
   kycDocuments        KycDocument[]
   kpiLogs             UserKpiLog[]
   kpiSummary          UserKpiSummary?
@@ -485,7 +485,7 @@ model SystemConfig {
   @@map("system_config")
 }
 
-// ─── MMS — KYC DOCUMENTS ──────────────────────────────────────────────────────
+// ─── MMS - KYC DOCUMENTS ──────────────────────────────────────────────────────
 
 model KycDocument {
   id           String   @id @default(uuid())
@@ -500,7 +500,7 @@ model KycDocument {
   @@map("kyc_documents")
 }
 
-// ─── MMS — KPI TRACKING ───────────────────────────────────────────────────────
+// ─── MMS - KPI TRACKING ───────────────────────────────────────────────────────
 
 model UserKpiLog {
   id         String   @id @default(uuid())

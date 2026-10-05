@@ -1,14 +1,14 @@
 // src/routes/system.js
-// Public GET — returns dev notice text from DB.
+// Public GET - returns dev notice text from DB.
 // Frontend fetches this on every page load.
-// Hiding/removing HTML elements won't remove this — it's always fresh from DB.
+// Hiding/removing HTML elements won't remove this - it's always fresh from DB.
 
 const express = require('express');
 const router  = express.Router();
 const { authenticate, requireAdmin } = require('../middleware/auth');
-const prisma = require('../utils/prismaClient'); // Prisma 7 — uses adapter-pg singleton
+const prisma = require('../utils/prismaClient'); // Prisma 7 - uses adapter-pg singleton
 
-// ── GET /api/system/notice — public, no auth needed ──
+// ── GET /api/system/notice - public, no auth needed ──
 router.get('/notice', async (req, res) => {
   try {
     const record = await prisma.systemConfig.findUnique({
@@ -24,7 +24,7 @@ router.get('/notice', async (req, res) => {
   }
 });
 
-// ── PUT /api/system/notice — admin only, update the text ──
+// ── PUT /api/system/notice - admin only, update the text ──
 router.put('/notice', authenticate, requireAdmin, async (req, res) => {
   try {
     const { text } = req.body;
