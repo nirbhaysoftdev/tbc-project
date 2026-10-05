@@ -10,7 +10,7 @@ const LINKS = [
   { href: '#what', label: 'The community' },
   { href: '#advantages', label: 'Advantages' },
   { href: '#how-it-works', label: 'Opportunities' },
-  { href: '#community', label: 'Community' },
+  { href: '#Profit', label: 'Profit' },
   { href: '#faq', label: 'FAQ' },
 ];
 
