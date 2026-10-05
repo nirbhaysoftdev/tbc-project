@@ -780,6 +780,10 @@ export const PARTNERS: Partner[] = [
   { name: 'Kalaani Realtors', src: '/images/brands/kalaani-realtors.png' , category: 'brand', industry: 'Real Estate' },
   { name: 'IVF Mediterranean Centre', src: '/images/brands/ivf.png',  category: 'partner', industry: 'Medical & Hospital' },
   { name: 'Commissionaria Falcon', src: '/images/brands/falcon-com.png' ,  category: 'partner', industry: 'Petrol Oil & Gas' },
+   { name: 'Goethe', src: '/images/brands/goethe-.png' ,  category: 'partner', industry: 'Hotel & Restaurant' },
+     { name: 'Sarni Oils', src: '/images/brands/Sarni.png' ,  category: 'partner', industry: 'Petrol Oil & Gas' },
+      { name: 'Villa Florio', src: '/images/brands/villa-fl.png' ,  category: 'partner', industry: 'Hotel & Restaurant' },
+       { name: 'Si Vallé', src: '/images/brands/su-vall.png' ,  category: 'partner' },
   // { name: 'National Council of Chartered Accountants and Accounting Experts', src: '/images/brands/cnca.webp', category: 'service' },
   { name: 'Sicily Restaurant', src: '/images/brands/sicily.png', category: 'brand', industry: 'Restaurant & cafe' },
 ];
