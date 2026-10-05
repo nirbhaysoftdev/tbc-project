@@ -750,6 +750,7 @@ export type PartnerCategory = 'brand' | 'partner' | 'service';
 export type PartnerIndustry =
   | 'Hotel group'
   | 'Media House'
+  | 'Hotel & Restaurant'
   | 'Medical & Hospital'
   | 'Restaurant & cafe'
   | 'Petrol Oil & Gas'
