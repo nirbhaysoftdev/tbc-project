@@ -1037,17 +1037,65 @@
 /* Brand tiles - plain white square logo tiles, no name/sub text. A lone
    or `wide` tile spans the full row so a single-logo card (Zurich, TGA...)
    reads as one large tile instead of a small square. */
-.lp-adv-brands { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+.lp-adv-brands {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
 .lp-adv-brand {
   display: flex;
   align-items: center;
   justify-content: center;
   aspect-ratio: 1;
-  padding: 14px;
+  padding: 14px 2px;
   border-radius: 14px;
   border: none;
   background: #fff;
   box-shadow: 0 8px 20px -10px rgba(0,0,0,0.3);
+  cursor: help;
+  transition: box-shadow 0.22s var(--lp-ease);
+}
+.lp-adv-brand:hover,
+.lp-adv-brand:focus-visible {
+  box-shadow: 0 0 0 2px rgba(200,168,75,0.88), 0 0 22px rgba(200,168,75,0.3);
+}
+.lp-adv-brand:focus-visible { outline: 2px solid var(--lp-gold); outline-offset: 3px; }
+.lp-adv-brand-popover {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  align-items: center;
+  column-gap: 14px;
+  row-gap: 6px;
+  width: 100%;
+  margin-top: 10px;
+  padding: 12px 14px;
+  border: 1px solid rgba(225,195,112,0.92);
+  border-radius: 14px;
+  color: #fffaf0;
+  background: linear-gradient(145deg, rgba(18,22,34,0.96), rgba(7,10,18,0.985));
+  box-shadow: 0 0 0 4px rgba(200,168,75,0.12), 0 16px 38px rgba(0,0,0,0.42);
+  text-align: left;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+.lp-adv-brand-popover-kicker {
+  grid-column: 1 / -1;
+  color: var(--lp-gold);
+  font-family: var(--lp-mono);
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+.lp-adv-brand-popover strong {
+  font-size: clamp(13px, 1.5vw, 17px);
+  font-weight: 600;
+  line-height: 1.3;
+}
+.lp-adv-brand-popover-detail {
+  color: rgba(255,250,240,0.9);
+  font-size: clamp(11px, 1.1vw, 13px);
+  line-height: 1.45;
 }
 /* A card with only one brand (Zurich, TGA, Barceló...) reads as one
    large tile instead of a lone small square. */

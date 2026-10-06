@@ -29,7 +29,15 @@ export const WHAT_IT_IS = {
    The full country list is illustrative, supporting the "80+ countries"
    stat already used elsewhere (WHAT_IT_IS.marks, STATS). */
 
-export type AdvBrand = { key: string; name: string; sub: string; mono?: string; logo?: string; wide?: true };
+export type AdvBrand = {
+  key: string;
+  name: string;
+  sub: string;
+  hoverDetail: string;
+  mono?: string;
+  logo?: string;
+  wide?: true;
+};
 export type AdvCard = {
   key: string;
   cat: 'banking' | 'insurance-law' | 'mobility-lifestyle' | 'media-medical';
@@ -73,11 +81,11 @@ export const ADVANTAGES = {
       subtitle: 'Institutional onboarding & escrow',
       badge: '5 institutions',
       brands: [
-        { key: 'enbd', name: 'Emirates NBD', sub: 'Corporate & private', mono: 'ENBD', logo: '/images/partners/bank-nbd.png', },
-        { key: 'mashreq', name: 'Mashreq', sub: 'NEO & treasury', mono: 'M', logo: '/images/partners/bank-mashreq.png' },
-        { key: 'wio', name: 'Wio Bank', sub: 'Digital commercial', mono: 'W', logo: '/images/partners/bank-wio.png' },
-        { key: 'fab', name: 'FAB', sub: 'First Abu Dhabi', mono: 'FAB', logo: '/images/partners/bank-fab.png' },
-        { key: 'sib', name: 'Sharjah Islamic Bank (SIB)', sub: 'Sharia-compliant desk', mono: 'SIB', wide: true, logo: '/images/partners/bank-sib.png' },
+        { key: 'enbd', name: 'Emirates NBD', sub: 'Corporate & private', hoverDetail: 'Corporate and private banking services', mono: 'ENBD', logo: '/images/partners/bank-nbd.png', },
+        { key: 'mashreq', name: 'Mashreq', sub: 'NEO & treasury', hoverDetail: 'NEO banking and treasury services', mono: 'M', logo: '/images/partners/bank-mashreq.png' },
+        { key: 'wio', name: 'Wio Bank', sub: 'Digital commercial', hoverDetail: 'Digital commercial banking for businesses', mono: 'W', logo: '/images/partners/bank-wio.png' },
+        { key: 'fab', name: 'FAB', sub: 'First Abu Dhabi', hoverDetail: 'First Abu Dhabi banking for businesses', mono: 'FAB', logo: '/images/partners/bank-fab.png' },
+        { key: 'sib', name: 'Sharjah Islamic Bank (SIB)', sub: 'Sharia-compliant desk', hoverDetail: 'Sharia-compliant banking and finance solutions', mono: 'SIB', wide: true, logo: '/images/partners/bank-sib.png' },
       ],
       footLeft: '',
       footRight: 'Privileges included',
@@ -91,7 +99,7 @@ export const ADVANTAGES = {
       badge: 'A+ rated',
       desc: 'Enterprise risk mitigation, cross-border key-person policies, and generational wealth succession umbrella.',
       brands: [
-        { key: 'zurich', name: 'Zurich Insurance', sub: 'Comprehensive life & corporate policies', logo: '/images/partners/zurich.png' },
+        { key: 'zurich', name: 'Zurich Insurance', sub: 'Comprehensive life & corporate policies', hoverDetail: 'Life Insurance & Guaranteed Capital Protection', logo: '/images/partners/zurich.png' },
       ],
       footLeft: 'Priority risk desk',
       footRight: 'Underwriting terms',
@@ -105,8 +113,8 @@ export const ADVANTAGES = {
       badge: 'EU · GCC · Asia',
       desc: 'Elite international legal chambers specialising in holding structures, double-taxation treaties, and residency corridors.',
       brands: [
-        { key: 'legal', name: 'International Legal Chambers', sub: 'Corporate governance & mergers', wide: true, logo: '/images/partners/justyta.png' },
-        // { key: 'fiscal', name: 'Sovereign Fiscal Consultancies', sub: 'Zero-friction tax structuring', wide: true, logo: '/images/brands/cnca.webp' },
+        { key: 'legal', name: 'International Legal Chambers', sub: 'Corporate governance & mergers', hoverDetail: 'Corporate governance and merger advisory', wide: true, logo: '/images/partners/justyta.png' },
+         { key: 'fiscal', name: 'Sovereign Fiscal Consultancies', sub: 'Zero-friction tax structuring', hoverDetail: 'Tax structuring for cross-border businesses', wide: true, logo: '/images/brands/cnca.webp' },
       ],
       footLeft: 'Retainer consultation',
       footRight: 'Confidential review',
@@ -120,7 +128,7 @@ export const ADVANTAGES = {
       badge: '2hr mobilization',
       desc: 'Guaranteed charter availability with empty-leg allocations across Dubai, European capitals, and Asia-Pacific.',
       brands: [
-        { key: 'tga', name: 'TGA', sub: 'Private jet aviation', logo: '/images/partners/tga.png', mono: 'TGA' },
+        { key: 'tga', name: 'TGA', sub: 'Private jet aviation', hoverDetail: 'Private jet charter and aviation services', logo: '/images/partners/tga.png', mono: 'TGA' },
       ],
       footLeft: 'Fleet: Global 7500 / Challenger',
       footRight: 'Request flight',
@@ -134,7 +142,8 @@ export const ADVANTAGES = {
       badge: 'Global keys',
       desc: 'Permanent reserved suite availability, discreet private check-in, and dining access for members and delegates.',
       brands: [
-        { key: 'barcelo', name: 'Barceló', sub: 'Hotel group', logo: '/images/partners/webp/barcelo.png' },
+        { key: 'barcelo', name: 'Barceló', sub: 'Hotel group', hoverDetail: 'Reserved hotel stays, upgrades and dining', logo: '/images/partners/webp/barcelo.png' },
+         { key: 'radisson', name: 'Radisson', sub: 'Hotel group', hoverDetail: 'Hotel stays, member upgrades and dining', logo: '/images/brands/radisson-bl.jpeg' },
       ],
       footLeft: 'Complimentary presidential upgrades',
       footRight: 'View portfolio',
@@ -148,7 +157,7 @@ export const ADVANTAGES = {
       badge: 'Trophy deals',
       desc: 'Confidential acquisition of freehold commercial towers, prime residential compounds, and waterfront sanctuaries.',
       brands: [
-        { key: 'kalaani', name: 'Kalaani', sub: 'Real estate partners', logo: '/images/brands/kalaani-realtors.png' },
+        { key: 'kalaani', name: 'Kalaani', sub: 'Real estate partners', hoverDetail: 'Off-market real estate asset acquisitions', logo: '/images/brands/kalaani-realtors.png' },
       ],
       footLeft: 'Private deal room',
       footRight: 'Access listings',
@@ -162,7 +171,7 @@ export const ADVANTAGES = {
       badge: 'Charity Foundation',
       desc: 'Confidential acquisition of freehold commercial towers, prime residential compounds, and waterfront sanctuaries.',
       brands: [
-        { key: 'Eben-ezer', name: 'Eben Ezer', sub: 'Non-profit organization', logo: '/images/partners/webp/eben-exer.png' },
+        { key: 'Eben-ezer', name: 'Eben Ezer', sub: 'Non-profit organization', hoverDetail: 'Non-profit support for children and families', logo: '/images/partners/webp/eben-exer.png' },
       ],
       footLeft: 'Private deal room',
       footRight: 'Access listings',

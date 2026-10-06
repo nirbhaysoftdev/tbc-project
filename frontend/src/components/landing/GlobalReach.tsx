@@ -8,7 +8,8 @@
 // than a standalone page.
 
 import { useState } from 'react';
-import { ADVANTAGE_COUNTRIES, ADVANTAGES, type AdvCard } from '@/lib/landing-data';
+import { AnimatePresence, motion } from 'motion/react';
+import { ADVANTAGE_COUNTRIES, ADVANTAGES, type AdvBrand, type AdvCard } from '@/lib/landing-data';
 import { Reveal, SplitWordsInView } from './motion';
 
 const ICONS: Record<AdvCard['icon'], string> = {
@@ -46,6 +47,7 @@ function Icon({ name, className }: { name: AdvCard['icon']; className?: string }
 
 export default function GlobalReach() {
   const [cat, setCat] = useState<'all' | AdvCard['cat']>('all');
+  const [hoveredBrand, setHoveredBrand] = useState<{ cardKey: string; brand: AdvBrand } | null>(null);
 
   const cards = cat === 'all' ? ADVANTAGES.cards : ADVANTAGES.cards.filter((c) => c.cat === cat);
 
@@ -119,9 +121,28 @@ export default function GlobalReach() {
             </div>
 
             {card.brands && (
-              <div className="lp-adv-brands">
+              <div
+                className="lp-adv-brands"
+                onPointerLeave={(e) => {
+                  if (!e.currentTarget.contains(document.activeElement)) setHoveredBrand(null);
+                }}
+                onBlurCapture={(e) => {
+                  const next = e.relatedTarget as Node | null;
+                  if (!e.currentTarget.contains(next) && !e.currentTarget.matches(':hover')) {
+                    setHoveredBrand(null);
+                  }
+                }}
+              >
                 {card.brands.map((b) => (
-                  <div key={b.key} className={`lp-adv-brand ${b.wide ? 'is-wide' : ''}`}>
+                  <div
+                    key={b.key}
+                    className={`lp-adv-brand ${b.wide ? 'is-wide' : ''}`}
+                    tabIndex={0}
+                    role="group"
+                    aria-label={`${b.name}: ${b.hoverDetail}`}
+                    onPointerEnter={() => setHoveredBrand({ cardKey: card.key, brand: b })}
+                    onFocus={() => setHoveredBrand({ cardKey: card.key, brand: b })}
+                  >
                     {b.logo ? (
                       <img src={b.logo} alt="" className="lp-adv-brand-logo" loading="lazy" />
                     ) : (
@@ -132,26 +153,31 @@ export default function GlobalReach() {
               </div>
             )}
 
+            <AnimatePresence initial={false}>
+              {hoveredBrand?.cardKey === card.key && (
+                <motion.div
+                  key={hoveredBrand.brand.key}
+                  className="lp-adv-brand-popover"
+                  aria-hidden="true"
+                  initial={{ opacity: 0, y: -6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  transition={{ duration: 0.18 }}
+                >
+                  <span className="lp-adv-brand-popover-kicker">Partner access</span>
+                  <strong>{hoveredBrand.brand.name}</strong>
+                  <span className="lp-adv-brand-popover-detail">{hoveredBrand.brand.hoverDetail}</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             <div className="lp-adv-card-foot" />
           </Reveal>
         ))}
       </div>
 
       {/* Bottom SLA banner */}
-      <Reveal className="lp-adv-sla" delay={0.1}>
-        <div className="lp-adv-sla-text">
-          <span className="lp-adv-sla-tick" aria-hidden>
-            ✓
-          </span>
-          <div>
-            <strong>Direct bilateral service level agreements</strong>
-            <span>Every partner listed operates under a formal commercial trust agreement with the community.</span>
-          </div>
-        </div>
-        <button type="button" className="lp-btn lp-btn-primary">
-          Inquire full portfolio
-        </button>
-      </Reveal>
+      
     </section>
   );
 }
