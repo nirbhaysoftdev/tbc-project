@@ -1,5 +1,5 @@
 'use client';
-// src/app/admin/members/[id]/page.tsx
+// src/app/admin/members/detail/page.tsx
 //
 // One member, everything about their money. Opened by clicking a row in Active
 // Members, and the only screen that can email a member their full statement.
@@ -9,8 +9,8 @@
 // itself, so it cannot disagree with the member's own dashboard. The statement
 // email is rendered server-side from that same payload, so "Email Now" sends
 // exactly what is on screen.
-import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { Suspense, useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { AuthProvider } from '@/lib/auth';
 import ProtectedLayout from '@/components/layout/ProtectedLayout';
 import { adminAPI, formatEur } from '@/lib/api';
@@ -90,7 +90,7 @@ function Table({
 }
 
 function MemberDetailContent() {
-  const { id } = useParams<{ id: string }>();
+  const id = useSearchParams().get('id');
   const router = useRouter();
 
   const [data, setData] = useState<any>(null);
@@ -111,7 +111,12 @@ function MemberDetailContent() {
   const [emailErr, setEmailErr] = useState('');
 
   useEffect(() => {
-    if (!id) return;
+    // Reached without ?id= - nothing to load, so say so rather than spin.
+    if (!id) {
+      setError('No member selected.');
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     adminAPI.getMemberOverview(id)
       .then(r => setData(r.data))
@@ -120,6 +125,7 @@ function MemberDetailContent() {
   }, [id]);
 
   const handleSend = async () => {
+    if (!id) return;
     setSending(true);
     setEmailErr('');
     try {
@@ -501,7 +507,7 @@ function MemberDetailContent() {
         <MemberCapitalModal
           member={member}
           onClose={() => setCapitalOpen(false)}
-          onDone={() => adminAPI.getMemberOverview(id).then(r => setData(r.data))}
+          onDone={() => { if (id) adminAPI.getMemberOverview(id).then(r => setData(r.data)); }}
         />
       )}
 
@@ -554,7 +560,10 @@ export default function AdminMemberDetailPage() {
   return (
     <AuthProvider>
       <ProtectedLayout requireAdmin>
-        <MemberDetailContent />
+        {/* useSearchParams needs a Suspense boundary during prerender. */}
+        <Suspense fallback={<div className="spinner" />}>
+          <MemberDetailContent />
+        </Suspense>
       </ProtectedLayout>
     </AuthProvider>
   );

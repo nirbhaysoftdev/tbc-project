@@ -317,7 +317,7 @@ function AdminContent() {
                   // The whole row opens the member's detail page; the action
                   // buttons stop the click so they stay usable from the list.
                   <tr key={m.id}
-                    onClick={() => router.push(`/admin/members/${m.id}`)}
+                    onClick={() => router.push(`/admin/members/detail?id=${m.id}`)}
                     style={{ cursor:'pointer' }}
                     title={`Open ${m.name}'s details`}>
                     <td style={{ fontWeight:600, color:'var(--text-primary)' }}>
