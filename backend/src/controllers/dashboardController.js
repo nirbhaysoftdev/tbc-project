@@ -1,5 +1,6 @@
 // src/controllers/dashboardController.js
 const prisma = require('../utils/prismaClient'); // Prisma 7 - uses adapter-pg singleton
+const walletService = require('../services/walletService');
 
 // ── Dashboard summary ─────────────────────────
 const getSummary = async (req, res) => {
@@ -9,30 +10,25 @@ const getSummary = async (req, res) => {
       select: {
         id: true, name: true, email: true,
         profilePhoto: true, status: true,
-        wallet: true,
       },
     });
 
     if (!user) return res.status(404).json({ error: 'User not found' });
 
-    const wallet = user.wallet || {
-      investmentAmount: 0,
-      profitAmount:     0,
-      totalBalance:     0,
-      currency:         'EUR',
-    };
+    const [wallet, byProject, recentTransactions] = await Promise.all([
+      walletService.getWalletBreakdown(req.user.id),
+      walletService.getProjectBreakdown(req.user.id),
+      prisma.transaction.findMany({
+        where:   { userId: req.user.id },
+        orderBy: { createdAt: 'desc' },
+        take:    5,
+        include: { project: { select: { id: true, title: true } } },
+      }),
+    ]);
 
-    // ROI %
-    const roi = wallet.investmentAmount > 0
-      ? ((wallet.profitAmount / wallet.investmentAmount) * 100).toFixed(2)
+    const roi = wallet.investedCapital > 0
+      ? ((wallet.grossProfit / wallet.investedCapital) * 100).toFixed(2)
       : '0.00';
-
-    // Recent transactions
-    const recentTransactions = await prisma.transaction.findMany({
-      where:   { userId: req.user.id },
-      orderBy: { createdAt: 'desc' },
-      take:    5,
-    });
 
     res.json({
       user: {
@@ -43,14 +39,13 @@ const getSummary = async (req, res) => {
         status:       user.status,
       },
       wallet: {
-        investmentAmount: wallet.investmentAmount,
-        profitAmount:     wallet.profitAmount,
-        totalBalance:     wallet.totalBalance,
-        currency:         wallet.currency,
+        ...wallet,
+        // Legacy field names kept so existing clients keep rendering.
+        investmentAmount: wallet.investedCapital,
+        profitAmount:     wallet.availableProfit,
         roi:              parseFloat(roi),
-        frozen:           wallet.frozen,
-        lastUpdated:      wallet.lastUpdated,
       },
+      byProject,
       recentTransactions,
     });
   } catch (err) {
@@ -86,9 +81,7 @@ const getChartData = async (req, res) => {
     });
 
     // Build running balance
-    const wallet = await prisma.wallet.findUnique({
-      where: { userId: req.user.id },
-    });
+    const wallet = await walletService.getWalletBreakdown(req.user.id);
 
     // Generate chart points (group by week/month depending on period)
     const chartData = buildChartPoints(transactions, wallet, period, from);
@@ -103,7 +96,7 @@ const getChartData = async (req, res) => {
 // ── Build chart data points ───────────────────
 function buildChartPoints(transactions, wallet, period, from) {
   const now     = new Date();
-  const base    = wallet?.investmentAmount || 0;
+  const base    = wallet?.investedCapital || 0;
   const points  = [];
 
   // Create intervals
@@ -126,7 +119,7 @@ function buildChartPoints(transactions, wallet, period, from) {
   }
 
   // Always include current balance as last point
-  if (wallet) {
+  if (wallet?.exists) {
     points.push({
       date:    now.toISOString().split('T')[0],
       balance: wallet.totalBalance,

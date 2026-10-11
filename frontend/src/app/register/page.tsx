@@ -1,15 +1,17 @@
 'use client';
-// src/app/register/page.tsx - Multi-step signup with email OTP + Google
+// src/app/register/page.tsx - Multi-step signup
+// Uses the same field structure, validation rules, and document requirements
+// as the admin "Add Member" flow (see app/admin/page.tsx's Add Member wizard).
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/auth';
 import { authAPI } from '@/lib/api';
 import { COUNTRIES, DEFAULT_COUNTRY } from '@/lib/countries';
 import { useGoogleSignIn } from '@/lib/useGoogleSignIn';
+import { useAuth } from '@/lib/auth';
 
-type AccountType = 'PROFESSIONAL' | 'BUSINESS';
-type Step = 'basics' | 'details' | 'otp';
+type MemberType = 'COMPANY' | 'PERSONAL';
+type Step = 'basics' | 'details' | 'otp' | 'done';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -17,31 +19,30 @@ export default function RegisterPage() {
 
   const [step, setStep] = useState<Step>('basics');
 
-  // Step 1 - basics
-  const [accountType, setAccountType]   = useState<AccountType>('PROFESSIONAL');
-  const [name, setName]                 = useState('');
+  // Step 1 - member type & contact
+  const [memberType, setMemberType]     = useState<MemberType>('PERSONAL');
   const [email, setEmail]               = useState('');
   const [countryCode, setCountryCode]   = useState(DEFAULT_COUNTRY.code);
-  const [phone, setPhone]               = useState('');
+  const [mobile, setMobile]             = useState('');
   const [password, setPassword]         = useState('');
   const [confirm, setConfirm]           = useState('');
 
-  // Step 2 - details
-  const [cvFile, setCvFile]             = useState<File | null>(null);
-  const [linkedIn, setLinkedIn]         = useState('');
-  const [residentId, setResidentId]     = useState('');
-  const [residentIdFile, setResidentIdFile] = useState<File | null>(null);
-  const [billingAddress, setBillingAddress] = useState('');
-
+  // Step 2 - type-specific details & documents
+  const [companyName, setCompanyName]   = useState('');
+  const [fullName, setFullName]         = useState('');
+  const [city, setCity]                 = useState('');
+  const [country, setCountry]           = useState('');
   const [tradeLicenseFile, setTradeLicenseFile] = useState<File | null>(null);
-  const [vatNumber, setVatNumber]       = useState('');
-  const [businessAddress, setBusinessAddress] = useState('');
-  const [website, setWebsite]           = useState('');
+  const [residentIdFile, setResidentIdFile]     = useState<File | null>(null);
+  const [passportFile, setPassportFile] = useState<File | null>(null);
+  const [photoFile, setPhotoFile]       = useState<File | null>(null);
 
   // Step 3 - OTP
   const [otpDigits, setOtpDigits]       = useState<string[]>(Array(6).fill(''));
-  const [otpExpiresAt, setOtpExpiresAt] = useState<number | null>(null);
   const [resendIn, setResendIn]         = useState(0);
+  // The email whose code has already been consumed. A code is single-use, so a
+  // retry after a failed registration must not try to verify it a second time.
+  const [verifiedEmail, setVerifiedEmail] = useState('');
 
   const [error, setError]               = useState('');
   const [info, setInfo]                 = useState('');
@@ -60,13 +61,8 @@ export default function RegisterPage() {
       const res = await authAPI.google(credential);
       const { token, user, needsAccountType } = res.data;
       await applyToken(token, user);
-      if (user?.status === 'PENDING') {
-        router.push('/onboarding/pending');
-      } else if (needsAccountType) {
-        router.push('/onboarding/profile');
-      } else {
-        router.push('/community');
-      }
+      if (needsAccountType) router.push('/onboarding/profile');
+      else router.push('/community');
     } catch (err: any) {
       setError(err.response?.data?.error || 'Google sign-in failed');
     } finally {
@@ -83,27 +79,24 @@ export default function RegisterPage() {
     return () => clearInterval(id);
   }, [resendIn]);
 
-  // ── Handlers ──────────────────────────────
+  // ── Validation (mirrors admin Add Member rules) ──
   const validateBasics = () => {
-    if (name.trim().length < 2) return 'Enter your full name';
     if (!/^\S+@\S+\.\S+$/.test(email)) return 'Enter a valid email';
-    if (!phone.trim() || phone.replace(/\D/g, '').length < 6) return 'Enter a valid mobile number';
+    if (!mobile.trim() || mobile.replace(/\D/g, '').length < 6) return 'Enter a valid mobile number';
     if (password.length < 8) return 'Password must be at least 8 characters';
     if (password !== confirm) return 'Passwords do not match';
     return null;
   };
 
   const validateDetails = () => {
-    if (accountType === 'PROFESSIONAL') {
-      if (!cvFile)               return 'Please upload your CV';
-      if (!linkedIn.trim())      return 'Enter your LinkedIn profile URL';
-      if (!residentId.trim() && !residentIdFile) return 'Provide your Resident ID number or upload the document';
-      if (!billingAddress.trim()) return 'Enter your billing address';
+    if (!city.trim())    return 'City is required';
+    if (!country.trim()) return 'Country is required';
+    if (memberType === 'COMPANY') {
+      if (!companyName.trim()) return 'Company name is required';
+      if (!tradeLicenseFile)   return 'Company trade licence / registration certificate is required';
     } else {
-      if (!tradeLicenseFile)     return 'Please upload your trade license';
-      if (!vatNumber.trim())     return 'Enter your VAT number';
-      if (!businessAddress.trim()) return 'Enter your business address';
-      if (!website.trim())       return 'Enter your business website';
+      if (!fullName.trim())  return 'Full name is required';
+      if (!residentIdFile)   return 'Resident ID card is required';
     }
     return null;
   };
@@ -127,8 +120,8 @@ export default function RegisterPage() {
   const sendOtp = async () => {
     setLoading(true);
     try {
-      const res = await authAPI.sendOtp(email.trim().toLowerCase());
-      setOtpExpiresAt(new Date(res.data.expiresAt).getTime());
+      await authAPI.sendOtp(email.trim().toLowerCase());
+      setVerifiedEmail('');
       setResendIn(60);
       setStep('otp');
       setInfo(`We sent a 6-digit code to ${email}`);
@@ -171,47 +164,46 @@ export default function RegisterPage() {
 
   const onSubmitOtp = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
     setError('');
+    const normEmail = email.trim().toLowerCase();
     const code = otpDigits.join('');
     if (code.length !== 6) return setError('Enter the 6-digit code');
 
     setLoading(true);
-    try {
-      await authAPI.verifyOtp(email.trim().toLowerCase(), code);
-    } catch (err: any) {
-      setLoading(false);
-      return setError(err.response?.data?.error || 'Invalid code');
+    if (verifiedEmail !== normEmail) {
+      try {
+        await authAPI.verifyOtp(normEmail, code);
+        setVerifiedEmail(normEmail);
+      } catch (err: any) {
+        setLoading(false);
+        return setError(err.response?.data?.error || 'Invalid code');
+      }
     }
 
-    // Verified - now register
+    // Verified - now register. Pending members are not logged in automatically;
+    // they can only sign in once an admin approves the application.
     try {
       const fd = new FormData();
-      fd.append('name', name.trim());
-      fd.append('email', email.trim().toLowerCase());
+      fd.append('memberType', memberType);
+      fd.append('email', normEmail);
       fd.append('password', password);
-      fd.append('accountType', accountType);
-      fd.append('phone', phone.trim());
-      fd.append('phoneCountry', selectedCountry.code);
-      fd.append('phoneDialCode', selectedCountry.dial);
-      fd.append('country', selectedCountry.name);
+      fd.append('mobile', mobile.trim());
+      fd.append('mobileCountry', selectedCountry.code);
+      fd.append('mobileDialCode', selectedCountry.dial);
+      fd.append('city', city.trim());
+      fd.append('country', country.trim());
 
-      if (accountType === 'PROFESSIONAL') {
-        if (cvFile) fd.append('cv', cvFile);
-        if (linkedIn) fd.append('linkedIn', linkedIn.trim());
-        if (residentId) fd.append('residentId', residentId.trim());
-        if (residentIdFile) fd.append('residentIdFile', residentIdFile);
-        if (billingAddress) fd.append('billingAddress', billingAddress.trim());
-      } else {
-        if (tradeLicenseFile) fd.append('tradeLicense', tradeLicenseFile);
-        if (vatNumber) fd.append('vatNumber', vatNumber.trim());
-        if (businessAddress) fd.append('businessAddress', businessAddress.trim());
-        if (website) fd.append('website', website.trim());
-      }
+      if (memberType === 'COMPANY') fd.append('companyName', companyName.trim());
+      else                          fd.append('fullName', fullName.trim());
 
-      const res = await authAPI.register(fd);
-      const { token, user } = res.data;
-      await applyToken(token, user);
-      router.push('/onboarding/profile');
+      if (tradeLicenseFile) fd.append('tradeLicense', tradeLicenseFile);
+      if (residentIdFile)   fd.append('residentId', residentIdFile);
+      if (passportFile)     fd.append('passport', passportFile);
+      if (photoFile)        fd.append('photo', photoFile);
+
+      await authAPI.register(fd);
+      setStep('done');
     } catch (err: any) {
       setError(err.response?.data?.error || 'Registration failed');
     } finally {
@@ -236,7 +228,7 @@ export default function RegisterPage() {
           <div className="comm-register-sub">Business Community</div>
         </div>
 
-        <StepIndicator step={step} />
+        {step !== 'done' && <StepIndicator step={step} />}
 
         {step === 'basics' && (
           <>
@@ -263,41 +255,27 @@ export default function RegisterPage() {
               <div className="comm-divider"><span>or sign up with email</span></div>
             </div>
 
-            {/* Account type selector */}
+            {/* Member type selector */}
             <div className="comm-type-grid">
               <button
                 type="button"
-                className={`comm-type-card ${accountType === 'PROFESSIONAL' ? 'is-active' : ''}`}
-                onClick={() => setAccountType('PROFESSIONAL')}
+                className={`comm-type-card ${memberType === 'COMPANY' ? 'is-active' : ''}`}
+                onClick={() => setMemberType('COMPANY')}
               >
-                <div className="comm-type-icon">👤</div>
-                <div className="comm-type-title">Professional</div>
-                <div className="comm-type-sub">Consultants, executives, individuals</div>
+                <div className="comm-type-title">Company</div>
+                <div className="comm-type-sub">Companies, entities, operators</div>
               </button>
               <button
                 type="button"
-                className={`comm-type-card ${accountType === 'BUSINESS' ? 'is-active' : ''}`}
-                onClick={() => setAccountType('BUSINESS')}
+                className={`comm-type-card ${memberType === 'PERSONAL' ? 'is-active' : ''}`}
+                onClick={() => setMemberType('PERSONAL')}
               >
-                <div className="comm-type-icon">🏢</div>
-                <div className="comm-type-title">Business</div>
-                <div className="comm-type-sub">Companies, entities, operators</div>
+                <div className="comm-type-title">Personal</div>
+                <div className="comm-type-sub">Individuals, consultants, executives</div>
               </button>
             </div>
 
             <form onSubmit={onSubmitBasics}>
-              <div className="comm-form-group">
-                <label className="comm-form-label">Full Name *</label>
-                <input
-                  className="comm-form-input"
-                  type="text"
-                  placeholder="Your full name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required
-                />
-              </div>
-
               <div className="comm-form-group">
                 <label className="comm-form-label">Email Address *</label>
                 <input
@@ -330,8 +308,8 @@ export default function RegisterPage() {
                     type="tel"
                     inputMode="tel"
                     placeholder="Phone number"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
+                    value={mobile}
+                    onChange={(e) => setMobile(e.target.value)}
                     required
                   />
                 </div>
@@ -379,115 +357,119 @@ export default function RegisterPage() {
         {step === 'details' && (
           <>
             <h1 className="comm-register-title">
-              {accountType === 'PROFESSIONAL' ? 'Professional details' : 'Business details'}
+              {memberType === 'COMPANY' ? 'Company details' : 'Personal details'}
             </h1>
             <p className="comm-register-desc">
-              {accountType === 'PROFESSIONAL'
-                ? 'Provide your credentials to complete the application.'
-                : 'Provide your business documents to complete the application.'}
+              {memberType === 'COMPANY'
+                ? 'Provide your company details and documents to complete the application.'
+                : 'Provide your details and documents to complete the application.'}
             </p>
 
             <form onSubmit={onSubmitDetails}>
-              {accountType === 'PROFESSIONAL' ? (
-                <>
-                  <FileField
-                    label="CV / Resume *"
-                    hint="PDF, DOC, DOCX (max 10 MB)"
-                    accept=".pdf,.doc,.docx"
-                    file={cvFile}
-                    onChange={setCvFile}
+              {memberType === 'COMPANY' ? (
+                <div className="comm-form-group">
+                  <label className="comm-form-label">Company Name *</label>
+                  <input
+                    className="comm-form-input"
+                    type="text"
+                    placeholder="Registered company name"
+                    value={companyName}
+                    onChange={(e) => setCompanyName(e.target.value)}
+                    required
                   />
-
-                  <div className="comm-form-group">
-                    <label className="comm-form-label">LinkedIn Profile *</label>
-                    <input
-                      className="comm-form-input"
-                      type="url"
-                      placeholder="https://linkedin.com/in/your-handle"
-                      value={linkedIn}
-                      onChange={(e) => setLinkedIn(e.target.value)}
-                      required
-                    />
-                  </div>
-
-                  <div className="comm-form-group">
-                    <label className="comm-form-label">Resident ID Number *</label>
-                    <input
-                      className="comm-form-input"
-                      type="text"
-                      placeholder="National / Resident ID number"
-                      value={residentId}
-                      onChange={(e) => setResidentId(e.target.value)}
-                    />
-                  </div>
-
-                  <FileField
-                    label="Resident ID Document (optional)"
-                    hint="Scan / photo - PDF, JPG, PNG (max 10 MB)"
-                    accept=".pdf,.jpg,.jpeg,.png,.webp"
-                    file={residentIdFile}
-                    onChange={setResidentIdFile}
-                  />
-
-                  <div className="comm-form-group">
-                    <label className="comm-form-label">Billing Address *</label>
-                    <textarea
-                      className="comm-form-input"
-                      rows={3}
-                      placeholder="Street, City, Postcode, Country"
-                      value={billingAddress}
-                      onChange={(e) => setBillingAddress(e.target.value)}
-                      required
-                    />
-                  </div>
-                </>
+                </div>
               ) : (
-                <>
-                  <FileField
-                    label="Trade License *"
-                    hint="PDF, JPG, PNG (max 10 MB)"
-                    accept=".pdf,.jpg,.jpeg,.png,.webp"
-                    file={tradeLicenseFile}
-                    onChange={setTradeLicenseFile}
+                <div className="comm-form-group">
+                  <label className="comm-form-label">Full Name *</label>
+                  <input
+                    className="comm-form-input"
+                    type="text"
+                    placeholder="Your full name"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    required
                   />
-
-                  <div className="comm-form-group">
-                    <label className="comm-form-label">VAT Number *</label>
-                    <input
-                      className="comm-form-input"
-                      type="text"
-                      placeholder="VAT / Tax registration number"
-                      value={vatNumber}
-                      onChange={(e) => setVatNumber(e.target.value)}
-                      required
-                    />
-                  </div>
-
-                  <div className="comm-form-group">
-                    <label className="comm-form-label">Business Address *</label>
-                    <textarea
-                      className="comm-form-input"
-                      rows={3}
-                      placeholder="Registered business address"
-                      value={businessAddress}
-                      onChange={(e) => setBusinessAddress(e.target.value)}
-                      required
-                    />
-                  </div>
-
-                  <div className="comm-form-group">
-                    <label className="comm-form-label">Website *</label>
-                    <input
-                      className="comm-form-input"
-                      type="url"
-                      placeholder="https://yourcompany.com"
-                      value={website}
-                      onChange={(e) => setWebsite(e.target.value)}
-                      required
-                    />
-                  </div>
-                </>
+                </div>
               )}
+
+              <div className="comm-register-row">
+                <div className="comm-form-group">
+                  <label className="comm-form-label">City *</label>
+                  <input
+                    className="comm-form-input"
+                    type="text"
+                    placeholder="City"
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="comm-form-group">
+                  <label className="comm-form-label">Country *</label>
+                  <select
+                    className="comm-form-select"
+                    value={country}
+                    onChange={(e) => setCountry(e.target.value)}
+                    required
+                  >
+                    <option value="">Select country…</option>
+                    {COUNTRIES.map((c) => (
+                      <option key={c.code} value={c.name}>{c.flag} {c.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', margin: '18px 0 8px' }}>
+                Required document
+              </p>
+              {memberType === 'COMPANY' ? (
+                <FileField
+                  label="Trade Licence / Registration Certificate *"
+                  hint="PDF, JPG, PNG (max 10 MB)"
+                  accept=".pdf,.jpg,.jpeg,.png,.webp"
+                  file={tradeLicenseFile}
+                  onChange={setTradeLicenseFile}
+                />
+              ) : (
+                <FileField
+                  label="Resident ID Card *"
+                  hint="PDF, JPG, PNG (max 10 MB)"
+                  accept=".pdf,.jpg,.jpeg,.png,.webp"
+                  file={residentIdFile}
+                  onChange={setResidentIdFile}
+                />
+              )}
+
+              <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', margin: '18px 0 8px' }}>
+                Optional documents
+              </p>
+              <FileField
+                label="Passport"
+                hint="PDF, JPG, PNG (max 10 MB)"
+                accept=".pdf,.jpg,.jpeg,.png,.webp"
+                file={passportFile}
+                onChange={setPassportFile}
+              />
+              {memberType === 'COMPANY' && (
+                <FileField
+                  label="Resident ID Card"
+                  hint="PDF, JPG, PNG (max 10 MB)"
+                  accept=".pdf,.jpg,.jpeg,.png,.webp"
+                  file={residentIdFile}
+                  onChange={setResidentIdFile}
+                />
+              )}
+              <FileField
+                label="Photo"
+                hint="JPG, PNG (max 10 MB)"
+                accept=".jpg,.jpeg,.png,.webp"
+                file={photoFile}
+                onChange={setPhotoFile}
+              />
+              <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: -6, marginBottom: 14 }}>
+                Optional documents never block your application and can be completed later from your profile.
+              </p>
 
               {error && <p className="form-error" style={{ marginBottom: 12 }}>{error}</p>}
 
@@ -516,7 +498,7 @@ export default function RegisterPage() {
           <>
             <h1 className="comm-register-title">Verify your email</h1>
             <p className="comm-register-desc">
-              We sent a 6-digit code to <strong>{email}</strong>. Enter it below to activate your account.
+              We sent a 6-digit code to <strong>{email}</strong>. Enter it below to submit your application.
             </p>
 
             <form onSubmit={onSubmitOtp}>
@@ -546,7 +528,7 @@ export default function RegisterPage() {
                 style={{ width: '100%', padding: '13px' }}
                 disabled={loading}
               >
-                {loading ? 'Verifying…' : 'Verify & create account'}
+                {loading ? 'Submitting…' : 'Verify & submit application'}
               </button>
 
               <div className="comm-otp-resend">
@@ -570,9 +552,25 @@ export default function RegisterPage() {
           </>
         )}
 
-        <div className="comm-register-login">
-          Already a member? <Link href="/login">Sign in</Link>
-        </div>
+        {step === 'done' && (
+          <>
+            <h1 className="comm-register-title">Application submitted</h1>
+            <p className="comm-register-desc">
+              Thank you - your membership application has been received and is <strong>pending admin review</strong>.
+              We will email you at <strong>{email}</strong> as soon as it&apos;s approved. You will be able to log in
+              using the email and password you just created.
+            </p>
+            <Link href="/login" className="comm-btn comm-btn-gold" style={{ width: '100%', padding: '13px', display: 'block', textAlign: 'center', marginTop: 8 }}>
+              Go to Login
+            </Link>
+          </>
+        )}
+
+        {step !== 'done' && (
+          <div className="comm-register-login">
+            Already a member? <Link href="/login">Sign in</Link>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -581,8 +579,8 @@ export default function RegisterPage() {
 // ── Sub-components ────────────────────────────
 function StepIndicator({ step }: { step: Step }) {
   const steps: { key: Step; label: string }[] = [
-    { key: 'basics',  label: 'Account' },
-    { key: 'details', label: 'Details' },
+    { key: 'basics',  label: 'Type & Contact' },
+    { key: 'details', label: 'Details & Documents' },
     { key: 'otp',     label: 'Verify' },
   ];
   const idx = steps.findIndex((s) => s.key === step);
@@ -616,7 +614,6 @@ function FileField({
     <div className="comm-form-group">
       <label className="comm-form-label">{label}</label>
       <div className="comm-file-drop" onClick={() => inputRef.current?.click()}>
-        <div className="comm-file-drop-icon">📎</div>
         <div className="comm-file-drop-text">
           {file ? (
             <span className="comm-file-drop-name">{file.name}</span>

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { AuthProvider } from '@/lib/auth';
 import ProtectedLayout from '@/components/layout/ProtectedLayout';
 import { withdrawAPI } from '@/lib/api';
+import { useAdminAlerts } from '@/lib/adminAlerts';
 
 interface Request {
   id: string;
@@ -25,11 +26,13 @@ function WithdrawalsContent() {
   const [loading, setLoading]   = useState(true);
   const [selected, setSelected] = useState<Request | null>(null);
   const [processing, setProcessing] = useState('');
+  const { refresh: refreshAlerts } = useAdminAlerts();
 
   const load = async () => {
     try {
       const res = await withdrawAPI.getAllRequests();
       setRequests(res.data.requests);
+      refreshAlerts();
     } catch (e) {
       console.error(e);
     }

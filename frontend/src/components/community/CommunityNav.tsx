@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth';
-import { messagesAPI, communityAPI } from '@/lib/api';
+import { messagesAPI } from '@/lib/api';
 
 const API_URL = process.env.NODE_ENV === 'production'
   ? (process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || '')
@@ -24,7 +24,6 @@ export default function CommunityNav() {
   const { user, logout } = useAuth();
 
   const [unreadMsg,   setUnreadMsg]   = useState(0);
-  const [unreadNotif, setUnreadNotif] = useState(0);
   const [menuOpen,    setMenuOpen]    = useState(false);
 
   const initial  = user?.name?.charAt(0).toUpperCase() || '?';
@@ -35,19 +34,11 @@ export default function CommunityNav() {
   useEffect(() => {
     const fetchCounts = () => {
       messagesAPI.getUnreadCount().then(r => setUnreadMsg(r.data.unreadCount)).catch(() => {});
-      communityAPI.getNotifications().then(r => setUnreadNotif(r.data.unreadCount)).catch(() => {});
     };
     fetchCounts();
     const id = setInterval(fetchCounts, 30_000);
     return () => clearInterval(id);
   }, []);
-
-  const tierLabel = (tier?: string) => {
-    const map: Record<string, string> = {
-      BASIC: 'Basic', PREMIUM: 'Premium', ENTERPRISE: 'Enterprise', ELITE: 'Elite',
-    };
-    return tier ? map[tier] || tier : 'Basic';
-  };
 
   return (
     <nav className="comm-nav">
@@ -84,16 +75,6 @@ export default function CommunityNav() {
 
       {/* Right side */}
       <div className="comm-nav-right">
-        {/* Notifications bell */}
-        <Link href="/community/notifications" style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"
-            style={{ color: 'var(--text-secondary)', cursor: 'pointer' }}>
-            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-          </svg>
-          {unreadNotif > 0 && <span className="comm-notif-dot" />}
-        </Link>
-
         {/* Wallet shortcut (only if user has wallet) */}
         {user?.wallet && (
           <Link href="/dashboard" style={{
@@ -121,7 +102,7 @@ export default function CommunityNav() {
               <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)' }}>
                 <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{user?.name}</div>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
-                  {tierLabel(user?.membershipTier)} Member
+                  Member
                 </div>
               </div>
               {[

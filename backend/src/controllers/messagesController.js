@@ -36,7 +36,7 @@ const getConversations = async (req, res) => {
 
         const partner = await prisma.user.findUnique({
           where:  { id: partnerId },
-          select: { id: true, name: true, profilePhoto: true, membershipTier: true,
+          select: { id: true, name: true, profilePhoto: true,
                     profile: { select: { company: true } } },
         });
 

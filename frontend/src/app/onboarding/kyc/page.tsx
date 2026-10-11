@@ -114,7 +114,7 @@ export default function OnboardingKycPage() {
               </div>
               {doc.file && (
                 <p style={{ fontSize: 12, color: 'var(--green)', marginTop: -6, marginBottom: 8 }}>
-                  ✓ {doc.file.name}
+                  {doc.file.name} selected
                 </p>
               )}
             </div>

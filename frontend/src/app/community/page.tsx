@@ -9,13 +9,6 @@ const API_URL = process.env.NODE_ENV === 'production'
   ? (process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || '')
   : '';
 
-const TIER_COLORS: Record<string, string> = {
-  BASIC:      'tier-badge-basic',
-  PREMIUM:    'tier-badge-premium',
-  ENTERPRISE: 'tier-badge-enterprise',
-  ELITE:      'tier-badge-elite',
-};
-
 const POST_TYPE_LABELS: Record<string, string> = {
   DEAL: 'Deal', NETWORK: 'Community', EVENT: 'Event', HIRING: 'Hiring', INSIGHT: 'Insight',
 };
@@ -123,10 +116,6 @@ function PostCard({ post, onLike }: { post: any; onLike: (id: string) => void })
         <div className="comm-post-meta">
           <div className="comm-post-author">
             {post.author?.name}
-            {' '}
-            <span className={`comm-mbadge ${TIER_COLORS[post.author?.membershipTier] || ''}`}>
-              {post.author?.membershipTier}
-            </span>
           </div>
           <div className="comm-post-sub">
             {post.author?.profile?.company}{post.author?.profile?.country ? ` · ${post.author.profile.country}` : ''}
@@ -333,7 +322,6 @@ export default function CommunityPage() {
           </div>
         ) : posts.length === 0 ? (
           <div className="comm-empty">
-            <div className="comm-empty-icon">📭</div>
             <div className="comm-empty-text">No posts yet</div>
             <div className="comm-empty-sub">Be the first to share something with the circle.</div>
             <button className="comm-btn comm-btn-primary" onClick={() => setCompose(true)}>

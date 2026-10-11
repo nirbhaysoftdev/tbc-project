@@ -2,7 +2,7 @@
 // src/app/community/deal-room/page.tsx
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { projectsAPI, formatEur } from '@/lib/api';
+import { projectsAPI, investmentRequestAPI, formatEur } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 
 const RISK_COLORS: Record<string, string> = {
@@ -18,6 +18,7 @@ function CreateProjectModal({ onClose, onCreated }: { onClose: () => void; onCre
     minInvestmentPct: '5', shareType: 'LIMITED', riskLevel: 'MEDIUM',
     fundingDeadline: '', targetIRR: '', location: '',
   });
+  const [files,   setFiles]   = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState('');
 
@@ -33,12 +34,33 @@ function CreateProjectModal({ onClose, onCreated }: { onClose: () => void; onCre
     setLoading(true);
     setError('');
     try {
-      await projectsAPI.create({
+      const res = await projectsAPI.create({
         ...form,
         targetAmount:    parseFloat(form.targetAmount),
         minInvestmentPct: parseFloat(form.minInvestmentPct),
         targetIRR:       form.targetIRR ? parseFloat(form.targetIRR) : undefined,
       });
+
+      // Media is attached to a project id, so it can only be uploaded once the
+      // project exists. The deal is already saved at this point: a failed
+      // upload is reported without discarding it.
+      const projectId = res.data?.project?.id;
+      if (projectId && files.length > 0) {
+        const fd = new FormData();
+        files.forEach(f => fd.append('files', f));
+        try {
+          await projectsAPI.uploadMedia(projectId, fd);
+        } catch (uploadErr: any) {
+          onCreated();
+          setError(
+            (uploadErr.response?.data?.error || 'The media upload failed')
+            + '. The deal was created - open it to upload again.',
+          );
+          setLoading(false);
+          return;
+        }
+      }
+
       onCreated();
       onClose();
     } catch (err: any) {
@@ -115,11 +137,49 @@ function CreateProjectModal({ onClose, onCreated }: { onClose: () => void; onCre
               <input className="comm-form-input" placeholder="e.g. Dubai, UAE" value={form.location} onChange={set('location')} />
             </div>
           </div>
+          {/* ── Media ── */}
+          <div className="comm-form-group">
+            <label className="comm-form-label">Images, PDFs &amp; Video</label>
+            <input
+              className="comm-form-input"
+              type="file"
+              multiple
+              accept="image/jpeg,image/png,image/webp,image/gif,application/pdf,video/mp4,video/webm,video/quicktime"
+              onChange={e => setFiles(Array.from(e.target.files || []))}
+            />
+            <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6, lineHeight: 1.5 }}>
+              Up to 10 files, 300 MB each. Members view these inside the deal and cannot download them.
+            </p>
+            {files.length > 0 && (
+              <div style={{ display:'flex', flexDirection:'column', gap: 4, marginTop: 8 }}>
+                {files.map((f, i) => (
+                  <div key={`${f.name}-${i}`}
+                    style={{ display:'flex', justifyContent:'space-between', alignItems:'center',
+                             gap: 10, fontSize: 12 }}>
+                    <span style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                      {f.name}
+                    </span>
+                    <button type="button"
+                      onClick={() => setFiles(prev => prev.filter((_, idx) => idx !== i))}
+                      style={{ border:'none', background:'none', padding:0, fontSize: 11,
+                               color:'var(--red)', cursor:'pointer', flexShrink: 0 }}>
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <p style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 12, lineHeight: 1.5 }}>
+            This submits a request only. Our team will contact you with transfer details, and your
+            investment is recorded once the funds have been received and confirmed.
+          </p>
           {error && <p className="form-error" style={{ marginBottom: 10 }}>{error}</p>}
           <div className="comm-modal-actions">
             <button type="button" className="comm-btn comm-btn-secondary" onClick={onClose}>Cancel</button>
             <button type="submit" className="comm-btn comm-btn-gold" disabled={loading}>
-              {loading ? 'Submitting…' : 'Submit Deal'}
+              {loading ? (files.length > 0 ? 'Uploading…' : 'Submitting…') : 'Submit Deal'}
             </button>
           </div>
         </form>
@@ -137,18 +197,17 @@ function InvestModal({ project, onClose, onInvested }: { project: any; onClose: 
 
   const minAmount = Math.ceil(project.targetAmount * (project.minInvestmentPct / 100));
   const remaining = project.targetAmount - project.raisedAmount;
-  const sharePct  = amount ? ((parseFloat(amount) / project.targetAmount) * 100).toFixed(2) : '0';
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
     try {
-      await projectsAPI.invest(project.id, { amount: parseFloat(amount), notes });
+      await investmentRequestAPI.create(project.id, { amount: parseFloat(amount), message: notes });
       onInvested();
       onClose();
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Investment failed');
+      setError(err.response?.data?.error || 'Could not submit your request');
     } finally {
       setLoading(false);
     }
@@ -157,7 +216,7 @@ function InvestModal({ project, onClose, onInvested }: { project: any; onClose: 
   return (
     <div className="comm-modal-overlay" onClick={onClose}>
       <div className="comm-modal" onClick={e => e.stopPropagation()}>
-        <div className="comm-modal-title">Invest in {project.title}</div>
+        <div className="comm-modal-title">Request to invest in {project.title}</div>
 
         <div style={{ background: 'rgba(200,168,75,0.06)', border: '1px solid rgba(200,168,75,0.15)', borderRadius: 10, padding: '12px 14px', marginBottom: 16, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
           <div>
@@ -176,18 +235,13 @@ function InvestModal({ project, onClose, onInvested }: { project: any; onClose: 
 
         <form onSubmit={submit}>
           <div className="comm-form-group">
-            <label className="comm-form-label">Investment Amount (€) *</label>
-            <input className="comm-form-input" type="number" min={minAmount} max={remaining}
+            <label className="comm-form-label">Requested Amount (€) *</label>
+            <input className="comm-form-input" type="number" min={minAmount}
               placeholder={`Min €${minAmount.toLocaleString()}`}
               value={amount} onChange={e => setAmount(e.target.value)} required />
-            {amount && (
-              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
-                = {sharePct}% share of the project
-              </div>
-            )}
           </div>
           <div className="comm-form-group">
-            <label className="comm-form-label">Notes (optional)</label>
+            <label className="comm-form-label">Message (optional)</label>
             <textarea className="comm-form-textarea" style={{ minHeight: 70 }} placeholder="Any notes or conditions…"
               value={notes} onChange={e => setNotes(e.target.value)} />
           </div>
@@ -195,7 +249,7 @@ function InvestModal({ project, onClose, onInvested }: { project: any; onClose: 
           <div className="comm-modal-actions">
             <button type="button" className="comm-btn comm-btn-secondary" onClick={onClose}>Cancel</button>
             <button type="submit" className="comm-btn comm-btn-gold" disabled={loading}>
-              {loading ? 'Processing…' : 'Confirm Investment'}
+              {loading ? 'Submitting…' : 'Submit Request'}
             </button>
           </div>
         </form>
@@ -255,14 +309,19 @@ function ProjectCard({ project, onInvest, onDelete, isAdmin }: { project: any; o
         <Link href={`/community/deal-room/detail?id=${project.id}`} style={{ flex: 1 }}>
           <button className="comm-deal-btn" style={{ width: '100%' }}>View Details</button>
         </Link>
-        {project.status === 'ACTIVE' && !project.myInvestment && !isAdmin && (
+        {project.status === 'ACTIVE' && !project.myPendingRequest && !isAdmin && (
           <button className="comm-deal-btn gold-btn" style={{ flex: 1 }} onClick={() => onInvest(project)}>
             Invest Now
           </button>
         )}
-        {project.myInvestment && (
+        {project.myPendingRequest && (
+          <div style={{ flex: 1, textAlign: 'center', fontSize: 11, color: 'var(--gold)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600 }}>
+            {project.myPendingRequest.status === 'APPROVED' ? 'Payment confirmed' : 'Request pending'}
+          </div>
+        )}
+        {!project.myPendingRequest && project.myCapital > 0 && (
           <div style={{ flex: 1, textAlign: 'center', fontSize: 11, color: 'var(--green)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600 }}>
-            ✓ Invested
+            Invested {formatEur(project.myCapital)}
           </div>
         )}
         {isAdmin && (
@@ -355,7 +414,6 @@ export default function DealRoomPage() {
         <div className="comm-empty"><div className="spinner" style={{ width: 32, height: 32, borderWidth: 2, margin: 0 }} /></div>
       ) : projects.length === 0 ? (
         <div className="comm-empty">
-          <div className="comm-empty-icon">🏗️</div>
           <div className="comm-empty-text">No active deals right now</div>
           <div className="comm-empty-sub">No opportunities have been listed yet.</div>
           {user?.role === 'ADMIN' && (

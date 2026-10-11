@@ -197,21 +197,8 @@ async function main() {
 
   console.log("✅ Transactions seeded");
 
-  // ── Dev notice ────────────────────────────────────────
-  await query(
-    `
-    INSERT INTO system_config (id, key, value, "updatedAt")
-    VALUES ($1,$2,$3,$4)
-    ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
-  `,
-    [
-      uuidv4(),
-      "dev_notice",
-      "⚠️  Development Mode - Full feature available in next release.",
-      now,
-    ],
-  );
-  console.log("✅ Dev notice seeded");
+  // Clear any legacy dev-notice row so it can never resurface.
+  await query(`DELETE FROM system_config WHERE key = $1`, ["dev_notice"]);
 
   console.log("\n🎉 Seed complete!");
   console.log("   Admin:  admin@trillionbc.com  /  Admin@123");

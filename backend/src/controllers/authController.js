@@ -4,6 +4,8 @@ const jwt    = require('jsonwebtoken');
 const { validationResult } = require('express-validator');
 const { OAuth2Client } = require('google-auth-library');
 const prisma = require('../utils/prismaClient');
+const { logActivity } = require('../services/activityLog');
+const walletService = require('../services/walletService');
 const otpService = require('../services/otpService');
 const {
   sendWelcomePendingEmail,
@@ -23,7 +25,18 @@ function safeUser(user) {
   return rest;
 }
 
+/**
+ * The stored wallet row only holds the manual opening balance, so capital and
+ * profit have to be derived from the project ledger before being returned.
+ */
+async function derivedWallet(userId, wallet) {
+  if (!wallet) return null;
+  return walletService.presentWallet(wallet, await walletService.getWalletBreakdown(userId));
+}
+
 // ── Register (self-service community signup) ──
+// Uses the same field structure, validation rules, and document requirements
+// as the admin "Add Member" flow (see adminController.createMember).
 const register = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -32,28 +45,53 @@ const register = async (req, res) => {
 
   // Multipart form data (files handled by multer): fields arrive as strings in req.body
   const {
-    name,
+    memberType,            // 'COMPANY' | 'PERSONAL'
     email,
     password,
-    accountType,          // 'PROFESSIONAL' | 'BUSINESS'
-    phone,
-    phoneCountry,
-    phoneDialCode,
+    mobile,
+    mobileCountry,
+    mobileDialCode,
+    companyName,
+    fullName,
+    city,
     country,
-    linkedIn,
-    residentId,           // number/text field
-    billingAddress,
-    tradeLicense,         // text field (fallback if no file)
-    vatNumber,
-    businessAddress,
-    website,
   } = req.body;
 
-  const normEmail = String(email).toLowerCase().trim();
-
-  if (!['PROFESSIONAL', 'BUSINESS'].includes(accountType)) {
-    return res.status(400).json({ error: 'accountType must be PROFESSIONAL or BUSINESS' });
+  const isCompany  = memberType === 'COMPANY';
+  const isPersonal = memberType === 'PERSONAL';
+  if (!isCompany && !isPersonal) {
+    return res.status(400).json({ error: 'Member type must be COMPANY or PERSONAL' });
   }
+  if (!mobile || !String(mobile).trim())   return res.status(400).json({ error: 'Mobile number is required' });
+  if (!city || !String(city).trim())       return res.status(400).json({ error: 'City is required' });
+  if (!country || !String(country).trim()) return res.status(400).json({ error: 'Country is required' });
+
+  const files = req.files || {};
+  const photoFile        = files.photo?.[0];
+  const tradeLicenseFile = files.tradeLicense?.[0];
+  const passportFile     = files.passport?.[0];
+  const residentIdFile   = files.residentId?.[0];
+
+  let name;
+  if (isCompany) {
+    if (!companyName || !String(companyName).trim()) {
+      return res.status(400).json({ error: 'Company name is required' });
+    }
+    if (!tradeLicenseFile) {
+      return res.status(400).json({ error: 'Company trade licence / registration certificate is required' });
+    }
+    name = companyName.trim();
+  } else {
+    if (!fullName || !String(fullName).trim()) {
+      return res.status(400).json({ error: 'Full name is required' });
+    }
+    if (!residentIdFile) {
+      return res.status(400).json({ error: 'Resident ID card is required' });
+    }
+    name = fullName.trim();
+  }
+
+  const normEmail = String(email).toLowerCase().trim();
 
   try {
     // Require prior OTP verification for this email
@@ -69,25 +107,16 @@ const register = async (req, res) => {
 
     const passwordHash = await bcrypt.hash(password, 12);
 
-    // File uploads (via multer.fields)
-    const files = req.files || {};
-    const cvUrl            = files.cv?.[0]            ? `/uploads/signup/${files.cv[0].filename}`            : null;
-    const residentIdUrl    = files.residentIdFile?.[0]? `/uploads/signup/${files.residentIdFile[0].filename}`: null;
-    const tradeLicenseUrl  = files.tradeLicense?.[0]  ? `/uploads/signup/${files.tradeLicense[0].filename}`  : null;
-
     const profileData = {
-      country:        country || null,
-      phone:          phone || null,
-      phoneCountry:   phoneCountry || null,
-      phoneDialCode:  phoneDialCode || null,
-      linkedIn:       linkedIn || null,
-      website:        website || null,
-      cvUrl,
-      residentIdUrl,
-      billingAddress: billingAddress || null,
-      tradeLicenseUrl,
-      vatNumber:      vatNumber || null,
-      businessAddress: businessAddress || null,
+      company:         isCompany ? companyName.trim() : null,
+      city:            city.trim(),
+      country:         country.trim(),
+      phone:           mobile.trim(),
+      phoneCountry:    mobileCountry  || null,
+      phoneDialCode:   mobileDialCode || null,
+      tradeLicenseUrl: tradeLicenseFile ? `/uploads/signup/${tradeLicenseFile.filename}` : null,
+      residentIdUrl:   residentIdFile   ? `/uploads/signup/${residentIdFile.filename}`   : null,
+      passportUrl:     passportFile     ? `/uploads/signup/${passportFile.filename}`     : null,
     };
 
     const user = await prisma.user.create({
@@ -95,34 +124,45 @@ const register = async (req, res) => {
         name,
         email: normEmail,
         passwordHash,
-        role: 'MEMBER',
-        membershipTier: 'BASIC',
-        status: 'PENDING',
-        kycStatus: 'NOT_SUBMITTED',
+        profilePhoto:  photoFile ? `/uploads/signup/${photoFile.filename}` : null,
+        role:          'MEMBER',
+                status:        'PENDING',
+        kycStatus:     'NOT_SUBMITTED',
         walletEnabled: false,
-        accountType,
+        accountType:   isCompany ? 'BUSINESS' : 'PROFESSIONAL',
         emailVerified: true,
-        profile: { create: profileData },
+        profile:       { create: profileData },
       },
       select: {
         id: true, name: true, email: true, role: true, status: true,
-        kycStatus: true, membershipTier: true, walletEnabled: true,
+        kycStatus: true, walletEnabled: true,
         profilePhoto: true, accountType: true, emailVerified: true,
       },
     });
 
     await prisma.adminLog.create({
-      data: { adminId: user.id, action: 'SELF_REGISTER', details: { email: normEmail, accountType } },
+      data: { adminId: user.id, action: 'SELF_REGISTER', details: { email: normEmail, memberType } },
     }).catch(() => {});
+
+    logActivity({
+      type:        'MEMBER_REGISTERED',
+      title:       `New member request: ${user.name}`,
+      description: `${normEmail} · ${memberType}`,
+      actorId:     user.id,
+      actorName:   user.name,
+      targetId:    user.id,
+      targetName:  user.name,
+      metadata:    { email: normEmail, memberType, signupMethod: 'email' },
+    });
 
     sendWelcomePendingEmail(user).catch((e) => console.error('welcome email failed:', e.message));
     sendAdminNewSignupNotification({ ...user, signupMethod: 'email' })
       .catch((e) => console.error('admin notify failed:', e.message));
 
-    const token = signToken(user);
+    // No token is issued here - pending members cannot log in until an admin approves them.
     res.status(201).json({
-      token, user,
-      message: 'Registration successful. Your application is pending admin review.',
+      user,
+      message: 'Registration successful. Your application is pending admin review. You will receive an email once approved.',
     });
   } catch (err) {
     console.error('Register error:', err);
@@ -209,8 +249,7 @@ const googleAuth = async (req, res) => {
           googleId,
           emailVerified: Boolean(payload.email_verified),
           role: 'MEMBER',
-          membershipTier: 'BASIC',
-          status: 'PENDING',
+                    status: 'PENDING',
           kycStatus: 'NOT_SUBMITTED',
           profilePhoto: payload.picture || null,
           profile: { create: {} },
@@ -218,7 +257,18 @@ const googleAuth = async (req, res) => {
         include: { wallet: true },
       });
 
-      sendWelcomePendingEmail(user).catch((e) => console.error('welcome email failed:', e.message));
+      logActivity({
+      type:        'MEMBER_REGISTERED',
+      title:       `New member request: ${user.name}`,
+      description: `${normEmail} · ${memberType}`,
+      actorId:     user.id,
+      actorName:   user.name,
+      targetId:    user.id,
+      targetName:  user.name,
+      metadata:    { email: normEmail, memberType, signupMethod: 'email' },
+    });
+
+    sendWelcomePendingEmail(user).catch((e) => console.error('welcome email failed:', e.message));
       sendAdminNewSignupNotification({ ...user, signupMethod: 'google' })
         .catch((e) => console.error('admin notify failed:', e.message));
     } else if (!user.googleId) {
@@ -240,7 +290,7 @@ const googleAuth = async (req, res) => {
     const token = signToken(user);
     res.json({
       token,
-      user: safeUser(user),
+      user: { ...safeUser(user), wallet: await derivedWallet(user.id, user.wallet) },
       message: 'Signed in with Google',
       needsAccountType: !user.accountType,  // frontend can prompt to pick professional/business
     });
@@ -265,7 +315,7 @@ const login = async (req, res) => {
       select: {
         id: true, name: true, email: true, passwordHash: true,
         role: true, status: true, kycStatus: true,
-        membershipTier: true, profilePhoto: true, walletEnabled: true,
+        profilePhoto: true, walletEnabled: true,
         emailVerified: true, accountType: true,
         wallet: { select: {
           investmentAmount: true, profitAmount: true,
@@ -283,6 +333,12 @@ const login = async (req, res) => {
     }
     if (user.status === 'REJECTED') {
       return res.status(403).json({ error: 'Your membership application was not approved. Contact support.' });
+    }
+    if (user.status === 'PENDING') {
+      return res.status(403).json({
+        error: 'Your account is pending admin approval. You will receive an email once approved.',
+        status: 'PENDING',
+      });
     }
 
     const valid = await bcrypt.compare(password, user.passwordHash);
@@ -307,11 +363,10 @@ const login = async (req, res) => {
         status:         user.status,
         kycStatus:      user.kycStatus      ?? 'NOT_SUBMITTED',
         walletEnabled:  user.walletEnabled  ?? false,
-        membershipTier: user.membershipTier ?? 'BASIC',
         profilePhoto:   user.profilePhoto,
         emailVerified:  user.emailVerified  ?? false,
         accountType:    user.accountType,
-        wallet:         user.wallet,
+        wallet:         await derivedWallet(user.id, user.wallet),
       },
     });
   } catch (err) {
@@ -323,6 +378,62 @@ const login = async (req, res) => {
 // ── Logout ──────────────────────────────────────
 const logout = async (_req, res) => {
   res.json({ message: 'Logged out successfully' });
+};
+
+// ── Forgot password: request a reset OTP ──────
+// Always responds the same way whether or not the email exists, so account
+// existence is never revealed through this endpoint.
+const forgotPassword = async (req, res) => {
+  const { email } = req.body || {};
+  if (!email || typeof email !== 'string') {
+    return res.status(400).json({ error: 'Email is required' });
+  }
+  const normalized = email.toLowerCase().trim();
+
+  try {
+    const user = await prisma.user.findUnique({ where: { email: normalized } });
+    if (user) {
+      await otpService.issueOtp(normalized, 'RESET').catch((e) => {
+        // Swallow resend-cooldown/etc. errors so the response never differs
+        // based on whether an account exists.
+        if (e.status !== 429) console.error('forgotPassword issueOtp error:', e.message);
+      });
+    }
+  } catch (err) {
+    console.error('forgotPassword error:', err);
+  }
+
+  res.json({ message: 'If an account exists for this email, a verification code has been sent.' });
+};
+
+// ── Forgot password: verify OTP and set a new password ──
+const resetPassword = async (req, res) => {
+  const { email, code, newPassword } = req.body || {};
+  if (!email || !code || !newPassword) {
+    return res.status(400).json({ error: 'Email, code, and new password are required' });
+  }
+  if (String(newPassword).length < 8) {
+    return res.status(400).json({ error: 'Password must be at least 8 characters' });
+  }
+  const normalized = String(email).toLowerCase().trim();
+
+  try {
+    await otpService.verifyOtp(normalized, code, 'RESET');
+
+    const user = await prisma.user.findUnique({ where: { email: normalized } });
+    if (!user) {
+      return res.status(400).json({ error: 'Invalid or expired code' });
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+    await prisma.user.update({ where: { id: user.id }, data: { passwordHash } });
+
+    res.json({ message: 'Password updated successfully. You can now log in with your new password.' });
+  } catch (err) {
+    const status = err.status || 500;
+    if (status >= 500) console.error('resetPassword error:', err);
+    res.status(status).json({ error: err.message || 'Could not reset password' });
+  }
 };
 
 // ── Get current user ──────────────────────────
@@ -344,11 +455,14 @@ const me = async (req, res) => {
     } catch { /* skip */ }
 
     const { passwordHash, ...safe } = user;
-    res.json({ ...safe, kpiSummary });
+    res.json({ ...safe, wallet: await derivedWallet(user.id, user.wallet), kpiSummary });
   } catch (err) {
     console.error('me error:', err);
     res.status(500).json({ error: 'Server error' });
   }
 };
 
-module.exports = { register, login, logout, me, sendOtp, verifyOtp, googleAuth };
+module.exports = {
+  register, login, logout, me, sendOtp, verifyOtp, googleAuth,
+  forgotPassword, resetPassword,
+};

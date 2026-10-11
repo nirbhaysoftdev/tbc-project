@@ -41,19 +41,24 @@ const otpLimiter = rateLimit({
   message: { error: 'Too many requests. Please try again shortly.' },
 });
 
-// POST /api/auth/register  (multipart/form-data - CV, resident ID, trade license)
+// POST /api/auth/register  (multipart/form-data - same field structure as
+// admin "Add Member": photo, trade licence, passport, resident ID)
 router.post(
   '/register',
   signupUpload.fields([
-    { name: 'cv',              maxCount: 1 },
-    { name: 'residentIdFile',  maxCount: 1 },
-    { name: 'tradeLicense',    maxCount: 1 },
+    { name: 'photo',        maxCount: 1 },
+    { name: 'tradeLicense', maxCount: 1 },
+    { name: 'passport',     maxCount: 1 },
+    { name: 'residentId',   maxCount: 1 },
   ]),
   [
-    body('name').trim().isLength({ min: 2, max: 80 }),
-    body('email').isEmail().normalizeEmail(),
+    // No normalizeEmail() here: it strips dots and +tags from gmail addresses,
+    // so the address would stop matching the one /send-otp issued the code for
+    // and the OTP check below would always fail. Addresses are lower-cased and
+    // trimmed in the controller instead.
+    body('email').isEmail(),
     body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
-    body('accountType').isIn(['PROFESSIONAL', 'BUSINESS']),
+    body('memberType').isIn(['COMPANY', 'PERSONAL']),
   ],
   authController.register,
 );
@@ -71,11 +76,17 @@ router.post('/google', authController.googleAuth);
 router.post(
   '/login',
   [
-    body('email').isEmail().normalizeEmail(),
+    body('email').isEmail(),
     body('password').isLength({ min: 6 }),
   ],
   authController.login,
 );
+
+// POST /api/auth/forgot-password
+router.post('/forgot-password', otpLimiter, authController.forgotPassword);
+
+// POST /api/auth/reset-password
+router.post('/reset-password', otpLimiter, authController.resetPassword);
 
 // POST /api/auth/logout
 router.post('/logout', authenticate, authController.logout);

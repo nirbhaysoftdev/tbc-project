@@ -35,13 +35,6 @@ enum AccountType {
   BUSINESS
 }
 
-enum MembershipTier {
-  BASIC
-  PREMIUM
-  ENTERPRISE
-  ELITE
-}
-
 enum TransactionType {
   CREDIT
   DEBIT
@@ -58,6 +51,7 @@ enum TransactionCategory {
   WITHDRAWAL
   PROFIT
   PROFIT_ADJUSTMENT
+  CAPITAL_RETURN
   ADMIN_CREDIT
   ADMIN_DEBIT
 }
@@ -66,6 +60,39 @@ enum WithdrawStatus {
   PENDING
   APPROVED
   REJECTED
+}
+
+// ─── WALLET INVESTMENT ENGINE ──────────────────────────────────────────────────
+// The capital + monthly/one-time profit engine behind the member wallet. Capital
+// may optionally be attached to a deal-room `Project`; a project-less investment
+// is a permanently supported case, not a legacy carve-out.
+
+enum WalletInvestmentStatus {
+  PENDING
+  ACTIVE
+  COMPLETED
+  CANCELLED
+  REJECTED
+  RETURNED
+}
+
+enum InvestmentRequestStatus {
+  PENDING
+  APPROVED
+  COMPLETED
+  REJECTED
+  CANCELLED
+}
+
+enum ProfitType {
+  ONE_TIME_AMOUNT
+  ONE_TIME_PERCENT
+  MONTHLY_PERCENT
+}
+
+enum ProfitRecordType {
+  ONE_TIME
+  MONTHLY
 }
 
 enum PostType {
@@ -100,7 +127,6 @@ model User {
   role          Role           @default(MEMBER)
   profilePhoto  String?
   status        UserStatus     @default(PENDING)
-  membershipTier MembershipTier @default(BASIC)
   kycStatus     KycStatus      @default(NOT_SUBMITTED)
   walletEnabled Boolean        @default(false)
   accountType   AccountType?
@@ -113,6 +139,9 @@ model User {
   wallet              Wallet?
   transactions        Transaction[]
   withdrawRequests    WithdrawRequest[]
+  walletInvestments   WalletInvestment[]
+  profitConfigs       ProfitConfig[]
+  profitRecords       ProfitRecord[]
 
   // Community
   profile             Profile?
@@ -128,6 +157,7 @@ model User {
   // Deal Room
   projectsOwned       Project[]            @relation("ProjectOwner")
   investments         Investment[]
+  investmentRequests  InvestmentRequest[]
 
   // MMS - KYC & KPI
   kycDocuments        KycDocument[]
@@ -137,6 +167,10 @@ model User {
   // Admin
   adminLogs           AdminLog[]           @relation("AdminLogs")
   auditedLogs         AdminLog[]           @relation("AuditedUser")
+
+  // Activity feed
+  activityActed       ActivityLog[]        @relation("ActivityActor")
+  activityTargeted    ActivityLog[]        @relation("ActivityTarget")
 
   @@map("users")
 }
@@ -163,6 +197,7 @@ model Profile {
   // Professional
   cvUrl           String?
   residentIdUrl   String?
+  passportUrl     String?
   billingAddress  String?
 
   // Business
@@ -199,7 +234,6 @@ model EmailOtp {
 model Membership {
   id        String         @id @default(uuid())
   userId    String         @unique
-  tier      MembershipTier @default(BASIC)
   status    String         @default("ACTIVE") // ACTIVE, SUSPENDED, EXPIRED
   joinedAt  DateTime       @default(now())
   renewedAt DateTime?
@@ -212,15 +246,24 @@ model Membership {
 
 // ─── WALLET (SALBANK) ─────────────────────────────────────────────────────────
 
+// Balances here are a CACHE recomputed by walletService.syncWallet() - never
+// write them from anywhere else.
+//
+// `investmentAmount` / `profitAmount` are the *manual opening-balance*
+// component: capital and profit an admin set by hand with no project ledger
+// behind them. Every balance a member actually sees is this opening balance
+// plus the derived project ledger (WalletInvestment + ProfitRecord).
 model Wallet {
-  id               String   @id @default(uuid())
-  userId           String   @unique
-  investmentAmount Float    @default(0)
-  profitAmount     Float    @default(0)
-  totalBalance     Float    @default(0)
-  currency         String   @default("EUR")
-  lastUpdated      DateTime @default(now()) @updatedAt
-  frozen           Boolean  @default(false)
+  id                String   @id @default(uuid())
+  userId            String   @unique
+  investmentAmount  Float    @default(0)
+  profitAmount      Float    @default(0)
+  pendingWithdrawal Float    @default(0)
+  withdrawnProfit   Float    @default(0)
+  totalBalance      Float    @default(0)
+  currency          String   @default("EUR")
+  lastUpdated       DateTime @default(now()) @updatedAt
+  frozen            Boolean  @default(false)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -239,9 +282,125 @@ model Transaction {
   reference    String               @unique @default(uuid())
   createdAt    DateTime             @default(now())
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Project-aware investment/profit ledger fields (all optional - legacy manual
+  // transactions and deal-room-unrelated rows leave these null).
+  projectId      String?
+  profitType     ProfitType?
+  profitRate     Float?
+  investmentId   String?
+  profitRecordId String?
+  createdBy      String?
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project Project? @relation(fields: [projectId], references: [id])
 
   @@map("transactions")
+}
+
+// A single capital allocation by a user, optionally into a deal-room Project.
+// Capital is only "eligible" for monthly profit starting the 15th of the month
+// AFTER the month it was invested in (see investmentEngine.js) - never prorated.
+// Live capital is `amount - returnedAmount`, so an admin capital return can be
+// partial without destroying the original record.
+model WalletInvestment {
+  id               String                 @id @default(uuid())
+  userId           String
+  projectId        String?
+  requestId        String?                @unique
+  amount           Float
+  returnedAmount   Float                  @default(0)
+  investedAt       DateTime
+  status           WalletInvestmentStatus @default(ACTIVE)
+  rejectionReason  String?
+  createdBy        String?
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+
+  user    User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project Project?           @relation(fields: [projectId], references: [id])
+  request InvestmentRequest? @relation(fields: [requestId], references: [id])
+
+  @@index([userId, projectId])
+  @@map("wallet_investments")
+}
+
+// A member's request to invest in a deal-room project. Creating one has NO
+// financial effect whatsoever - the member pays offline, the admin confirms
+// receipt and completes the request with the ACTUAL amount received, and only
+// then is a WalletInvestment created.
+model InvestmentRequest {
+  id              String                  @id @default(uuid())
+  userId          String
+  projectId       String
+  requestedAmount Float
+  actualAmount    Float?
+  message         String?
+  status          InvestmentRequestStatus @default(PENDING)
+  rejectionReason String?
+  reviewedBy      String?
+  reviewedAt      DateTime?
+  completedAt     DateTime?
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+
+  user       User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project    Project           @relation(fields: [projectId], references: [id])
+  investment WalletInvestment?
+
+  @@index([userId, status])
+  @@index([status])
+  @@map("investment_requests")
+}
+
+// The active monthly-profit % for a user+project. Rate changes insert a NEW
+// row (effectiveFrom = now or an admin-chosen date) rather than mutating the
+// old one, so historical ProfitRecords stay traceable to the rate that
+// actually produced them.
+model ProfitConfig {
+  id               String     @id @default(uuid())
+  userId           String
+  projectId        String?
+  profitType       ProfitType @default(MONTHLY_PERCENT)
+  rate             Float      // percent, e.g. 2 = 2%
+  monthlyProfitDay Int        @default(15)
+  effectiveFrom    DateTime   @default(now())
+  active           Boolean    @default(true)
+  createdBy        String?
+  createdAt        DateTime   @default(now())
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project Project? @relation(fields: [projectId], references: [id])
+
+  @@index([userId, projectId, active])
+  @@map("profit_configs")
+}
+
+// One row per profit event (one-time or a single monthly cycle). `period` is
+// a human-readable cycle key - "YYYY-MM-15" for monthly rows, or a unique
+// "ONE_TIME-<uuid>" token for one-time rows.
+//
+// `scopeKey` is `projectId` or the literal "NO_PROJECT", and exists purely so
+// the uniqueness guard also covers project-less profit: Postgres treats NULLs
+// as distinct, so a unique index over a nullable projectId would let the
+// monthly job double-pay the same project-less cycle.
+model ProfitRecord {
+  id                String           @id @default(uuid())
+  userId            String
+  projectId         String?
+  scopeKey          String
+  type              ProfitRecordType
+  period            String
+  capitalSnapshot   Float
+  rate              Float?
+  amount            Float
+  createdBy         String?
+  generatedAt       DateTime         @default(now())
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project Project? @relation(fields: [projectId], references: [id])
+
+  @@unique([userId, scopeKey, period])
+  @@map("profit_records")
 }
 
 model WithdrawRequest {
@@ -411,19 +570,37 @@ model Project {
   investments Investment[]
   milestones  Milestone[]
 
+  // Wallet capital/profit ledger attached to this project
+  walletInvestments  WalletInvestment[]
+  investmentRequests InvestmentRequest[]
+  profitConfigs      ProfitConfig[]
+  profitRecords      ProfitRecord[]
+  transactions       Transaction[]
+
   @@map("projects")
 }
 
+// Deal-room media: images, PDFs and video attached to a project.
+//
+// `fileUrl` is a path inside backend/storage, which is NOT behind the public
+// /uploads static mount. Bytes are only ever served by the authenticated
+// streaming endpoint (projectMediaController), and the path itself is never
+// returned to a client.
 model ProjectDocument {
   id         String   @id @default(uuid())
   projectId  String
   name       String
   fileUrl    String
-  type       String   // PITCH_DECK, FINANCIALS, LEGAL, RISK_ASSESSMENT
+  type       String   // PITCH_DECK, FINANCIALS, LEGAL, RISK_ASSESSMENT, OTHER
+  kind       String   @default("PDF") // IMAGE | PDF | VIDEO - drives the viewer
+  mimeType   String?
+  sizeBytes  Int?
+  uploadedBy String?
   uploadedAt DateTime @default(now())
 
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
+  @@index([projectId])
   @@map("project_documents")
 }
 
@@ -475,6 +652,36 @@ model AdminLog {
 }
 
 // ─── SYSTEM ───────────────────────────────────────────────────────────────────
+
+// Every notable thing that happens in the system lands here: emails sent,
+// member requests and approvals, investment requests, profit, withdrawals.
+// `type` is a free string (see services/activityLog.js ACTIVITY) so new kinds
+// of activity need no migration. Actor/target names are denormalised so a log
+// line stays readable after the user row is gone.
+model ActivityLog {
+  id          String   @id @default(uuid())
+  type        String
+  category    String
+  title       String
+  description String?
+  actorId     String?
+  actorName   String?
+  targetId    String?
+  targetName  String?
+  amount      Float?
+  status      String   @default("SUCCESS")
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  actor  User? @relation("ActivityActor",  fields: [actorId],  references: [id], onDelete: SetNull)
+  target User? @relation("ActivityTarget", fields: [targetId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([type, createdAt])
+  @@index([category, createdAt])
+  @@index([targetId, createdAt])
+  @@map("activity_logs")
+}
 
 model SystemConfig {
   id        String   @id @default(uuid())

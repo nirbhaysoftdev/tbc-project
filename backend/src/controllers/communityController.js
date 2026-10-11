@@ -15,8 +15,7 @@ const getFeed = async (req, res) => {
           author: {
             select: {
               id: true, name: true, profilePhoto: true,
-              membershipTier: true,
-              profile: { select: { company: true, country: true, city: true } },
+                            profile: { select: { company: true, country: true, city: true } },
             },
           },
           _count: { select: { comments: true, likes: true } },
@@ -70,8 +69,7 @@ const createPost = async (req, res) => {
         author: {
           select: {
             id: true, name: true, profilePhoto: true,
-            membershipTier: true,
-            profile: { select: { company: true, country: true } },
+                        profile: { select: { company: true, country: true } },
           },
         },
       },
@@ -130,7 +128,7 @@ const getComments = async (req, res) => {
       where: { postId: req.params.id },
       include: {
         author: {
-          select: { id: true, name: true, profilePhoto: true, membershipTier: true },
+          select: { id: true, name: true, profilePhoto: true },
         },
       },
       orderBy: { createdAt: 'asc' },
@@ -151,7 +149,7 @@ const addComment = async (req, res) => {
     const comment = await prisma.comment.create({
       data: { postId: req.params.id, authorId: req.user.id, content: content.trim() },
       include: {
-        author: { select: { id: true, name: true, profilePhoto: true, membershipTier: true } },
+        author: { select: { id: true, name: true, profilePhoto: true } },
       },
     });
     res.status(201).json({ comment });
@@ -164,10 +162,9 @@ const addComment = async (req, res) => {
 // ── Get member directory ──────────────────────
 const getMembers = async (req, res) => {
   try {
-    const { search, tier, industry, page = 1, limit = 24 } = req.query;
+    const { search, industry, page = 1, limit = 24 } = req.query;
     const where = { role: 'MEMBER', status: 'ACTIVE' };
 
-    if (tier) where.membershipTier = tier;
     if (search) {
       where.OR = [
         { name:  { contains: search, mode: 'insensitive' } },
@@ -185,7 +182,7 @@ const getMembers = async (req, res) => {
         where,
         select: {
           id: true, name: true, profilePhoto: true,
-          membershipTier: true, createdAt: true,
+          createdAt: true,
           profile: { select: { company: true, industry: true, country: true, bio: true } },
         },
         orderBy: { createdAt: 'desc' },
@@ -209,7 +206,7 @@ const getMemberProfile = async (req, res) => {
       where: { id: req.params.id },
       select: {
         id: true, name: true, profilePhoto: true,
-        membershipTier: true, kycStatus: true, createdAt: true,
+        kycStatus: true, createdAt: true,
         profile: true,
         membership: true,
         _count: { select: { posts: true, investments: true, projectsOwned: true } },

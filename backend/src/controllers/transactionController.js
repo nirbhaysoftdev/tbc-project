@@ -2,6 +2,7 @@
 
 const PDFDocument = require('pdfkit');
 const prisma = require('../utils/prismaClient');
+const walletService = require('../services/walletService');
 // ── Get transactions with filters ────────────
 const getTransactions = async (req, res) => {
   try {
@@ -37,9 +38,15 @@ if (req.user.role !== "ADMIN") {
       if (maxAmount) where.amount.lte = parseFloat(maxAmount);
     }
 
+    const isAdmin = req.user.role === 'ADMIN';
+
     const [transactions, total] = await Promise.all([
       prisma.transaction.findMany({
         where,
+        // An admin sees every member's rows, so each one has to name its owner.
+        include: isAdmin
+          ? { user: { select: { id: true, name: true, email: true } } }
+          : undefined,
         orderBy: { createdAt: 'desc' },
         skip:    (parseInt(page) - 1) * parseInt(limit),
         take:    parseInt(limit),
@@ -70,10 +77,13 @@ const exportPDF = async (req, res) => {
       include: { wallet: true },
     });
 
-    const transactions = await prisma.transaction.findMany({
-      where:   { userId: req.user.id, status: 'COMPLETED' },
-      orderBy: { createdAt: 'desc' },
-    });
+    const [transactions, wallet] = await Promise.all([
+      prisma.transaction.findMany({
+        where:   { userId: req.user.id, status: 'COMPLETED' },
+        orderBy: { createdAt: 'desc' },
+      }),
+      walletService.getWalletBreakdown(req.user.id),
+    ]);
 
     const doc = new PDFDocument({ margin: 50 });
     res.setHeader('Content-Type', 'application/pdf');
@@ -98,9 +108,11 @@ const exportPDF = async (req, res) => {
     doc.fontSize(13).fillColor('#1a2550').text('Account Summary', { underline: true });
     doc.moveDown(0.5);
     doc.fontSize(11).fillColor('#333');
-    doc.text(`Investment Amount:  € ${(user.wallet?.investmentAmount || 0).toLocaleString()}`);
-    doc.text(`Profit:            € ${(user.wallet?.profitAmount || 0).toLocaleString()}`);
-    doc.text(`Total Balance:     € ${(user.wallet?.totalBalance || 0).toLocaleString()}`);
+    doc.text(`Invested Capital:    € ${wallet.investedCapital.toLocaleString()}`);
+    doc.text(`Available Profit:    € ${wallet.availableProfit.toLocaleString()}`);
+    doc.text(`Pending Withdrawal:  € ${wallet.pendingWithdrawal.toLocaleString()}`);
+    doc.text(`Withdrawn Profit:    € ${wallet.withdrawnProfit.toLocaleString()}`);
+    doc.text(`Total Balance:       € ${wallet.totalBalance.toLocaleString()}`);
     doc.moveDown();
 
     // Transactions

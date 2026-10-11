@@ -156,7 +156,6 @@ export default function EventsPage() {
         <div className="comm-empty"><div className="spinner" style={{ width: 32, height: 32, borderWidth: 2, margin: 0 }} /></div>
       ) : events.length === 0 ? (
         <div className="comm-empty">
-          <div className="comm-empty-icon">🎭</div>
           <div className="comm-empty-text">No {upcoming ? 'upcoming' : 'past'} events</div>
           {user?.role === 'ADMIN' && (
             <button className="comm-btn comm-btn-primary" onClick={() => setCreateOpen(true)}>
@@ -200,9 +199,9 @@ export default function EventsPage() {
                 )}
 
                 <div style={{ display: 'flex', gap: 12, fontSize: 11, color: 'var(--text-muted)', marginBottom: 14, flexWrap: 'wrap' }}>
-                  {ev.location && <span>📍 {ev.location}</span>}
-                  {ev.isOnline  && <span>🌐 Online</span>}
-                  <span>👥 {ev.attendeeCount}{ev.maxAttendees ? `/${ev.maxAttendees}` : ''} attending</span>
+                  {ev.location && <span>{ev.location}</span>}
+                  {ev.isOnline  && <span>Online</span>}
+                  <span>{ev.attendeeCount}{ev.maxAttendees ? `/${ev.maxAttendees}` : ''} attending</span>
                 </div>
 
                 <div style={{ display: 'flex', gap: 8 }}>
@@ -212,7 +211,7 @@ export default function EventsPage() {
                       style={{ flex: 1 }}
                       onClick={() => handleRegister(ev.id, ev.registeredByMe)}
                     >
-                      {ev.registeredByMe ? '✓ Registered (Cancel)' : 'RSVP'}
+                      {ev.registeredByMe ? 'Registered (Cancel)' : 'RSVP'}
                     </button>
                   )}
                   {user?.role === 'ADMIN' && (

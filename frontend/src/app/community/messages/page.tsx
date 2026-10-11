@@ -170,7 +170,6 @@ export default function MessagesPage() {
           <div className="comm-chat-list">
             {conversations.length === 0 ? (
               <div className="comm-empty" style={{ padding: '40px 20px' }}>
-                <div className="comm-empty-icon">💬</div>
                 <div className="comm-empty-text" style={{ fontSize: 12 }}>No conversations yet</div>
               </div>
             ) : (
@@ -203,7 +202,6 @@ export default function MessagesPage() {
         <div className="comm-chat-area">
           {!activePartner ? (
             <div className="comm-empty" style={{ flex: 1 }}>
-              <div className="comm-empty-icon">✉️</div>
               <div className="comm-empty-text">Select a conversation</div>
               <div className="comm-empty-sub">or start a new one</div>
               <button className="comm-btn comm-btn-primary" onClick={() => setNewConvOpen(true)}>New Message</button>
@@ -233,7 +231,6 @@ export default function MessagesPage() {
                   </div>
                 ) : messages.length === 0 ? (
                   <div className="comm-empty">
-                    <div className="comm-empty-icon">👋</div>
                     <div className="comm-empty-text">Say hello to {activePartner.name}</div>
                   </div>
                 ) : (

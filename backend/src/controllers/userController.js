@@ -1,6 +1,7 @@
 // src/controllers/userController.js
 // Handles the MMS onboarding steps: profile completion and KYC document upload.
 const prisma = require('../utils/prismaClient');
+const { logActivity } = require('../services/activityLog');
 
 // ── POST /api/user/profile ────────────────────────────────────────────────────
 // Saves / updates profile details during onboarding.
@@ -101,6 +102,17 @@ const submitKyc = async (req, res) => {
         data:  { kycStatus: 'PENDING' },
       }),
     ]);
+
+    logActivity({
+      type:        'KYC_SUBMITTED',
+      title:       `KYC submitted by ${req.user.name}`,
+      description: `${docs.length} document(s): ${docs.map((d) => d.documentType).join(', ')}`,
+      actorId:     req.user.id,
+      actorName:   req.user.name,
+      targetId:    req.user.id,
+      targetName:  req.user.name,
+      metadata:    { documents: docs.length, types: docs.map((d) => d.documentType) },
+    });
 
     res.json({
       message: 'KYC documents submitted successfully. Your application is under review.',

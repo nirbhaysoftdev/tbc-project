@@ -40,9 +40,13 @@ async function issueOtp(email, purpose = 'SIGNUP') {
   }
 
   // Invalidate any prior codes for this email/purpose so only the latest works.
+  // Expire them rather than consuming them: consumedAt is what proves a member
+  // actually entered a correct code (see isEmailRecentlyVerified), so marking
+  // superseded codes as consumed would let a caller skip verification entirely
+  // just by requesting a second code.
   await prisma.emailOtp.updateMany({
     where: { email: normalized, purpose, consumedAt: null },
-    data: { consumedAt: new Date() },
+    data: { expiresAt: new Date() },
   });
 
   const code = generateCode();

@@ -3,8 +3,11 @@ const express = require('express');
 const router  = express.Router();
 const multer  = require('multer');
 const path    = require('path');
+const fs      = require('fs');
 const { authenticate, requireAdmin } = require('../middleware/auth');
 const adminController = require('../controllers/adminController');
+const memberOverviewController = require('../controllers/memberOverviewController');
+const activityLogController = require('../controllers/activityLogController');
 
 // Multer config for profile photos
 const storage = multer.diskStorage({
@@ -23,16 +26,59 @@ const upload = multer({
   },
 });
 
+// Multer config for optional KYC documents uploaded during activation
+const kycDir = path.join(__dirname, '../../uploads/kyc');
+if (!fs.existsSync(kycDir)) fs.mkdirSync(kycDir, { recursive: true });
+const docStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, kycDir),
+  filename:    (_req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    cb(null, `kyc-${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`);
+  },
+});
+const docUpload = multer({
+  storage: docStorage,
+  limits:  { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const allowed = /jpeg|jpg|png|pdf|webp/;
+    const ok = allowed.test(path.extname(file.originalname).toLowerCase()) || allowed.test(file.mimetype);
+    cb(null, ok);
+  },
+});
+
+// Multer config for member creation (photo + identity/company documents)
+const memberUpload = multer({
+  storage,
+  limits:  { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const allowed = /jpeg|jpg|png|pdf|webp/;
+    const ok = allowed.test(path.extname(file.originalname).toLowerCase()) || allowed.test(file.mimetype);
+    cb(null, ok);
+  },
+});
+
 router.use(authenticate, requireAdmin);
 
 // ── MMS - Pending applicants & approval ──────────
 router.get('/pending',              adminController.getPendingUsers);
-router.post('/users/:id/approve',   adminController.approveUser);
+router.post('/users/:id/approve',   docUpload.array('documents', 5), adminController.approveUser);
 router.post('/users/:id/reject',    adminController.rejectUser);
 
 // Members
 router.get('/members',              adminController.getMembers);
-router.post('/members',             upload.single('photo'), adminController.createMember);
+// Full money picture for one member (detail page) + the statement email it sends
+router.get('/members/:id/overview',       memberOverviewController.getMemberOverview);
+router.post('/members/:id/send-statement', memberOverviewController.sendMemberStatement);
+router.post(
+  '/members',
+  memberUpload.fields([
+    { name: 'photo',        maxCount: 1 },
+    { name: 'tradeLicense', maxCount: 1 },
+    { name: 'passport',     maxCount: 1 },
+    { name: 'residentId',   maxCount: 1 },
+  ]),
+  adminController.createMember,
+);
 router.put('/members/:id',          upload.single('photo'), adminController.updateMember);
 router.delete('/members/:id',       adminController.deleteMember);
 router.put('/members/:id/freeze',   adminController.toggleFreeze);
@@ -45,6 +91,14 @@ router.post('/transactions',        adminController.addTransaction);
 
 // Stats
 router.get('/stats',                adminController.getStats);
+// Pending-action counts behind the notification badge
+router.get('/notifications',        adminController.getNotificationCounts);
+
+// ── Activity logs ────────────────────────────────
+// /types is declared before the list route only for readability; they do not
+// collide (different paths).
+router.get('/logs/types',           activityLogController.listLogTypes);
+router.get('/logs',                 activityLogController.listLogs);
 router.get('/export',               adminController.exportData);
 
 module.exports = router;

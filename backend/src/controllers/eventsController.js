@@ -47,7 +47,7 @@ const getEvent = async (req, res) => {
         _count: { select: { registrations: true } },
         registrations: {
           include: {
-            user: { select: { id: true, name: true, profilePhoto: true, membershipTier: true } },
+            user: { select: { id: true, name: true, profilePhoto: true } },
           },
         },
       },

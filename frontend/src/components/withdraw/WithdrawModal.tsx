@@ -32,7 +32,7 @@ export default function WithdrawModal({ balance, userName, onClose, onSuccess }:
     setError('');
 
     if (parseFloat(form.amount) > balance) {
-      setError('Amount cannot exceed your available balance.');
+      setError('Amount cannot exceed your available profit. Invested capital cannot be withdrawn.');
       return;
     }
     if (parseFloat(form.amount) <= 0) {
@@ -87,13 +87,13 @@ export default function WithdrawModal({ balance, userName, onClose, onSuccess }:
           <div>
             <h2 style={{ fontSize: 18, fontWeight: 700 }}>Withdraw Funds</h2>
             <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3 }}>
-              Available Balance:
+              Available Profit:
               <span style={{ color: 'var(--green)', fontWeight: 700, marginLeft: 6 }}>
                 €{balance.toLocaleString()}
               </span>
             </p>
           </div>
-          <button onClick={onClose} style={{ color: 'var(--text-muted)', fontSize: 20, lineHeight: 1 }}>✕</button>
+          <button onClick={onClose} style={{ color: 'var(--text-muted)', fontSize: 20, lineHeight: 1 }}>×</button>
         </div>
 
         <form onSubmit={handleSubmit}>
@@ -159,12 +159,12 @@ export default function WithdrawModal({ balance, userName, onClose, onSuccess }:
                 onChange={e => set('amount', e.target.value)} required />
               {parseFloat(form.amount) > balance && (
                 <p style={{ fontSize: 11, color: 'var(--red)', marginTop: 4 }}>
-                  Exceeds available balance
+                  Exceeds available profit
                 </p>
               )}
             </div>
             <div>
-              <label style={labelStyle}>AVAILABLE BALANCE</label>
+              <label style={labelStyle}>AVAILABLE PROFIT</label>
               <input style={{ ...inputStyle, opacity: 0.6, cursor: 'not-allowed' }}
                 value={`€${balance.toLocaleString()}`} readOnly />
             </div>

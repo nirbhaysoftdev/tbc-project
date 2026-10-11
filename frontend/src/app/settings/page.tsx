@@ -93,7 +93,7 @@ function SettingsContent() {
         </label>
         {photoFile && (
           <p style={{ fontSize: 11, color: 'var(--green)', marginTop: 4 }}>
-            ✓ {photoFile.name}
+            {photoFile.name} selected
           </p>
         )}
       </div>

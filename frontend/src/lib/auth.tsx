@@ -13,7 +13,6 @@ interface User {
   kycStatus: 'NOT_SUBMITTED' | 'PENDING' | 'APPROVED' | 'REJECTED';
   walletEnabled: boolean;
   profilePhoto: string | null;
-  membershipTier?: 'BASIC' | 'PREMIUM' | 'ENTERPRISE' | 'ELITE';
   wallet?: {
     investmentAmount: number;
     profitAmount:     number;

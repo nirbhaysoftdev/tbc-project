@@ -3,8 +3,9 @@
 import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { projectsAPI, formatEur } from '@/lib/api';
+import { projectsAPI, investmentRequestAPI, formatEur } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+import ProjectMedia from '@/components/community/ProjectMedia';
 
 const RISK_COLORS: Record<string, string> = {
   LOW:    'comm-risk-low',
@@ -28,18 +29,17 @@ function InvestModal({ project, onClose, onInvested }: { project: any; onClose: 
 
   const minAmount = Math.ceil(project.targetAmount * (project.minInvestmentPct / 100));
   const remaining = project.targetAmount - project.raisedAmount;
-  const sharePct  = amount ? ((parseFloat(amount) / project.targetAmount) * 100).toFixed(2) : '0';
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
     try {
-      await projectsAPI.invest(project.id, { amount: parseFloat(amount), notes });
+      await investmentRequestAPI.create(project.id, { amount: parseFloat(amount), message: notes });
       onInvested();
       onClose();
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Investment failed');
+      setError(err.response?.data?.error || 'Could not submit your request');
     } finally {
       setLoading(false);
     }
@@ -48,7 +48,7 @@ function InvestModal({ project, onClose, onInvested }: { project: any; onClose: 
   return (
     <div className="comm-modal-overlay" onClick={onClose}>
       <div className="comm-modal" onClick={e => e.stopPropagation()}>
-        <div className="comm-modal-title">Invest in {project.title}</div>
+        <div className="comm-modal-title">Request to invest in {project.title}</div>
 
         <div style={{ background: 'rgba(200,168,75,0.06)', border: '1px solid rgba(200,168,75,0.15)', borderRadius: 10, padding: '12px 14px', marginBottom: 16, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
           <div>
@@ -67,26 +67,25 @@ function InvestModal({ project, onClose, onInvested }: { project: any; onClose: 
 
         <form onSubmit={submit}>
           <div className="comm-form-group">
-            <label className="comm-form-label">Investment Amount (€) *</label>
-            <input className="comm-form-input" type="number" min={minAmount} max={remaining}
+            <label className="comm-form-label">Requested Amount (€) *</label>
+            <input className="comm-form-input" type="number" min={minAmount}
               placeholder={`Min €${minAmount.toLocaleString()}`}
               value={amount} onChange={e => setAmount(e.target.value)} required />
-            {amount && (
-              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
-                = {sharePct}% share of the project
-              </div>
-            )}
           </div>
           <div className="comm-form-group">
-            <label className="comm-form-label">Notes (optional)</label>
+            <label className="comm-form-label">Message (optional)</label>
             <textarea className="comm-form-textarea" style={{ minHeight: 70 }} placeholder="Any notes or conditions…"
               value={notes} onChange={e => setNotes(e.target.value)} />
           </div>
+          <p style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 12, lineHeight: 1.5 }}>
+            This submits a request only. Our team will contact you with transfer details, and your
+            investment is recorded once the funds have been received and confirmed.
+          </p>
           {error && <p className="form-error" style={{ marginBottom: 10 }}>{error}</p>}
           <div className="comm-modal-actions">
             <button type="button" className="comm-btn comm-btn-secondary" onClick={onClose}>Cancel</button>
             <button type="submit" className="comm-btn comm-btn-gold" disabled={loading}>
-              {loading ? 'Processing…' : 'Confirm Investment'}
+              {loading ? 'Submitting…' : 'Submit Request'}
             </button>
           </div>
         </form>
@@ -133,7 +132,6 @@ function DealDetailInner() {
     return (
       <div style={{ maxWidth: 1000, margin: '0 auto', padding: '24px 28px 80px' }}>
         <div className="comm-empty">
-          <div className="comm-empty-icon">🔍</div>
           <div className="comm-empty-text">Deal not found</div>
           <div className="comm-empty-sub">This deal may have been removed or is no longer available.</div>
           <Link href="/community/deal-room">
@@ -147,7 +145,6 @@ function DealDetailInner() {
   const daysLeft  = Math.ceil((new Date(project.fundingDeadline).getTime() - Date.now()) / 86400000);
   const remaining = project.targetAmount - project.raisedAmount;
   const minAmount = Math.ceil(project.targetAmount * (project.minInvestmentPct / 100));
-  const myInvestment = project.investments?.find((i: any) => i.investor?.id === user?.id);
   const isAdmin = user?.role === 'ADMIN';
 
   return (
@@ -175,14 +172,21 @@ function DealDetailInner() {
             {project.location ? ` · ${project.location}` : ''}
           </div>
         </div>
-        {project.status === 'ACTIVE' && !myInvestment && !isAdmin && remaining > 0 && (
+        {project.status === 'ACTIVE' && !project.myPendingRequest && !isAdmin && (
           <button className="comm-btn comm-btn-gold" onClick={() => setInvestOpen(true)}>
             Invest Now
           </button>
         )}
-        {myInvestment && (
+        {project.myPendingRequest && (
+          <div style={{ padding: '10px 16px', background: 'rgba(200,168,75,0.08)', border: '1px solid rgba(200,168,75,0.25)', borderRadius: 8, color: 'var(--gold)', fontSize: 12, fontWeight: 600 }}>
+            {project.myPendingRequest.status === 'APPROVED'
+              ? `Payment confirmed for ${formatEur(project.myPendingRequest.requestedAmount)} — awaiting final confirmation`
+              : `Request pending for ${formatEur(project.myPendingRequest.requestedAmount)}`}
+          </div>
+        )}
+        {project.myCapital > 0 && (
           <div style={{ padding: '10px 16px', background: 'rgba(80,200,120,0.08)', border: '1px solid rgba(80,200,120,0.25)', borderRadius: 8, color: 'var(--green)', fontSize: 12, fontWeight: 600 }}>
-            ✓ You invested {formatEur(myInvestment.amount)}
+            You invested {formatEur(project.myCapital)}
           </div>
         )}
       </div>
@@ -296,20 +300,8 @@ function DealDetailInner() {
         </div>
       )}
 
-      {/* Documents */}
-      {project.documents && project.documents.length > 0 && (
-        <div style={{ marginBottom: 18 }}>
-          <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 }}>Documents</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {project.documents.map((d: any) => (
-              <a key={d.id} href={d.url} target="_blank" rel="noreferrer" className="comm-project-card" style={{ padding: '10px 14px', textDecoration: 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ fontSize: 13 }}>📄 {d.name || 'Document'}</div>
-                <div style={{ fontSize: 11, color: 'var(--gold)' }}>Open →</div>
-              </a>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Media & documents - viewed in place, never downloaded */}
+      <ProjectMedia projectId={project.id} canManage={isAdmin} />
 
       {investOpen && <InvestModal project={project} onClose={() => setInvestOpen(false)} onInvested={() => { setInvestOpen(false); load(); }} />}
     </div>

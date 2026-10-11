@@ -1,5 +1,10 @@
 // src/controllers/projectsController.js
+const fs = require('fs');
+const path = require('path');
 const prisma = require('../utils/prismaClient');
+const { logActivity } = require('../services/activityLog');
+const mediaCtrl = require('./projectMediaController');
+const investmentRequestController = require('./investmentRequestController');
 
 // ── Get all projects (Deal Room) ──────────────
 const getProjects = async (req, res) => {
@@ -17,11 +22,21 @@ const getProjects = async (req, res) => {
       prisma.project.findMany({
         where,
         include: {
-          owner: { select: { id: true, name: true, profilePhoto: true, membershipTier: true } },
+          owner: { select: { id: true, name: true, profilePhoto: true } },
           _count: { select: { investments: true } },
           investments: {
             where: { investorId: req.user.id },
             select: { id: true, amount: true, sharePercentage: true },
+          },
+          walletInvestments: {
+            where: { userId: req.user.id, status: 'ACTIVE' },
+            select: { id: true, amount: true, returnedAmount: true, investedAt: true },
+          },
+          investmentRequests: {
+            where: { userId: req.user.id, status: { in: ['PENDING', 'APPROVED'] } },
+            select: { id: true, requestedAmount: true, status: true, createdAt: true },
+            orderBy: { createdAt: 'desc' },
+            take: 1,
           },
         },
         orderBy: { createdAt: 'desc' },
@@ -36,7 +51,11 @@ const getProjects = async (req, res) => {
       fundingPct:      p.targetAmount > 0 ? Math.round((p.raisedAmount / p.targetAmount) * 100) : 0,
       investorCount:   p._count.investments,
       myInvestment:    p.investments[0] || null,
+      myCapital:       p.walletInvestments.reduce((s, i) => s + Math.max(0, i.amount - (i.returnedAmount || 0)), 0),
+      myPendingRequest: p.investmentRequests[0] || null,
       investments:     undefined,
+      walletInvestments: undefined,
+      investmentRequests: undefined,
       _count:          undefined,
     }));
 
@@ -54,15 +73,32 @@ const getProject = async (req, res) => {
       where: { id: req.params.id },
       include: {
         owner: {
-          select: { id: true, name: true, profilePhoto: true, membershipTier: true,
+          select: { id: true, name: true, profilePhoto: true,
                     profile: { select: { company: true, country: true } } },
         },
-        documents:   true,
+        // Media metadata only. The stored path never leaves the server, and
+        // viewable URLs come from GET /projects/:id/media, which mints a
+        // short-lived ticket per document. See projectMediaController.
+        documents: {
+          select: { id: true, name: true, type: true, kind: true,
+                    mimeType: true, sizeBytes: true, uploadedAt: true },
+          orderBy: { uploadedAt: 'desc' },
+        },
         milestones:  { orderBy: { targetDate: 'asc' } },
         investments: {
           include: {
             investor: { select: { id: true, name: true, profilePhoto: true } },
           },
+        },
+        walletInvestments: {
+          where: { userId: req.user.id, status: 'ACTIVE' },
+          select: { id: true, amount: true, returnedAmount: true, investedAt: true },
+        },
+        investmentRequests: {
+          where: { userId: req.user.id, status: { in: ['PENDING', 'APPROVED'] } },
+          select: { id: true, requestedAmount: true, status: true, createdAt: true },
+          orderBy: { createdAt: 'desc' },
+          take: 1,
         },
         _count: { select: { investments: true } },
       },
@@ -75,6 +111,10 @@ const getProject = async (req, res) => {
         ...project,
         fundingPct:    project.targetAmount > 0 ? Math.round((project.raisedAmount / project.targetAmount) * 100) : 0,
         investorCount: project._count.investments,
+        myCapital:     project.walletInvestments.reduce((s, i) => s + Math.max(0, i.amount - (i.returnedAmount || 0)), 0),
+        myPendingRequest: project.investmentRequests[0] || null,
+        walletInvestments: undefined,
+        investmentRequests: undefined,
         _count:        undefined,
       },
     });
@@ -119,6 +159,16 @@ const createProject = async (req, res) => {
       },
     });
 
+    logActivity({
+      type:        'PROJECT_CREATED',
+      title:       `Project created: ${project.title}`,
+      description: `${project.category} · target ${project.targetAmount.toLocaleString()}`,
+      actorId:     req.user.id,
+      actorName:   req.user.name,
+      amount:      project.targetAmount,
+      metadata:    { projectId: project.id, category: project.category, riskLevel: project.riskLevel },
+    });
+
     res.status(201).json({ project });
   } catch (err) {
     console.error(err);
@@ -148,67 +198,13 @@ const updateProject = async (req, res) => {
 };
 
 // ── Invest in a project ───────────────────────
+// Members cannot move money themselves: "Invest Now" raises an investment
+// request, the member pays offline, and an admin completes it with the actual
+// amount received. See investmentRequestController.
 const invest = async (req, res) => {
-  try {
-    const { amount, notes } = req.body;
-    if (!amount || parseFloat(amount) <= 0) {
-      return res.status(400).json({ error: 'Valid amount is required' });
-    }
-
-    const project = await prisma.project.findUnique({ where: { id: req.params.id } });
-    if (!project) return res.status(404).json({ error: 'Project not found' });
-    if (project.status !== 'ACTIVE') return res.status(400).json({ error: 'Project is not accepting investments' });
-
-    const investAmt      = parseFloat(amount);
-    const sharePercentage = (investAmt / project.targetAmount) * 100;
-
-    if (sharePercentage < project.minInvestmentPct) {
-      return res.status(400).json({
-        error: `Minimum investment is ${project.minInvestmentPct}% (€${(project.targetAmount * project.minInvestmentPct / 100).toLocaleString()})`,
-      });
-    }
-
-    const newRaised = project.raisedAmount + investAmt;
-    if (newRaised > project.targetAmount) {
-      return res.status(400).json({ error: 'Investment exceeds remaining funding target' });
-    }
-
-    const [investment] = await prisma.$transaction([
-      prisma.investment.create({
-        data: {
-          projectId:      project.id,
-          investorId:     req.user.id,
-          amount:         investAmt,
-          sharePercentage,
-          status:         'CONFIRMED',
-          notes:          notes || null,
-        },
-      }),
-      prisma.project.update({
-        where: { id: project.id },
-        data:  {
-          raisedAmount: newRaised,
-          status:       newRaised >= project.targetAmount ? 'FUNDED' : 'ACTIVE',
-        },
-      }),
-    ]);
-
-    // Notify project owner
-    await prisma.notification.create({
-      data: {
-        userId:  project.ownerId,
-        type:    'DEAL_UPDATE',
-        title:   'New investment',
-        message: `${req.user.name} invested €${investAmt.toLocaleString()} in ${project.title}`,
-        link:    `/community/deal-room/detail?id=${project.id}`,
-      },
-    });
-
-    res.status(201).json({ investment });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Server error' });
-  }
+  const { amount, notes, message } = req.body;
+  req.body = { projectId: req.params.id, requestedAmount: amount, message: message || notes };
+  return investmentRequestController.createRequest(req, res);
 };
 
 // ── Add milestone ─────────────────────────────
@@ -248,7 +244,19 @@ const deleteProject = async (req, res) => {
     const project = await prisma.project.findUnique({ where: { id: req.params.id } });
     if (!project) return res.status(404).json({ error: 'Project not found' });
 
+    // project_documents cascades in the database, which would strand the files
+    // themselves on disk, so collect the paths before the rows disappear.
+    const documents = await prisma.projectDocument.findMany({
+      where:  { projectId: project.id },
+      select: { fileUrl: true },
+    });
+
     await prisma.project.delete({ where: { id: req.params.id } });
+
+    documents.forEach((d) => {
+      fs.unlink(path.join(mediaCtrl.MEDIA_DIR, path.basename(d.fileUrl)), () => {});
+    });
+
     res.json({ message: 'Project deleted' });
   } catch (err) {
     console.error(err);

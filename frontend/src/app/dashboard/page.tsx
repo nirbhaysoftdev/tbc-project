@@ -32,6 +32,7 @@ export default function DashboardPage() {
   }, [period]);
 
   const wallet = summary?.wallet;
+  const byProject = summary?.byProject || [];
   const firstName = summary?.user?.name?.split(' ')[0] || user?.name?.split(' ')[0] || 'Member';
 
   return (
@@ -96,18 +97,56 @@ export default function DashboardPage() {
         {/* Stat cards */}
         <div className="balance-stats">
           <div className="stat-card invest">
-            <p className="stat-label">Amount Invest</p>
-            <p className="stat-value">{wallet ? formatEur(wallet.investmentAmount) : '€ –'}</p>
+            <p className="stat-label">Invested Capital</p>
+            <p className="stat-value">{wallet ? formatEur(wallet.investedCapital) : '€ –'}</p>
           </div>
           <div className="stat-card profit">
-            <p className="stat-label">Profit</p>
-            <p className="stat-value">{wallet ? formatEur(wallet.profitAmount) : '€ –'}</p>
-            {/* {wallet && wallet.roi !== undefined && (
-              <span className="stat-pct">+{wallet.roi}%</span>
-            )} */}
+            <p className="stat-label">Available Profit</p>
+            <p className="stat-value">{wallet ? formatEur(wallet.availableProfit) : '€ –'}</p>
+          </div>
+          <div className="stat-card">
+            <p className="stat-label">Pending Withdrawal</p>
+            <p className="stat-value">{wallet ? formatEur(wallet.pendingWithdrawal) : '€ –'}</p>
+          </div>
+          <div className="stat-card">
+            <p className="stat-label">Withdrawn Profit</p>
+            <p className="stat-value">{wallet ? formatEur(wallet.withdrawnProfit) : '€ –'}</p>
           </div>
         </div>
       </div>
+
+      {/* Project-wise capital and profit */}
+      {byProject.length > 0 && (
+        <div style={{ background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:'var(--radius-lg)', overflow:'hidden', marginBottom:20 }}>
+          <div style={{ padding:'16px 20px', borderBottom:'1px solid var(--border)' }}>
+            <p style={{ fontWeight:700, fontSize:14 }}>Your Investments by Project</p>
+            <p style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>
+              Invested capital is not withdrawable; only profit is.
+            </p>
+          </div>
+          <table className="tx-table">
+            <thead>
+              <tr><th>Project</th><th>Capital</th><th>Profit</th></tr>
+            </thead>
+            <tbody>
+              {byProject.map((row: any) => (
+                <tr key={row.projectId || 'no-project'}>
+                  <td style={{ fontWeight:600, color:'var(--text-primary)' }}>{row.projectTitle}</td>
+                  <td>{formatEur(row.capital)}</td>
+                  <td className="amount-credit">{formatEur(row.profit)}</td>
+                </tr>
+              ))}
+              <tr>
+                <td style={{ fontWeight:700, color:'var(--text-primary)' }}>Total</td>
+                <td style={{ fontWeight:700 }}>{formatEur(byProject.reduce((s: number, r: any) => s + r.capital, 0))}</td>
+                <td style={{ fontWeight:700 }} className="amount-credit">
+                  {formatEur(byProject.reduce((s: number, r: any) => s + r.profit, 0))}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {/* Card section */}
       <div className="card-section">
@@ -157,7 +196,7 @@ export default function DashboardPage() {
 {/* Withdraw Modal */}
       {showWithdraw && (
         <WithdrawModal
-          balance={wallet?.totalBalance || 0}
+          balance={wallet?.availableProfit || 0}
           userName={summary?.user?.name || user?.name || ''}
           onClose={() => setShowWithdraw(false)}
           onSuccess={() => {

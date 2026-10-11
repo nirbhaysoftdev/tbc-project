@@ -3,9 +3,15 @@
 import { useEffect, useState } from 'react';
 import { AuthProvider } from '@/lib/auth';
 import ProtectedLayout from '@/components/layout/ProtectedLayout';
+import { useAuth } from '@/lib/auth';
 import { transactionsAPI, formatEur, downloadBlob } from '@/lib/api';
 
 function TransactionsContent() {
+  const { user } = useAuth();
+  // An admin's list spans every member, so the rows have to name their owner.
+  // A member only ever sees their own rows, where the column is noise.
+  const showMember = user?.role === 'ADMIN';
+
   const [transactions, setTx]     = useState<any[]>([]);
   const [pagination,   setPag]    = useState<any>({});
   const [loading,      setLoading] = useState(true);
@@ -132,6 +138,7 @@ function TransactionsContent() {
             <thead>
               <tr>
                 <th>Date</th>
+                {showMember && <th>Member</th>}
                 <th>Type</th>
                 <th>Description</th>
                 <th>Amount</th>
@@ -144,6 +151,16 @@ function TransactionsContent() {
               {transactions.map((tx: any) => (
                 <tr key={tx.id}>
                   <td>{new Date(tx.createdAt).toLocaleDateString('en-GB')}</td>
+                  {showMember && (
+                    <td>
+                      <div style={{ fontWeight:600, color:'var(--text-primary)' }}>
+                        {tx.user?.name || '—'}
+                      </div>
+                      {tx.user?.email && (
+                        <div style={{ fontSize:11, color:'var(--text-muted)' }}>{tx.user.email}</div>
+                      )}
+                    </td>
+                  )}
                   <td><span className={`badge badge-${tx.type.toLowerCase()}`}>{tx.type}</span></td>
                  <td> <div style={{ fontWeight:600 }}>{tx.category}</div>
                      <div style={{ fontSize:12, color:'var(--text-muted)' }}>

@@ -8,16 +8,10 @@ const API_URL = process.env.NODE_ENV === 'production'
   ? (process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || '')
   : '';
 
-const TIER_COLORS: Record<string, string> = {
-  BASIC: 'tier-badge-basic', PREMIUM: 'tier-badge-premium',
-  ENTERPRISE: 'tier-badge-enterprise', ELITE: 'tier-badge-elite',
-};
-
 export default function NetworkPage() {
   const router = useRouter();
   const [members,  setMembers]  = useState<any[]>([]);
   const [search,   setSearch]   = useState('');
-  const [tier,     setTier]     = useState('');
   const [industry, setIndustry] = useState('');
   const [loading,  setLoading]  = useState(true);
   const [page,     setPage]     = useState(1);
@@ -27,12 +21,11 @@ export default function NetworkPage() {
     setLoading(true);
     const params: Record<string, string> = { page: String(page), limit: '24' };
     if (search)   params.search   = search;
-    if (tier)     params.tier     = tier;
     if (industry) params.industry = industry;
     communityAPI.getMembers(params)
       .then(r => { setMembers(r.data.members || []); setTotal(r.data.pagination?.total || 0); })
       .finally(() => setLoading(false));
-  }, [search, tier, industry, page]);
+  }, [search, industry, page]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -62,14 +55,6 @@ export default function NetworkPage() {
           value={search} onChange={e => setSearch(e.target.value)}
         />
         <select className="comm-form-select" style={{ width: 'auto', padding: '9px 12px', fontSize: 12 }}
-          value={tier} onChange={e => { setTier(e.target.value); setPage(1); }}>
-          <option value="">All Tiers</option>
-          <option value="BASIC">Basic</option>
-          <option value="PREMIUM">Premium</option>
-          <option value="ENTERPRISE">Enterprise</option>
-          <option value="ELITE">Elite</option>
-        </select>
-        <select className="comm-form-select" style={{ width: 'auto', padding: '9px 12px', fontSize: 12 }}
           value={industry} onChange={e => { setIndustry(e.target.value); setPage(1); }}>
           <option value="">All Industries</option>
           <option value="Private Equity">Private Equity</option>
@@ -89,7 +74,6 @@ export default function NetworkPage() {
         <div className="comm-empty"><div className="spinner" style={{ width: 32, height: 32, borderWidth: 2, margin: 0 }} /></div>
       ) : members.length === 0 ? (
         <div className="comm-empty">
-          <div className="comm-empty-icon">🔍</div>
           <div className="comm-empty-text">No members found</div>
           <div className="comm-empty-sub">Try adjusting your search or filters.</div>
         </div>
@@ -107,7 +91,6 @@ export default function NetworkPage() {
                 <div className="comm-member-name">{m.name}</div>
                 <div className="comm-member-company">{m.profile?.company || '-'}</div>
                 <div style={{ display: 'flex', gap: 6, justifyContent: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
-                  <span className={`comm-mbadge ${TIER_COLORS[m.membershipTier]}`}>{m.membershipTier}</span>
                   {m.profile?.industry && (
                     <span className="comm-mbadge" style={{ background: 'rgba(100,100,180,0.12)', color: '#a0a8ff' }}>
                       {m.profile.industry}

@@ -3,6 +3,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import { useSidebar } from '@/lib/sidebar';
+import { useAdminAlerts } from '@/lib/adminAlerts';
+import NotifBadge from './NotifBadge';
 
 const API_URL = process.env.NODE_ENV === 'production'
   ? (process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || '')
@@ -21,6 +23,7 @@ export default function Sidebar() {
   const { user, logout } = useAuth();
   const pathname = usePathname();
   const { open, setOpen } = useSidebar();
+  const { alerts } = useAdminAlerts();
 
   const initial  = user?.name?.charAt(0).toUpperCase() || '?';
   const photoUrl = user?.profilePhoto
@@ -58,21 +61,34 @@ export default function Sidebar() {
          
           <>
     <Link href="/admin" onClick={onNav}
-      className={`nav-item ${pathname.startsWith('/admin') && !pathname.includes('withdrawal') ? 'active' : ''}`}>
+      className={`nav-item ${pathname.startsWith('/admin') && !pathname.includes('withdrawal') && !pathname.startsWith('/admin/logs') ? 'active' : ''}`}>
       <AdminIcon />
       <span>Admin Panel</span>
+      <NotifBadge
+        count={alerts.newMembers + alerts.investmentRequests}
+        title={`${alerts.newMembers} new member(s), ${alerts.investmentRequests} investment request(s)`}
+        style={{ marginLeft: 'auto' }}
+      />
+    </Link>
+    <Link href="/admin/logs" onClick={onNav}
+      className={`nav-item ${pathname.startsWith('/admin/logs') ? 'active' : ''}`}>
+      <LogsIcon />
+      <span>Activity Logs</span>
     </Link>
     <Link href="/admin/withdrawals" onClick={onNav}
       className={`nav-item ${pathname.includes('withdrawal') ? 'active' : ''}`}>
       <WithdrawIcon />
       <span>Withdrawal Req.</span>
+      <NotifBadge
+        count={alerts.withdrawRequests}
+        title={`${alerts.withdrawRequests} withdrawal request(s) awaiting approval`}
+        style={{ marginLeft: 'auto' }}
+      />
     </Link>
   </>
           
         )}
       </nav>
-
-      <button className="sidebar-add-funds">Add Funds</button>
 
       <div className="sidebar-footer">
         <p className="sidebar-email">
@@ -137,6 +153,15 @@ function SettingsIcon() {
 }
 function AdminIcon() {
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>;
+}
+
+function LogsIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <path d="M4 4h16v16H4z"/>
+      <path d="M8 9h8M8 13h8M8 17h5" strokeLinecap="round"/>
+    </svg>
+  );
 }
 
 function WithdrawIcon() {

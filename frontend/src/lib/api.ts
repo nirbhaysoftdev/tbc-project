@@ -23,6 +23,12 @@ api.interceptors.response.use(
     if (typeof window !== 'undefined') {
       const status = err.response?.status;
       const path   = window.location.pathname;
+      // A sign-in attempt that comes back PENDING must stay on the page so the
+      // form can show why. There is no session to redirect into either - the
+      // pending screen would only bounce straight back to /login.
+      const isAuthAttempt = /\/auth\/(login|google|register)$/.test(
+        err.config?.url || '',
+      );
 
       if (status === 401) {
         Cookies.remove('tbc_token');
@@ -31,6 +37,7 @@ api.interceptors.response.use(
       } else if (
         status === 403 &&
         err.response?.data?.status === 'PENDING' &&
+        !isAuthAttempt &&
         !path.startsWith('/onboarding')
       ) {
         window.location.href = '/onboarding/pending';
@@ -52,6 +59,9 @@ export const authAPI = {
   login:     (email: string, password: string)  => api.post('/auth/login',      { email, password }),
   logout:    ()                                 => api.post('/auth/logout'),
   me:        ()                                 => api.get('/auth/me'),
+  forgotPassword: (email: string)                           => api.post('/auth/forgot-password', { email }),
+  resetPassword:  (email: string, code: string, newPassword: string) =>
+    api.post('/auth/reset-password', { email, code, newPassword }),
 };
 
 // ── Dashboard ─────────────────────────────────
@@ -70,9 +80,14 @@ export const transactionsAPI = {
 // ── Admin ─────────────────────────────────────
 export const adminAPI = {
   getStats:        ()                      => api.get('/admin/stats'),
+  // Counts behind the gold notification badge (pending members / requests)
+  getNotifications:()                      => api.get('/admin/notifications'),
   getMembers:      (params?: Record<string, string>) => api.get('/admin/members', { params }),
   getPending:      (params?: Record<string, string>) => api.get('/admin/pending', { params }),
-  approveUser:     (id: string, data?: object) => api.post(`/admin/users/${id}/approve`, data ?? {}),
+  approveUser:     (id: string, data?: FormData | object) =>
+    data instanceof FormData
+      ? api.post(`/admin/users/${id}/approve`, data, { headers: { 'Content-Type': 'multipart/form-data' } })
+      : api.post(`/admin/users/${id}/approve`, data ?? {}),
   rejectUser:      (id: string, reason?: string) => api.post(`/admin/users/${id}/reject`, { reason }),
   createMember:    (data: FormData)        => api.post('/admin/members', data, { headers: { 'Content-Type': 'multipart/form-data' } }),
   updateMember:    (id: string, data: FormData) => api.put(`/admin/members/${id}`, data, { headers: { 'Content-Type': 'multipart/form-data' } }),
@@ -80,7 +95,52 @@ export const adminAPI = {
   toggleFreeze:    (id: string)            => api.put(`/admin/members/${id}/freeze`),
   updateWallet:    (id: string, data: object) => api.put(`/admin/members/${id}/wallet`, data),
   addTransaction:  (data: object)          => api.post('/admin/transactions', data),
+  // One member's full money picture (detail page) and the statement email it sends
+  getMemberOverview:   (id: string)                 => api.get(`/admin/members/${id}/overview`),
+  sendMemberStatement: (id: string, note?: string)  => api.post(`/admin/members/${id}/send-statement`, note ? { note } : {}),
   exportData:      ()                      => api.get('/admin/export', { responseType: 'blob' }),
+  // Activity logs (emails, member/investment requests, profit, withdrawals)
+  getLogs:         (params?: Record<string, string>) => api.get('/admin/logs', { params }),
+  getLogTypes:     ()                      => api.get('/admin/logs/types'),
+};
+
+// ── Investment / Profit Engine (admin) ────────
+// Projects come from the Deal Room. `projectId` is always optional: capital
+// booked with no project is a supported, permanent case.
+export const investmentAPI = {
+  listProjects:         ()                      => api.get('/admin/investment-projects'),
+  listInvestments:      (params?: Record<string, string>) => api.get('/admin/investments', { params }),
+  createInvestment:     (data: { userId: string; projectId?: string | null; amount: number | string; investedAt: string; description?: string }) =>
+    api.post('/admin/investments', data),
+  returnCapital:        (investmentId: string, data: { amount?: number | string; description?: string }) =>
+    api.post(`/admin/investments/${investmentId}/return-capital`, data),
+  createOneTimeProfit:  (data: { userId: string; projectId?: string | null; profitType: 'ONE_TIME_AMOUNT' | 'ONE_TIME_PERCENT'; value: number | string; effectiveDate: string; description?: string }) =>
+    api.post('/admin/profit/one-time', data),
+  setMonthlyProfitConfig: (data: { userId: string; projectId?: string | null; rate: number | string; monthlyProfitDay?: number; effectiveFrom: string }) =>
+    api.put('/admin/profit/monthly-config', data),
+  previewMonthlyProfit: (userId: string, projectId?: string | null) =>
+    api.get('/admin/profit/monthly-preview', { params: { userId, projectId: projectId || '' } }),
+  listProfitRecords:    (params?: Record<string, string>) => api.get('/admin/profit/records', { params }),
+  runMonthlyGeneration: (periodDate?: string)   => api.post('/admin/profit/generate-monthly', periodDate ? { periodDate } : {}),
+};
+
+// ── Investment Requests ────────────────────────
+// A member can only ASK to invest. Admin confirms the money arrived offline and
+// completes the request with the ACTUAL amount received - that is the only step
+// that creates capital, wallet movement and a transaction.
+export const investmentRequestAPI = {
+  // member
+  create:        (projectId: string, data: { amount: number | string; message?: string }) =>
+    api.post(`/projects/${projectId}/invest`, data),
+  getMine:       ()           => api.get('/projects/my-investment-requests'),
+  cancel:        (id: string) => api.put(`/projects/investment-requests/${id}/cancel`, {}),
+  // admin
+  list:            (params?: Record<string, string>) => api.get('/admin/investment-requests', { params }),
+  getOne:          (id: string) => api.get(`/admin/investment-requests/${id}`),
+  paymentReceived: (id: string) => api.put(`/admin/investment-requests/${id}/payment-received`, {}),
+  reject:          (id: string, reason?: string) => api.put(`/admin/investment-requests/${id}/reject`, { reason }),
+  complete:        (id: string, data: { actualAmount: number | string; investedAt?: string; description?: string }) =>
+    api.post(`/admin/investment-requests/${id}/complete`, data),
 };
 
 // ── MMS - User Onboarding ─────────────────────
@@ -95,12 +155,6 @@ export const mmsAPI = {
 // ── Profile ───────────────────────────────────
 export const profileAPI = {
   update: (data: FormData) => api.put('/profile', data, { headers: { 'Content-Type': 'multipart/form-data' } }),
-};
-
-// ── System (dev notice - always from DB) ──────
-export const systemAPI = {
-  getNotice:    ()                    => api.get('/system/notice'),
-  updateNotice: (text: string)        => api.put('/system/notice', { text }),
 };
 
 // ── Helpers ───────────────────────────────────
@@ -143,8 +197,6 @@ export const communityAPI = {
   getMembers:   (params?: Record<string, string>) => api.get('/community/members', { params }),
   getMember:    (id: string)                    => api.get(`/community/members/${id}`),
   updateProfile:(data: object)                  => api.put('/community/profile', data),
-  getNotifications:     ()                      => api.get('/community/notifications'),
-  markNotificationRead: (id: string)            => api.put(`/community/notifications/${id}/read`),
 };
 
 // ── Events ─────────────────────────────────────
@@ -176,4 +228,17 @@ export const projectsAPI = {
   invest:           (id: string, data: object) => api.post(`/projects/${id}/invest`, data),
   addMilestone:     (id: string, data: object) => api.post(`/projects/${id}/milestones`, data),
   getMyInvestments: ()                        => api.get('/projects/my-investments'),
+
+  // ── Deal-room media (images / PDFs / video) ──
+  // A listing returns a short-lived stream URL per item. Those URLs are the only
+  // way to reach the bytes, and they are for viewing in-page: there is
+  // deliberately no download endpoint. See projectMediaController.
+  listMedia:        (id: string)              => api.get(`/projects/${id}/media`),
+  uploadMedia:      (id: string, data: FormData) =>
+    api.post(`/projects/${id}/media`, data, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  removeMedia:      (id: string, docId: string) => api.delete(`/projects/${id}/media/${docId}`),
 };
+
+// Media stream URLs come back relative to the API root, so they need the same
+// base as the axios client when handed to an <img>, <video> or <iframe>.
+export const mediaSrc = (streamUrl: string) => `${API_URL}${streamUrl}`;

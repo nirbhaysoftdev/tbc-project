@@ -2,6 +2,9 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSidebar } from '../../lib/sidebar';
+import { useAuth } from '@/lib/auth';
+import { useAdminAlerts } from '@/lib/adminAlerts';
+import NotifBadge from './NotifBadge';
 
 const NAV_ITEMS = [
   { label: 'Dashboard',    href: '/dashboard' },
@@ -14,6 +17,9 @@ const NAV_ITEMS = [
 export default function Topbar() {
   const pathname = usePathname();
   const { setOpen } = useSidebar();
+  const { alerts } = useAdminAlerts();
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'ADMIN';
 
   return (
     <header className="topbar">
@@ -49,12 +55,24 @@ export default function Topbar() {
 
       {/* Actions */}
       <div className="topbar-actions">
-        <button className="topbar-icon-btn">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5">
-            <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/>
-            <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" strokeLinecap="round"/>
-          </svg>
-        </button>
+{(() => {
+          const bell = (
+            <>
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/>
+                <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" strokeLinecap="round"/>
+              </svg>
+              <NotifBadge count={alerts.total} className="notif-badge-float" />
+            </>
+          );
+          const title = alerts.total > 0
+            ? `${alerts.newMembers} new member(s), ${alerts.investmentRequests} investment request(s), ${alerts.withdrawRequests} withdrawal request(s)`
+            : 'No pending updates';
+          // Only admins have a queue to jump to, so only they get a link.
+          return isAdmin
+            ? <Link href="/admin" className="topbar-icon-btn" style={{ position: 'relative' }} title={title}>{bell}</Link>
+            : <button className="topbar-icon-btn" style={{ position: 'relative' }} title={title}>{bell}</button>;
+        })()}
         <button className="topbar-icon-btn">
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5">
             <rect x="3" y="3" width="18" height="18" rx="2"/>
