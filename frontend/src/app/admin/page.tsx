@@ -9,12 +9,8 @@ import { COUNTRIES, DEFAULT_COUNTRY } from '@/lib/countries';
 import InvestmentsTab from '@/components/admin/InvestmentsTab';
 import InvestmentRequestsTab from '@/components/admin/InvestmentRequestsTab';
 import NotifBadge from '@/components/layout/NotifBadge';
+import { openDocument } from '@/lib/openDocument';
 import { useAdminAlerts } from '@/lib/adminAlerts';
-
-const FILE_BASE = process.env.NODE_ENV === 'production'
-  ? (process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || '')
-  : '';
-const fileUrl = (path?: string | null) => path ? `${FILE_BASE}${path}` : null;
 
 function AdminContent() {
   const router = useRouter();
@@ -514,10 +510,13 @@ function AdminContent() {
                 <div key={doc.label} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', fontSize:12 }}>
                   <span style={{ color:'var(--text-secondary)' }}>{doc.label}</span>
                   {doc.url ? (
-                    <a href={fileUrl(doc.url) || '#'} target="_blank" rel="noopener noreferrer"
-                      style={{ color:'var(--accent-blue)', fontWeight:600 }}>
+                    <button onClick={() => openDocument(doc.url)}
+                      style={{
+                        color:'var(--accent-blue)', fontWeight:600, fontSize:12, cursor:'pointer',
+                        background:'none', border:'none', padding:0,
+                      }}>
                       View
-                    </a>
+                    </button>
                   ) : (
                     <span style={{ color:'var(--text-muted)' }}>Not provided</span>
                   )}

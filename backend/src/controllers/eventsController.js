@@ -1,5 +1,6 @@
 // src/controllers/eventsController.js
 const prisma = require('../utils/prismaClient');
+const { memberCardSelect } = require('../services/memberVisibility');
 
 // ── Get all events ────────────────────────────
 const getEvents = async (req, res) => {
@@ -47,7 +48,7 @@ const getEvent = async (req, res) => {
         _count: { select: { registrations: true } },
         registrations: {
           include: {
-            user: { select: { id: true, name: true, profilePhoto: true } },
+            user: { select: memberCardSelect() },
           },
         },
       },

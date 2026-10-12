@@ -20,6 +20,8 @@ const eventsRoutes      = require('./routes/events');
 const messagesRoutes    = require('./routes/messages');
 const projectsRoutes    = require('./routes/projects');
 const userRoutes        = require('./routes/user');
+const uploadsRoutes     = require('./routes/uploads');
+const filesRoutes       = require('./routes/files');
 
 const app  = express();
 const PORT = process.env.PORT || 4000;
@@ -37,13 +39,14 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// ── Static uploads ────────────────────────────
-// ── Static uploads ────────────────────────────
+// ── Uploads ───────────────────────────────────
+// NOT express.static: identity documents live beside profile photos, so every
+// request is authorised against the database. See routes/uploads.js.
 app.use('/uploads', (req, res, next) => {
   res.header('Access-Control-Allow-Origin', process.env.FRONTEND_URL || 'http://localhost:3000');
   res.header('Access-Control-Allow-Methods', 'GET');
   next();
-}, express.static(path.join(__dirname, '../uploads')));
+}, uploadsRoutes);
 // ── Global rate limiter ───────────────────────
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 min
@@ -61,6 +64,7 @@ const authLimiter = rateLimit({
 
 // ── Routes ────────────────────────────────────
 app.use('/api/auth',         authLimiter, authRoutes);
+app.use('/api/files',        filesRoutes);
 app.use('/api/dashboard',    dashboardRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/admin',        adminRoutes);

@@ -214,7 +214,7 @@ function welcomePendingHtml({ name }) {
       Hi ${name || 'there'}, thank you for applying to join <strong style="color:#c8a84b;">Trillion Business Community</strong>.
     </div>
     <div style="font-size:14px;line-height:1.6;color:#aab0c0;padding-top:12px;">
-      Your account is now in <strong style="color:#c8a84b;">pending review</strong>. Our team will verify your details and notify you by email as soon as your membership is approved. You won't have full portal access until then.
+      Your membership is now in <strong style="color:#c8a84b;">pending review</strong>. Our team will verify your details and notify you by email as soon as your membership is approved. You won't have full portal access until then.
     </div>`;
   return shell({
     title: 'Application received',
@@ -228,7 +228,7 @@ async function sendWelcomePendingEmail(user) {
   return sendMail({
     to: user.email,
     subject: 'Your TBC membership application is under review',
-    text: `Hi ${user.name || ''}, thank you for applying to join Trillion Business Community. Your account is pending admin review - we will email you as soon as it is approved.`,
+    text: `Hi ${user.name || ''}, thank you for applying to join Trillion Business Community. Your membership is pending admin review - we will email you as soon as it is approved.`,
     html: welcomePendingHtml({ name: user.name }),
   });
 }
@@ -249,11 +249,11 @@ function accountApprovedHtml({ name, loginUrl, walletEnabled = true }) {
       ${walletLine}
     </div>
     <div style="text-align:center;padding-top:22px;">
-      ${goldButton(loginUrl, 'Sign in to your account')}
+      ${goldButton(loginUrl, 'Sign in to your membership')}
     </div>`;
   return shell({
     title: 'Your membership has been activated',
-    intro: 'Welcome to Trillion Business Community - your account is now active.',
+    intro: 'Welcome to Trillion Business Community - your membership is now active.',
     bodyHtml: body,
     footerNote: 'Need help getting started? Reply to this email and our team will be in touch.',
   });
@@ -283,14 +283,14 @@ function memberWelcomeHtml({ name, email, tempPassword, loginUrl, walletEnabled 
     </div>
     <div style="padding-top:16px;">${details}</div>
     <div style="text-align:center;padding-top:22px;">
-      ${goldButton(loginUrl, 'Sign in to your account')}
+      ${goldButton(loginUrl, 'Sign in to your membership')}
     </div>
     <div style="font-size:13px;line-height:1.6;color:#7a819a;padding-top:20px;">
       For your security, please sign in and change your password from <strong style="color:#c8a84b;">Settings</strong> as soon as possible.
     </div>`;
   return shell({
     title: 'Welcome to the community',
-    intro: 'Your member account has been created by our team.',
+    intro: 'Your membership has been created by our team.',
     bodyHtml: body,
     footerNote: "If you weren't expecting this email, please contact our team.",
   });
@@ -419,7 +419,7 @@ function investmentInvoiceHtml({ user, amount, projectTitle, investedAt, docNumb
   const body = `
     <div style="font-size:14px;line-height:1.6;color:#aab0c0;padding-bottom:18px;">
       Hi ${user.name || 'there'}, we confirm receipt of your investment. Your capital has been recorded
-      against ${projectTitle ? `<strong style="color:#c8a84b;">${projectTitle}</strong>` : 'your account'}
+      against ${projectTitle ? `<strong style="color:#c8a84b;">${projectTitle}</strong>` : 'your membership'}
       and is now visible in your member portal.
     </div>
     ${documentShell({
@@ -469,7 +469,7 @@ function profitStatementHtml({ user, amount, projectTitle, rate, capitalBase, pe
 
   const body = `
     <div style="font-size:14px;line-height:1.6;color:#aab0c0;padding-bottom:18px;">
-      Hi ${user.name || 'there'}, profit has been credited to your account
+      Hi ${user.name || 'there'}, profit has been credited to your membership
       ${projectTitle ? `from <strong style="color:#c8a84b;">${projectTitle}</strong>` : ''}.
       It has been added to your available profit and can be withdrawn.
     </div>
@@ -490,7 +490,7 @@ function profitStatementHtml({ user, amount, projectTitle, rate, capitalBase, pe
 
   return shell({
     title: 'Profit credited',
-    intro: 'A profit distribution has been added to your account.',
+    intro: 'A profit distribution has been added to your membership.',
     bodyHtml: body,
     footerNote: `Issued by ${COMPANY.legalName}. Please retain this document for your records.`,
   });
@@ -501,7 +501,7 @@ async function sendProfitStatementEmail({ user, amount, projectTitle, rate, capi
   return sendMail({
     to: user.email,
     subject: `Profit credited ${docNumber} - ${eur(amount)}`,
-    text: `Hi ${user.name || ''}, profit of ${eur(amount)} has been credited to your account.\n\n`
+    text: `Hi ${user.name || ''}, profit of ${eur(amount)} has been credited to your membership.\n\n`
         + `Statement: ${docNumber}\nProject: ${projectLine(projectTitle)}\n`
         + `${rate != null ? `Rate: ${rate}%\n` : ''}${capitalBase != null ? `Calculated on capital: ${eur(capitalBase)}\n` : ''}`
         + `\nIssued by ${COMPANY.legalName}.`,
@@ -569,7 +569,7 @@ function adminNewSignupHtml({ user, adminUrl }) {
     <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;">
       ${detailRow('Name',         user.name || '-')}
       ${detailRow('Email',        user.email)}
-      ${detailRow('Account type', user.accountType || '-')}
+      ${detailRow('Membership type', user.accountType || '-')}
       ${detailRow('Signup via',   user.signupMethod || 'email')}
       ${detailRow('Received',     new Date().toISOString().replace('T', ' ').slice(0, 19) + ' UTC')}
     </table>`;
@@ -593,7 +593,7 @@ async function sendAdminNewSignupNotification(user) {
   return sendMail({
     to,
     subject: `New TBC application: ${user.name || user.email}`,
-    text: `New membership application received.\n\nName: ${user.name || '-'}\nEmail: ${user.email}\nAccount type: ${user.accountType || '-'}\nSignup via: ${user.signupMethod || 'email'}\n\nOpen admin portal: ${adminUrl}`,
+    text: `New membership application received.\n\nName: ${user.name || '-'}\nEmail: ${user.email}\nMembership type: ${user.accountType || '-'}\nSignup via: ${user.signupMethod || 'email'}\n\nOpen admin portal: ${adminUrl}`,
     html: adminNewSignupHtml({ user, adminUrl }),
   });
 }
@@ -904,7 +904,7 @@ function memberStatementHtml({ overview, docNumber, note }) {
 
   return shell({
     title: 'Your portfolio statement',
-    intro: `Hi ${member.name || 'there'}, here is the complete picture of your capital, profit and account
+    intro: `Hi ${member.name || 'there'}, here is the complete picture of your capital, profit and membership
             activity with Trillion Business Community as at ${longDate(overview.generatedAt)}.`,
     bodyHtml: body,
     footerNote: `Invested capital is not withdrawable — only available profit is.

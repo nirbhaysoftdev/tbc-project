@@ -185,6 +185,13 @@ export const withdrawAPI = {
   reject:        (id: string) => api.put(`/withdraw/admin/${id}/reject`, {}),
 };
 
+// ── Private files ──────────────────────────────
+// Identity and KYC documents are not publicly readable. Ask for a short-lived
+// signed URL, then open that - a plain <a href> cannot carry the Bearer token.
+export const filesAPI = {
+  sign: (path: string) => api.get('/files/sign', { params: { path } }),
+};
+
 // ── Community ──────────────────────────────────
 export const communityAPI = {
   getStats:     ()                              => api.get('/community/stats'),

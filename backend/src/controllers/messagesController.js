@@ -1,5 +1,6 @@
 // src/controllers/messagesController.js
 const prisma = require('../utils/prismaClient');
+const { memberCardSelect } = require('../services/memberVisibility');
 
 // ── Get conversations (inbox) ─────────────────
 // Returns one latest message per unique conversation partner
@@ -36,8 +37,7 @@ const getConversations = async (req, res) => {
 
         const partner = await prisma.user.findUnique({
           where:  { id: partnerId },
-          select: { id: true, name: true, profilePhoto: true,
-                    profile: { select: { company: true } } },
+          select: memberCardSelect(),
         });
 
         return { partner, lastMessage, unreadCount };

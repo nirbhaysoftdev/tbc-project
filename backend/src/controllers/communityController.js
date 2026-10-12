@@ -1,5 +1,6 @@
 // src/controllers/communityController.js
 const prisma = require('../utils/prismaClient');
+const { memberCardSelect, memberProfileSelect } = require('../services/memberVisibility');
 
 // ── Get feed posts ────────────────────────────
 const getFeed = async (req, res) => {
@@ -12,12 +13,7 @@ const getFeed = async (req, res) => {
       prisma.post.findMany({
         where,
         include: {
-          author: {
-            select: {
-              id: true, name: true, profilePhoto: true,
-                            profile: { select: { company: true, country: true, city: true } },
-            },
-          },
+          author: { select: memberCardSelect() },
           _count: { select: { comments: true, likes: true } },
           likes:  { where: { userId: req.user.id }, select: { id: true } },
         },
@@ -66,12 +62,7 @@ const createPost = async (req, res) => {
         eventDate:  eventDate ? new Date(eventDate)    : null,
       },
       include: {
-        author: {
-          select: {
-            id: true, name: true, profilePhoto: true,
-                        profile: { select: { company: true, country: true } },
-          },
-        },
+        author: { select: memberCardSelect() },
       },
     });
 
@@ -127,9 +118,7 @@ const getComments = async (req, res) => {
     const comments = await prisma.comment.findMany({
       where: { postId: req.params.id },
       include: {
-        author: {
-          select: { id: true, name: true, profilePhoto: true },
-        },
+        author: { select: memberCardSelect() },
       },
       orderBy: { createdAt: 'asc' },
     });
@@ -149,7 +138,7 @@ const addComment = async (req, res) => {
     const comment = await prisma.comment.create({
       data: { postId: req.params.id, authorId: req.user.id, content: content.trim() },
       include: {
-        author: { select: { id: true, name: true, profilePhoto: true } },
+        author: { select: memberCardSelect() },
       },
     });
     res.status(201).json({ comment });
@@ -180,11 +169,7 @@ const getMembers = async (req, res) => {
     const [members, total] = await Promise.all([
       prisma.user.findMany({
         where,
-        select: {
-          id: true, name: true, profilePhoto: true,
-          createdAt: true,
-          profile: { select: { company: true, industry: true, country: true, bio: true } },
-        },
+        select: memberCardSelect(),
         orderBy: { createdAt: 'desc' },
         skip:    (parseInt(page) - 1) * parseInt(limit),
         take:    parseInt(limit),
@@ -202,15 +187,10 @@ const getMembers = async (req, res) => {
 // ── Get single member profile ─────────────────
 const getMemberProfile = async (req, res) => {
   try {
+    const isSelfOrAdmin = req.user.id === req.params.id || req.user.role === 'ADMIN';
     const member = await prisma.user.findUnique({
-      where: { id: req.params.id },
-      select: {
-        id: true, name: true, profilePhoto: true,
-        kycStatus: true, createdAt: true,
-        profile: true,
-        membership: true,
-        _count: { select: { posts: true, investments: true, projectsOwned: true } },
-      },
+      where:  { id: req.params.id },
+      select: memberProfileSelect({ isSelfOrAdmin }),
     });
     if (!member) return res.status(404).json({ error: 'Member not found' });
     res.json({ member });

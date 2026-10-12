@@ -2,6 +2,7 @@
 const fs = require('fs');
 const path = require('path');
 const prisma = require('../utils/prismaClient');
+const { memberCardSelect } = require('../services/memberVisibility');
 const { logActivity } = require('../services/activityLog');
 const mediaCtrl = require('./projectMediaController');
 const investmentRequestController = require('./investmentRequestController');
@@ -22,7 +23,7 @@ const getProjects = async (req, res) => {
       prisma.project.findMany({
         where,
         include: {
-          owner: { select: { id: true, name: true, profilePhoto: true } },
+          owner: { select: memberCardSelect() },
           _count: { select: { investments: true } },
           investments: {
             where: { investorId: req.user.id },
@@ -73,8 +74,7 @@ const getProject = async (req, res) => {
       where: { id: req.params.id },
       include: {
         owner: {
-          select: { id: true, name: true, profilePhoto: true,
-                    profile: { select: { company: true, country: true } } },
+          select: memberCardSelect(),
         },
         // Media metadata only. The stored path never leaves the server, and
         // viewable URLs come from GET /projects/:id/media, which mints a
@@ -87,7 +87,7 @@ const getProject = async (req, res) => {
         milestones:  { orderBy: { targetDate: 'asc' } },
         investments: {
           include: {
-            investor: { select: { id: true, name: true, profilePhoto: true } },
+            investor: { select: memberCardSelect() },
           },
         },
         walletInvestments: {
@@ -155,7 +155,7 @@ const createProject = async (req, res) => {
         status:          'ACTIVE',
       },
       include: {
-        owner: { select: { id: true, name: true, profilePhoto: true } },
+        owner: { select: memberCardSelect() },
       },
     });
 

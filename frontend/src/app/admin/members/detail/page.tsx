@@ -18,6 +18,7 @@ import {
   PortfolioChart, MonthlyActivityChart, ProjectSplitChart,
 } from '@/components/admin/MemberCharts';
 import MemberCapitalModal from '@/components/admin/MemberCapitalModal';
+import { openDocument } from '@/lib/openDocument';
 
 const FILE_BASE = process.env.NODE_ENV === 'production'
   ? (process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || '')
@@ -479,22 +480,22 @@ function MemberDetailContent() {
           </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {docs.filter(d => d.url).map(d => (
-              <a key={d.label} href={fileUrl(d.url) || '#'} target="_blank" rel="noopener noreferrer"
+              <button key={d.label} onClick={() => openDocument(d.url)}
                 style={{
-                  padding: '6px 12px', fontSize: 12, borderRadius: 6, textDecoration: 'none',
+                  padding: '6px 12px', fontSize: 12, borderRadius: 6, cursor: 'pointer',
                   border: '1px solid rgba(58,111,255,0.3)', background: 'rgba(58,111,255,0.1)', color: 'var(--accent-blue)',
                 }}>
                 {d.label}
-              </a>
+              </button>
             ))}
             {(member.kycDocuments || []).map((k: any) => (
-              <a key={k.id} href={fileUrl(k.documentUrl) || '#'} target="_blank" rel="noopener noreferrer"
+              <button key={k.id} onClick={() => openDocument(k.documentUrl)}
                 style={{
-                  padding: '6px 12px', fontSize: 12, borderRadius: 6, textDecoration: 'none',
+                  padding: '6px 12px', fontSize: 12, borderRadius: 6, cursor: 'pointer',
                   border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)',
                 }}>
                 {k.documentType} ({k.status})
-              </a>
+              </button>
             ))}
             {docs.every(d => !d.url) && (member.kycDocuments || []).length === 0 && (
               <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>No documents on file.</p>
