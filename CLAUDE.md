@@ -173,7 +173,28 @@ server first if anything was ever hand-edited there.
 4. Confirm Projects and Companies appear in the sidebar for an admin *and* for
    a member.
 
-## Uploads are authorised, never static
+## Private files: two mechanisms, do not mix them
+
+There are **two** separate systems for files that must not be public. Which one
+a new file belongs in depends on who may read it, and putting it in the wrong
+one either leaks it or makes it unreachable.
+
+| | `/uploads` + `fileAccess` | Ticketed media streaming |
+|---|---|---|
+| Files | profile photos, KYC and identity documents, CVs | project and company images, PDFs, Word, video |
+| On disk | `backend/uploads/` | `backend/storage/{project,company}-media/` |
+| Served by | `routes/uploads.js` | `routes/{projects,companies}.js` media endpoints |
+| Authorised by | `services/fileAccess.js`, per request, against the database | a short-lived JWT ticket scoped to one document and one viewer |
+| Reached from the UI by | `openDocument()`, `useSignedSrc()` | the `streamUrl` the media listing returns |
+| Readable by | depends on the `Kind` below | any active member who can see the project or company |
+
+**Choosing between them.** Is the file *about a person* and readable only by
+them and admins? That is `/uploads` + `fileAccess`. Is it *material attached to
+a project or company*, readable by any member who can open that page but never
+downloadable? That is media streaming. A member's passport must never go
+through the media endpoints, which would expose it to every other member.
+
+### `/uploads` + `fileAccess`
 
 `/uploads` is served by `routes/uploads.js`, not `express.static`. Identity
 documents live in the same directories as profile photos — the admin "Add
@@ -189,10 +210,15 @@ database:
 | `DOC`     | passport, resident ID, trade licence, CV, KYC scans | the owner or an admin |
 | `UNKNOWN` | nothing in the database references it | nobody (404) |
 
-**To add a new private upload:** store its path on a model, then add that
-column to the `DOC` branch of `classifyStoredUrl`. Nothing else is needed — no
-route or nginx change. A file no column points at returns 404 to everyone,
-including admins, so a "missing" upload usually means an unrecorded path.
+**To add a new private upload of this kind:** store its path on a model, then
+add that column to the `DOC` branch of `classifyStoredUrl`. Nothing else is
+needed — no route or nginx change. A file no column points at returns 404 to
+everyone, including admins, so a "missing" upload usually means an unrecorded
+path.
+
+This is **not** where project or company media goes. Those files are never
+referenced by a path in a payload at all, so `classifyStoredUrl` would never
+see them; registering a column there achieves nothing.
 
 In the UI, open documents with `openDocument()` and render secured images with
 `useSignedSrc()`. A plain `<a href>` or `<img src>` gets 403: the browser
@@ -201,6 +227,48 @@ short-lived signed URL first.
 
 nginx must proxy `/uploads` to the API. If it ever serves that path with
 `alias` or `root`, every check above is bypassed and the files are public.
+
+### Ticketed media streaming
+
+`controllers/projectMediaController.js` and `controllers/companyMediaController.js`
+are the same design twice, deliberately:
+
+- the bytes live in `backend/storage/*-media/`, which **no route serves
+  directly** and nginx does not know about;
+- the stored filename is random and the stored path **never leaves the server**;
+- a media listing returns a `streamUrl` carrying a JWT ticket scoped to one
+  document and one viewer, valid for an hour. The session token is never put in
+  a URL, where it would leak through logs and referrers;
+- the stream always sends `Content-Disposition: inline`, so a browser renders
+  the file instead of offering to save it.
+
+An `<img>`, `<video>` or `<iframe>` cannot send an `Authorization` header, which
+is the whole reason tickets exist. That is also why the stream routes are
+declared **above** `router.use(authenticate)` in both route files — moving them
+below it would break every viewer.
+
+**To add a new kind of project or company media:** add its mime type to
+`KIND_BY_MIME`, give it a ceiling in `services/uploadLimits.js`, and teach
+`SecureViewer` how to render it. Do not add a download endpoint; there is
+deliberately none.
+
+Word documents are the one exception to "stream the bytes": no browser renders
+`.docx`, and handing the file to Office Online or Google's viewer would mean
+publishing it to a third party. So `.docx` is converted to sanitised HTML
+server-side with `mammoth` and rendered in the portal. Legacy binary `.doc`
+cannot be converted and says so.
+
+Every preview carries a repeated "Trillion Business Community" copyright mark.
+There are two viewer components — `components/projects/SecureViewer.tsx` (used
+by both the project and company modules) and the deal room's older
+`components/community/ProjectMedia.tsx` — and they share the one `.pj-watermark`
+rule, so the mark is styled in a single place.
+
+It asserts ownership; it does not protect the file. **Nothing here is DRM** —
+the bytes must reach the browser to be displayed, so devtools, the network tab
+and a screenshot all remain. The ticketed, permission-checked endpoint is the
+part that actually protects the file; the rest removes the download paths a
+member would actually use.
 
 ## What members may see about each other
 
