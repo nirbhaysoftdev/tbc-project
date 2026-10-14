@@ -30,6 +30,7 @@ const path = require('path');
 const jwt = require('jsonwebtoken');
 const mammoth = require('mammoth');
 const prisma = require('../utils/prismaClient');
+const { checkSize } = require('../services/uploadLimits');
 const sanitizeHtml = require('sanitize-html');
 
 const MEDIA_DIR = path.join(__dirname, '..', '..', 'storage', 'company-media');
@@ -162,6 +163,21 @@ const uploadMedia = async (req, res) => {
     // The client says what the batch is for (a logo upload, a gallery upload);
     // anything unrecognised falls back to the file's own kind.
     const requested = PURPOSES.includes(req.body.purpose) ? req.body.purpose : null;
+
+    // ── Size limits ──
+    // Checked here rather than in multer's `limits`, which applies one ceiling
+    // to the whole request and cannot vary it by mime type. The whole batch is
+    // validated before anything is stored, and a single oversized file rejects
+    // all of it: an upload where some files silently went missing is harder to
+    // understand than one that plainly refused.
+    const tooLarge = files
+      .map((file) => checkSize(file, kindOf(file.mimetype)))
+      .filter(Boolean);
+
+    if (tooLarge.length > 0) {
+      files.forEach((file) => fs.unlink(file.path, () => {}));
+      return res.status(413).json({ error: tooLarge.join(' ') });
+    }
 
     const created = [];
     for (const file of files) {

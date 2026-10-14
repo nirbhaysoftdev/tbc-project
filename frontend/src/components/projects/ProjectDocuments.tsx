@@ -10,6 +10,7 @@
 // through whichever group was opened.
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { projectsAPI, mediaSrc, formatNumber } from '@/lib/api';
+import { checkFileSizes, documentLimitHint } from '@/lib/uploadLimits';
 import SecureViewer, { MediaItem, noCopy } from './SecureViewer';
 
 const readableSize = (bytes?: number) => {
@@ -23,12 +24,10 @@ const readableSize = (bytes?: number) => {
 const ACCEPT = 'image/jpeg,image/png,image/webp,image/gif,application/pdf,video/mp4,video/webm,video/quicktime';
 
 export default function ProjectDocuments({
-  projectId, canManage, viewerLabel, bannerDocId, onSetBanner, onChanged,
+  projectId, canManage, bannerDocId, onSetBanner, onChanged,
 }: {
   projectId: string;
   canManage?: boolean;
-  /** Who is viewing — watermarked onto every preview. */
-  viewerLabel?: string;
   bannerDocId?: string | null;
   /** Admin picked a different banner image. */
   onSetBanner?: (docId: string) => void;
@@ -58,6 +57,13 @@ export default function ProjectDocuments({
 
   const upload = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
+
+    // Checked before the request so an oversized file is refused instantly
+    // rather than after it has finished uploading. The server enforces the
+    // same ceilings regardless (backend services/uploadLimits.js).
+    const tooLarge = checkFileSizes(files);
+    if (tooLarge) { setError(tooLarge); return; }
+
     setUploading(true);
     setError('');
     try {
@@ -134,7 +140,8 @@ export default function ProjectDocuments({
     <label className={`pj-drop${uploading ? ' over' : ''}`} style={{ display: 'block' }}>
       <div className="pj-drop-title">{uploading ? 'Uploading…' : 'Add images, PDFs or video'}</div>
       <div className="pj-drop-sub">
-        Multiple files at once. Stored privately and viewable only inside the portal.
+        Multiple files at once — PDFs {documentLimitHint}. Stored privately and viewable
+        only inside the portal.
       </div>
       <input
         type="file"
@@ -178,8 +185,8 @@ export default function ProjectDocuments({
         )}
 
         <p className="pj-viewer-note" style={{ marginTop: 14 }}>
-          Documents open in the portal’s own viewer. They are not downloadable and every
-          preview is watermarked.
+          Documents open in the portal’s own viewer. They are not downloadable, and every
+          preview carries the Trillion Business Community copyright mark.
         </p>
       </div>
 
@@ -188,7 +195,6 @@ export default function ProjectDocuments({
       {viewing && (
         <SecureViewer
           item={viewing.group[viewing.index]}
-          viewerLabel={viewerLabel}
           position={{ index: viewing.index, total: viewing.group.length }}
           onClose={() => setViewing(null)}
           onPrev={() => step(-1)}

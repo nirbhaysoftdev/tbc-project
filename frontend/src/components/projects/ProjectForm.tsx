@@ -17,6 +17,7 @@ import MemberSelect, { Person } from './MemberSelect';
 import RichTextEditor from './RichTextEditor';
 import ProjectDocuments from './ProjectDocuments';
 import { projectsAPI, mediaSrc } from '@/lib/api';
+import { checkFileSizes, documentLimitHint } from '@/lib/uploadLimits';
 
 const CATEGORIES = [
   'REAL_ESTATE', 'ENERGY', 'TECHNOLOGY', 'MANUFACTURING', 'HOSPITALITY',
@@ -86,6 +87,14 @@ export default function ProjectForm({
 
   const addFiles = (files: FileList | File[] | null) => {
     if (!files) return;
+
+    // Rejected at selection, before anything is queued: queueing a file that
+    // the server will refuse means the project saves and the upload then
+    // fails, which is a confusing half-success.
+    const tooLarge = checkFileSizes(files);
+    if (tooLarge) { setError(tooLarge); return; }
+    setError('');
+
     const added = Array.from(files).map((file) => ({
       file,
       preview: file.type.startsWith('image/') ? URL.createObjectURL(file) : null,
@@ -402,7 +411,7 @@ export default function ProjectForm({
         >
           <div className="pj-drop-title">Choose images, PDFs or video</div>
           <div className="pj-drop-sub">
-            Drag files here or click to browse. Several at once is fine.
+            Drag files here or click to browse. Several at once is fine — PDFs {documentLimitHint}.
             {editing ? '' : ' They upload as soon as the project is created.'}
           </div>
         </div>

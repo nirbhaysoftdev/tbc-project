@@ -7,11 +7,12 @@
 //
 // Everything opens in SecureViewer — the same viewer the project module uses,
 // extended there for Word documents and embedded video. Nothing here offers a
-// download or a print, and every preview carries a watermark naming the
-// viewer. The protection that actually holds is the ticketed, permission-
-// checked endpoint on the server; the rest is deterrence.
+// download or a print, and every preview carries the Trillion Business
+// Community copyright mark. The protection that actually holds is the
+// ticketed, permission-checked endpoint on the server; the rest is deterrence.
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { companiesAPI, mediaSrc, formatNumber } from '@/lib/api';
+import { checkFileSizes } from '@/lib/uploadLimits';
 import SecureViewer, { MediaItem, noCopy } from '@/components/projects/SecureViewer';
 
 export interface VideoLink { url: string; title?: string; provider?: string }
@@ -49,12 +50,10 @@ const loadDocHtml = async (item: MediaItem) => {
 };
 
 export default function CompanyMedia({
-  companyId, canManage, viewerLabel, logoDocId, bannerDocId, videoLinks, onChanged,
+  companyId, canManage, logoDocId, bannerDocId, videoLinks, onChanged,
 }: {
   companyId: string;
   canManage?: boolean;
-  /** Who is viewing — watermarked onto every preview. */
-  viewerLabel?: string;
   logoDocId?: string | null;
   bannerDocId?: string | null;
   videoLinks?: VideoLink[] | null;
@@ -107,6 +106,12 @@ export default function CompanyMedia({
 
   const upload = async (files: FileList | null, purpose: string) => {
     if (!files || files.length === 0) return;
+
+    // Refused before the request rather than after the bytes have gone up.
+    // The server enforces the same ceilings (backend services/uploadLimits.js).
+    const tooLarge = checkFileSizes(files);
+    if (tooLarge) { setError(tooLarge); return; }
+
     setUploading(purpose);
     setError('');
     try {
@@ -281,8 +286,8 @@ export default function CompanyMedia({
         </div>
 
         <p className="pj-viewer-note" style={{ marginTop: 14 }}>
-          PDFs and Word documents open in the portal’s own viewer. They are not downloadable
-          and every preview is watermarked. Legacy <code>.doc</code> files cannot be rendered in a
+          PDFs and Word documents open in the portal’s own viewer. They are not downloadable,
+          and every preview carries the community's copyright mark. Legacy <code>.doc</code> files cannot be rendered in a
           browser — upload <code>.docx</code> or PDF to make a document readable here.
         </p>
       </div>
@@ -313,7 +318,6 @@ export default function CompanyMedia({
       {viewing && (
         <SecureViewer
           item={viewing.group[viewing.index]}
-          viewerLabel={viewerLabel}
           position={{ index: viewing.index, total: viewing.group.length }}
           loadDocHtml={loadDocHtml}
           onClose={() => setViewing(null)}

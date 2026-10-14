@@ -20,8 +20,9 @@
 //     item;
 //   - right-click, drag and the common save/print keystrokes are suppressed
 //     while the viewer is open;
-//   - every page carries a watermark naming the person viewing it, so a
-//     screenshot or a photo of the screen is attributable.
+//   - every page carries a repeated "Trillion Business Community" copyright
+//     mark, so a screenshot or a photo of the screen still shows whose
+//     material it is.
 //
 // What it does NOT do, and cannot: stop a determined viewer. The bytes must
 // reach the browser to be displayed, so devtools, the network tab, a phone
@@ -61,28 +62,33 @@ export const noCopy = {
 };
 
 /**
- * The tiled, rotated watermark laid over the media.
+ * The copyright mark laid over every preview.
  *
- * Repeated rather than placed once: a single mark in a corner is trivially
- * cropped out, while a tiled one cannot be removed from a screenshot without
- * destroying the content with it.
+ * One fixed string, the community's name and nothing else — no viewer name, no
+ * email address, no timestamp.
+ *
+ * Tiled and rotated rather than placed once: a single mark in a corner is
+ * trivially cropped out, while a repeated one cannot be removed from a
+ * screenshot without destroying the content along with it.
+ *
+ * Rendered for every kind of media and for every viewer, with no condition on
+ * it — a copyright assertion that is sometimes absent is not an assertion.
  */
-function Watermark({ label }: { label: string }) {
-  if (!label) return null;
-  const tiles = Array.from({ length: 18 });
+const COPYRIGHT_MARK = 'Trillion Business Community';
+
+function Watermark() {
+  const tiles = Array.from({ length: 24 });
   return (
     <div className="pj-watermark" aria-hidden="true">
-      {tiles.map((_, i) => <span key={i}>{label}</span>)}
+      {tiles.map((_, i) => <span key={i}>{COPYRIGHT_MARK}</span>)}
     </div>
   );
 }
 
 export default function SecureViewer({
-  item, viewerLabel, onClose, onPrev, onNext, position, loadDocHtml,
+  item, onClose, onPrev, onNext, position, loadDocHtml,
 }: {
   item: MediaItem;
-  /** Who is viewing — goes into the watermark. */
-  viewerLabel?: string;
   onClose: () => void;
   onPrev?: () => void;
   onNext?: () => void;
@@ -234,12 +240,12 @@ export default function SecureViewer({
             />
           )}
 
-          <Watermark label={viewerLabel || ''} />
+          <Watermark />
         </div>
 
         <p className="pj-viewer-note">
-          For viewing inside the portal only. This material may not be downloaded, copied,
-          printed or shared{viewerLabel ? `. This preview is watermarked to ${viewerLabel}` : ''}.
+          © {new Date().getFullYear()} Trillion Business Community. For viewing inside the
+          portal only — this material may not be downloaded, copied, printed or shared.
         </p>
       </div>
     </div>

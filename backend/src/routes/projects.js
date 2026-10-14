@@ -3,6 +3,7 @@ const express = require('express');
 const path    = require('path');
 const crypto  = require('crypto');
 const multer  = require('multer');
+const { MAX_ANY } = require('../services/uploadLimits');
 const router  = express.Router();
 const { authenticate, requireAdmin, requireActive } = require('../middleware/auth');
 const ctrl = require('../controllers/projectsController');
@@ -32,7 +33,11 @@ const mediaStorage = multer.diskStorage({
 
 const mediaUpload = multer({
   storage: mediaStorage,
-  limits:  { fileSize: 300 * 1024 * 1024 }, // video needs the headroom
+  // The outer ceiling only. Multer applies one limit to the whole request
+  // and cannot vary it by mime type, so the per-kind caps — documents 8 MB —
+  // are enforced in the controller once the file's kind is known.
+  // See services/uploadLimits.js.
+  limits:  { fileSize: MAX_ANY },
   fileFilter: (_req, file, cb) => cb(null, Boolean(mediaCtrl.kindOf(file.mimetype))),
 });
 

@@ -9,7 +9,7 @@
 // export in production, which cannot pre-render a dynamic route for ids that
 // do not exist at build time — the same arrangement as the projects module and
 // the deal room.
-import React, { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import React, { Suspense, useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import ProtectedLayout from '@/components/layout/ProtectedLayout';
@@ -97,12 +97,6 @@ function CompanyDetailInner() {
   // them to anyone else would offer them a 403.
   const canManage = user?.role === 'ADMIN';
 
-  // The watermark on every document preview names the viewer, which is what
-  // makes a leaked screenshot attributable.
-  const viewerLabel = useMemo(
-    () => (user ? [user.name, user.email].filter(Boolean).join(' · ') : ''),
-    [user],
-  );
 
   if (loading) {
     return (
@@ -274,7 +268,6 @@ function CompanyDetailInner() {
               <CompanyMedia
                 companyId={company.id}
                 canManage={canManage}
-                viewerLabel={viewerLabel}
                 logoDocId={company.logoDocId}
                 bannerDocId={company.bannerDocId}
                 videoLinks={company.videoLinks}

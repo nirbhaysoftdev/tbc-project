@@ -24,6 +24,7 @@ const path = require('path');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const prisma = require('../utils/prismaClient');
+const { checkSize } = require('../services/uploadLimits');
 
 const MEDIA_DIR = path.join(__dirname, '..', '..', 'storage', 'project-media');
 const TICKET_TTL_SECONDS = 60 * 60; // long enough to watch a video through
@@ -124,6 +125,21 @@ const uploadMedia = async (req, res) => {
     const files = req.files || [];
     if (files.length === 0) {
       return res.status(400).json({ error: 'No file uploaded. Images, PDFs and video are accepted.' });
+    }
+
+    // ── Size limits ──
+    // Checked here rather than in multer's `limits`, which applies one ceiling
+    // to the whole request and cannot vary it by mime type. The whole batch is
+    // validated before anything is stored, and a single oversized file rejects
+    // all of it: an upload where some files silently went missing is harder to
+    // understand than one that plainly refused.
+    const tooLarge = files
+      .map((file) => checkSize(file, kindOf(file.mimetype)))
+      .filter(Boolean);
+
+    if (tooLarge.length > 0) {
+      files.forEach((file) => fs.unlink(file.path, () => {}));
+      return res.status(413).json({ error: tooLarge.join(' ') });
     }
 
     const created = [];

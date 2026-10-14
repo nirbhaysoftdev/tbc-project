@@ -9,7 +9,7 @@
 // static export (next.config.js sets `output: 'export'` in production), which
 // cannot pre-render `/projects/[id]` for ids that do not exist at build time.
 // The deal room's own detail page works the same way.
-import React, { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import React, { Suspense, useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import ProtectedLayout from '@/components/layout/ProtectedLayout';
@@ -99,12 +99,6 @@ function ProjectDetailInner() {
   // which is a different question.
   const canManage = user?.role === 'ADMIN';
 
-  // The watermark on every document preview names the viewer, which is what
-  // makes a leaked screenshot traceable.
-  const viewerLabel = useMemo(
-    () => (user ? [user.name, user.email].filter(Boolean).join(' · ') : ''),
-    [user],
-  );
 
   const setBanner = async (docId: string) => {
     try {
@@ -314,7 +308,6 @@ function ProjectDetailInner() {
               <ProjectDocuments
                 projectId={project.id}
                 canManage={canManage}
-                viewerLabel={viewerLabel}
                 bannerDocId={project.bannerDocId}
                 onSetBanner={canManage ? setBanner : undefined}
                 onChanged={load}

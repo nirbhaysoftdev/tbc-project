@@ -15,8 +15,13 @@
 -- global setting before the columns go, so a configured recipient is not lost.
 -- The most recently updated one wins; in practice there is at most one, since
 -- the per-item fields existed for a single day.
+--
+-- The id is a fixed literal rather than gen_random_uuid(): that function is
+-- only in core from PostgreSQL 13, and nothing else in this project installs
+-- pgcrypto, so calling it would make this migration fail on an older server.
+-- `SystemConfig.id` is a plain String, so any stable unique value is fine.
 INSERT INTO "system_config" ("id", "key", "value", "updatedAt")
-SELECT gen_random_uuid()::text, 'enquiryRecipientEmail', "enquiryEmail", NOW()
+SELECT 'cfg-enquiry-recipient-email', 'enquiryRecipientEmail', "enquiryEmail", NOW()
   FROM (
     SELECT "enquiryEmail", "updatedAt" FROM "projects"
      WHERE "enquiryEmail" IS NOT NULL AND "enquiryEmail" <> ''

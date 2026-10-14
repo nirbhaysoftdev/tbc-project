@@ -8,6 +8,10 @@
 // download button removed, the PDF viewer opens with its toolbar hidden, and
 // right-click and drag are suppressed over the media itself.
 //
+// Every preview also carries a repeated "Trillion Business Community"
+// copyright mark, the same one the project and company modules use, so a
+// screenshot still shows whose material it is.
+//
 // Worth being clear-eyed about the limit: the bytes still reach the browser in
 // order to be displayed, so a determined viewer can reach them through devtools
 // or simply screenshot the screen. This removes the download paths a member
@@ -15,6 +19,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { projectsAPI, mediaSrc, formatNumber } from '@/lib/api';
+// For `.pj-watermark`, the shared copyright overlay. All `.pj-*` scoped, so it
+// cannot affect the community pages around it.
+import '@/styles/projects.css';
 
 export interface MediaItem {
   id: string;
@@ -43,6 +50,20 @@ const readableSize = (
     ? t('dealRoom.media.sizeMb', { size: fmt(mb, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) })
     : t('dealRoom.media.sizeKb', { size: fmt(Math.max(1, Math.round(bytes / 1024))) });
 };
+
+// The copyright mark laid over every preview: the community's name, repeated
+// and rotated. Tiled rather than placed once, because a single corner mark is
+// trivially cropped out of a screenshot. Shares `.pj-watermark` with the
+// project and company viewers so there is one mark, styled in one place.
+function CopyrightMark() {
+  return (
+    <div className="pj-watermark" aria-hidden="true">
+      {Array.from({ length: 24 }).map((_, i) => (
+        <span key={i}>Trillion Business Community</span>
+      ))}
+    </div>
+  );
+}
 
 // Applied to every element that actually renders media.
 const noCopy = {
@@ -195,9 +216,12 @@ export default function ProjectMedia({
               </button>
             </div>
 
+            {/* `position: relative` is what the copyright overlay below is
+                positioned against. */}
             <div {...noCopy} style={{ ...noCopy.style, flex: 1, minHeight: 0, background:'var(--bg-active)',
                                       borderRadius: 8, overflow:'hidden', display:'flex',
-                                      alignItems:'center', justifyContent:'center' }}>
+                                      alignItems:'center', justifyContent:'center',
+                                      position:'relative' }}>
               {viewing.kind === 'IMAGE' && (
                 <img {...noCopy} src={mediaSrc(viewing.streamUrl)} alt={viewing.name}
                   style={{ ...noCopy.style, maxWidth:'100%', maxHeight:'78vh', objectFit:'contain' }} />
@@ -223,10 +247,13 @@ export default function ProjectMedia({
                   style={{ width:'100%', height:'78vh', border:'none' }}
                 />
               )}
+
+              <CopyrightMark />
             </div>
 
             <p style={{ fontSize: 11, color:'var(--text-muted)', marginTop: 10, marginBottom: 0 }}>
-              For viewing only — this material may not be downloaded, copied or shared.
+              © {new Date().getFullYear()} Trillion Business Community. For viewing only —
+              this material may not be downloaded, copied or shared.
             </p>
           </div>
         </div>

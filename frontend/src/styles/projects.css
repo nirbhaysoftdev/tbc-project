@@ -908,11 +908,16 @@
 .pj-viewer-stage iframe,
 .pj-viewer-stage video { width: 100%; height: 78vh; border: none; }
 
-/* The watermark names the person looking at the document, so a screenshot or a
- * photo of the screen carries its own attribution. It sits above the media and
- * is pointer-transparent, so it cannot be clicked away and does not stop the
- * PDF scrolling underneath it. It is a deterrent, not a protection: anyone who
- * can open devtools can remove this element. */
+/* The copyright mark: "Trillion Business Community", repeated and rotated over
+ * every preview. It sits above the media and is pointer-transparent, so it
+ * cannot be clicked away and does not stop a PDF scrolling underneath it.
+ *
+ * Two columns rather than three, because the mark is a three-word phrase set
+ * on one line — three columns cropped it at the edges.
+ *
+ * It asserts ownership; it does not protect the file. Anyone who can open
+ * devtools can delete this element, which is why the real control is the
+ * ticketed endpoint on the server. */
 .pj-watermark {
   position: absolute;
   inset: 0;
@@ -920,22 +925,27 @@
   z-index: 3;
   overflow: hidden;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   align-content: space-around;
-  gap: 8%;
-  transform: rotate(-24deg) scale(1.35);
-  opacity: 0.17;
+  gap: 6% 4%;
+  transform: rotate(-24deg) scale(1.4);
+  opacity: 0.16;
 }
 
 .pj-watermark span {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   color: #ffffff;
   text-align: center;
   white-space: nowrap;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
 }
+
+/* A Word preview renders as light text on a dark panel that scrolls under the
+ * mark; at the same opacity it competes with the words. */
+.pj-viewer-stage .pj-rich + .pj-watermark { opacity: 0.1; }
 
 .pj-viewer-note {
   font-size: 11px;

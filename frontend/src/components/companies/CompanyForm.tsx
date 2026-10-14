@@ -17,6 +17,7 @@ import RichTextEditor from '@/components/projects/RichTextEditor';
 import CompanyMedia, { VideoLink } from './CompanyMedia';
 import TagInput from './TagInput';
 import { companiesAPI, mediaSrc, formatEur } from '@/lib/api';
+import { checkFileSizes, documentLimitHint, imageLimitHint } from '@/lib/uploadLimits';
 
 const CATEGORIES = [
   'REAL_ESTATE', 'ENERGY', 'TECHNOLOGY', 'MANUFACTURING', 'HOSPITALITY',
@@ -96,6 +97,14 @@ export default function CompanyForm({
 
   const addFiles = (files: FileList | File[] | null, purpose: string, single = false) => {
     if (!files) return;
+
+    // Rejected at selection, before anything is queued: a queued file the
+    // server will refuse means the profile saves and the upload then fails,
+    // which is a confusing half-success.
+    const tooLarge = checkFileSizes(files);
+    if (tooLarge) { setError(tooLarge); return; }
+    setError('');
+
     const chosen = single ? Array.from(files).slice(0, 1) : Array.from(files);
     const added = chosen.map((file) => ({
       file,
@@ -513,7 +522,9 @@ export default function CompanyForm({
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={(e) => { e.preventDefault(); addFiles(e.dataTransfer.files, 'GALLERY'); }}>
                 <div className="pj-drop-title">Add images</div>
-                <div className="pj-drop-sub">Several at once. JPG, PNG, WebP or SVG.</div>
+                <div className="pj-drop-sub">
+                  Several at once. JPG, PNG, WebP or SVG, {imageLimitHint}.
+                </div>
               </div>
               <input ref={galleryRef} type="file" multiple hidden accept={ACCEPT_IMAGE}
                 onChange={(e) => { addFiles(e.target.files, 'GALLERY'); e.target.value = ''; }} />
@@ -526,7 +537,8 @@ export default function CompanyForm({
                 onDrop={(e) => { e.preventDefault(); addFiles(e.dataTransfer.files, 'DOCUMENT'); }}>
                 <div className="pj-drop-title">Add PDF or Word files</div>
                 <div className="pj-drop-sub">
-                  PDF and .docx open in the portal. Legacy .doc cannot be rendered.
+                  PDF and .docx open in the portal, {documentLimitHint}. Legacy .doc
+                  cannot be rendered.
                 </div>
               </div>
               <input ref={docRef} type="file" multiple hidden accept={ACCEPT_DOC}
