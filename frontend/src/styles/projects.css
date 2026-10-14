@@ -1,0 +1,1162 @@
+/* src/styles/projects.css
+ *
+ * The project listing, detail and admin form.
+ *
+ * Every colour here is a token from globals.css (--bg-*, --accent-blue,
+ * --accent-gold, --text-*, --border). Nothing in this file introduces a new
+ * palette, and nothing in it targets an element outside `.pj-*`, so no other
+ * page can be affected by it.
+ *
+ * Imported by the project pages only. It is a separate file rather than more
+ * lines in globals.css because globals.css is already 2,400 lines and shared
+ * by every screen - a mistake in here should be impossible to see anywhere
+ * else.
+ */
+
+/* ── Page shell ───────────────────────────────────────────────────────────── */
+.pj-page {
+  padding: 24px;
+  max-width: 1440px;
+  /* `margin: 0 auto` centres the column; `width: 100%` is what lets it do that
+   * as a flex item rather than collapsing to its content. */
+  width: 100%;
+  margin: 0 auto;
+  /* The page is a flex child of `.content-wrap`, which is `overflow: hidden`.
+   * Scrolling therefore has to happen here, exactly as `.content-left` does it
+   * on the dashboard, or long listings are simply cut off. */
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+}
+
+.pj-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.pj-title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+}
+
+.pj-sub {
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.pj-head-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+/* ── Controls: search, filters, sort, view ────────────────────────────────── */
+.pj-toolbar {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px;
+  margin-bottom: 18px;
+}
+
+.pj-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.pj-search-icon {
+  position: absolute;
+  inset-inline-start: 12px;
+  font-size: 13px;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.pj-input,
+.pj-select,
+.pj-textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.pj-input:focus,
+.pj-select:focus,
+.pj-textarea:focus {
+  border-color: var(--accent-blue);
+  background: rgba(58, 111, 255, 0.06);
+}
+
+.pj-input::placeholder,
+.pj-textarea::placeholder { color: var(--text-muted); }
+
+/* The search field's icon sits inside it, so the text needs room on the
+ * reading edge. `padding-inline-start` rather than `padding-left`: the portal
+ * is translated, and Arabic would otherwise put the text under the icon. */
+.pj-search .pj-input { padding-inline-start: 34px; }
+
+/* A native <select>'s own list is drawn by the OS in light grey, which is
+ * unreadable against this palette on some browsers, so the options are given
+ * the card background explicitly. */
+.pj-select option { background: var(--bg-sidebar); color: var(--text-primary); }
+
+.pj-textarea { min-height: 96px; resize: vertical; line-height: 1.55; }
+
+.pj-filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.pj-field { display: flex; flex-direction: column; gap: 6px; }
+
+.pj-label {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.pj-range { display: flex; gap: 8px; align-items: center; }
+.pj-range .pj-input { min-width: 0; }
+
+.pj-toolbar-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.pj-count { font-size: 12px; color: var(--text-secondary); }
+
+.pj-view-toggle {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.pj-view-btn {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  padding: 8px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pj-view-btn:hover { color: var(--text-primary); }
+.pj-view-btn.active { background: var(--bg-active); color: var(--accent-blue); font-weight: 600; }
+
+.pj-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.pj-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.03);
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.pj-chip button {
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  padding: 0;
+}
+
+.pj-chip button:hover { color: var(--red); }
+
+/* ── Buttons ──────────────────────────────────────────────────────────────── */
+.pj-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 9px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+
+.pj-btn:hover { background: var(--bg-card-hover); border-color: rgba(255, 255, 255, 0.16); }
+.pj-btn:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+
+.pj-btn-primary {
+  background: linear-gradient(135deg, var(--accent-blue), #2d5ae0);
+  border-color: transparent;
+  color: #fff;
+  font-weight: 600;
+}
+
+.pj-btn-primary:hover { opacity: 0.92; transform: translateY(-1px); background: linear-gradient(135deg, var(--accent-blue), #2d5ae0); }
+
+.pj-btn-gold {
+  background: linear-gradient(135deg, var(--accent-gold), #e8c96b);
+  border-color: transparent;
+  color: #1a1403;
+  font-weight: 600;
+}
+
+.pj-btn-gold:hover { opacity: 0.92; transform: translateY(-1px); }
+
+.pj-btn-ghost { background: transparent; }
+.pj-btn-danger { color: var(--red); border-color: rgba(224, 82, 82, 0.35); }
+.pj-btn-danger:hover { background: rgba(224, 82, 82, 0.1); }
+.pj-btn-sm { padding: 6px 11px; font-size: 12px; border-radius: 8px; }
+
+/* ── Cards ────────────────────────────────────────────────────────────────── */
+.pj-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 16px;
+}
+
+.pj-list { display: flex; flex-direction: column; gap: 12px; }
+
+.pj-card {
+  display: block;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 0.18s ease, transform 0.18s ease, background 0.18s ease;
+}
+
+.pj-card:hover {
+  border-color: rgba(58, 111, 255, 0.45);
+  background: var(--bg-card-hover);
+  transform: translateY(-2px);
+}
+
+.pj-card-banner {
+  position: relative;
+  height: 158px;
+  background: linear-gradient(135deg, rgba(58, 111, 255, 0.18), rgba(200, 168, 75, 0.1));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.pj-card-banner img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.pj-card-banner-empty {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.pj-card-body { padding: 14px; }
+
+.pj-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.pj-card-name {
+  font-size: 15px;
+  font-weight: 650;
+  color: var(--text-primary);
+  line-height: 1.35;
+  /* Two lines, then an ellipsis: a long title must not push the valuation out
+   * of alignment with the cards beside it. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.pj-card-meta {
+  margin-top: 5px;
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.pj-card-desc {
+  margin-top: 10px;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.pj-card-foot {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.pj-valuation {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--accent-gold);
+  white-space: nowrap;
+}
+
+.pj-valuation-label {
+  display: block;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.pj-owner { display: flex; align-items: center; gap: 7px; min-width: 0; }
+
+.pj-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--bg-active);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--accent-blue);
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.pj-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.pj-avatar-lg { width: 38px; height: 38px; font-size: 13px; }
+
+.pj-owner-name {
+  font-size: 12px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* List view: the banner moves beside the text instead of above it. */
+.pj-card.list { display: flex; align-items: stretch; }
+.pj-card.list .pj-card-banner { width: 210px; height: auto; min-height: 136px; flex-shrink: 0; }
+.pj-card.list .pj-card-body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.pj-card.list .pj-card-foot { margin-top: auto; }
+
+/* ── Badges ───────────────────────────────────────────────────────────────── */
+.pj-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.pj-badge-active    { background: rgba(46, 204, 113, 0.14); color: #5ad68c; }
+.pj-badge-draft     { background: rgba(255, 255, 255, 0.07); color: var(--text-muted); }
+.pj-badge-funded    { background: rgba(58, 111, 255, 0.16); color: #7fa0ff; }
+.pj-badge-closed    { background: rgba(200, 168, 75, 0.16); color: var(--accent-gold); }
+.pj-badge-cancelled { background: rgba(224, 82, 82, 0.14); color: #ef8686; }
+
+.pj-dot { color: var(--text-muted); }
+
+/* ── Detail page ──────────────────────────────────────────────────────────── */
+.pj-detail-banner {
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  height: 320px;
+  background: linear-gradient(135deg, rgba(58, 111, 255, 0.2), rgba(200, 168, 75, 0.1));
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pj-detail-banner img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* The banner's caption sits on top of the image, so it needs its own scrim to
+ * stay readable whatever the photo underneath is. */
+.pj-detail-banner-overlay {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  padding: 20px;
+  background: linear-gradient(to top, rgba(7, 11, 26, 0.92), rgba(7, 11, 26, 0));
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.pj-detail-name {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  color: #fff;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+}
+
+.pj-detail-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 330px;
+  gap: 20px;
+  margin-top: 20px;
+  align-items: start;
+}
+
+.pj-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px;
+}
+
+.pj-panel + .pj-panel { margin-top: 16px; }
+
+.pj-panel-title {
+  margin: 0 0 14px;
+  font-size: 11px
+;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.pj-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 18px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.pj-tabs::-webkit-scrollbar { display: none; }
+
+.pj-tab {
+  border: none;
+  background: none;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+
+.pj-tab:hover { color: var(--text-primary); }
+.pj-tab.active { color: var(--text-primary); border-bottom-color: var(--accent-blue); font-weight: 600; }
+
+.pj-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 14px;
+}
+
+.pj-fact { min-width: 0; }
+
+.pj-fact-label {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.pj-fact-value {
+  font-size: 13.5px;
+  color: var(--text-primary);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.pj-fact-value a { color: var(--accent-blue); text-decoration: none; }
+.pj-fact-value a:hover { text-decoration: underline; }
+
+.pj-people { display: flex; flex-direction: column; gap: 10px; }
+
+.pj-person {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid var(--border);
+}
+
+.pj-person-name { font-size: 13px; color: var(--text-primary); font-weight: 500; }
+.pj-person-role { font-size: 10.5px; color: var(--text-muted); margin-top: 1px; }
+
+.pj-empty {
+  padding: 36px 20px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
+  background: var(--bg-card);
+  border: 1px dashed var(--border);
+  border-radius: 14px;
+}
+
+/* ── Rich text, as rendered on the detail page ────────────────────────────── */
+/* This is the only place stored HTML is displayed. The selectors are scoped to
+ * `.pj-rich` so authored markup can never restyle the page around it, and the
+ * HTML itself is sanitised server-side on write (backend
+ * services/richText.js). */
+.pj-rich {
+  font-size: 14px;
+  line-height: 1.72;
+  color: var(--text-secondary);
+  overflow-wrap: break-word;
+}
+
+.pj-rich > :first-child { margin-top: 0; }
+.pj-rich > :last-child { margin-bottom: 0; }
+.pj-rich p { margin: 0 0 14px; }
+
+.pj-rich h1, .pj-rich h2, .pj-rich h3, .pj-rich h4, .pj-rich h5, .pj-rich h6 {
+  color: var(--text-primary);
+  margin: 24px 0 10px;
+  line-height: 1.3;
+  font-weight: 650;
+}
+
+.pj-rich h1 { font-size: 21px; }
+.pj-rich h2 { font-size: 18px; }
+.pj-rich h3 { font-size: 16px; }
+.pj-rich h4, .pj-rich h5, .pj-rich h6 { font-size: 14px; }
+
+.pj-rich strong, .pj-rich b { color: var(--text-primary); font-weight: 650; }
+.pj-rich a { color: var(--accent-blue); }
+.pj-rich ul, .pj-rich ol { margin: 0 0 14px; padding-inline-start: 22px; }
+.pj-rich li { margin-bottom: 6px; }
+.pj-rich hr { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+
+.pj-rich blockquote {
+  margin: 0 0 14px;
+  padding: 2px 0 2px 14px;
+  border-inline-start: 3px solid var(--accent-gold);
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.pj-rich code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12.5px;
+  background: rgba(255, 255, 255, 0.06);
+  padding: 2px 5px;
+  border-radius: 4px;
+  color: var(--text-primary);
+}
+
+.pj-rich pre {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  overflow-x: auto;
+  margin: 0 0 14px;
+}
+
+.pj-rich pre code { background: none; padding: 0; }
+
+/* Tables are a toolbar feature, so they have to look deliberate rather than
+ * like unstyled markup. `display: block` on the wrapper keeps a wide table
+ * from widening the whole page on a phone. */
+.pj-rich table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 16px;
+  font-size: 13px;
+  display: block;
+  overflow-x: auto;
+}
+
+.pj-rich th, .pj-rich td {
+  border: 1px solid var(--border);
+  padding: 8px 10px;
+  text-align: start;
+  vertical-align: top;
+}
+
+.pj-rich th { background: rgba(255, 255, 255, 0.04); color: var(--text-primary); font-weight: 600; }
+
+.pj-rich img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 10px;
+  margin: 4px 0;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ── WYSIWYG editor ───────────────────────────────────────────────────────── */
+.pj-editor {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.pj-editor:focus-within { border-color: var(--accent-blue); }
+
+.pj-editor-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 7px 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid var(--border);
+  align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.pj-tool {
+  min-width: 30px;
+  height: 28px;
+  padding: 0 7px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pj-tool:hover { background: var(--bg-card-hover); color: var(--text-primary); }
+.pj-tool.active { background: var(--bg-active); color: var(--accent-blue); border-color: rgba(58, 111, 255, 0.3); }
+.pj-tool-sep { width: 1px; height: 18px; background: var(--border); margin: 0 4px; }
+.pj-tool-select {
+  height: 28px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-family: inherit;
+  padding: 0 6px;
+  cursor: pointer;
+}
+
+.pj-tool-select option { background: var(--bg-sidebar); }
+
+/* The editing surface reuses `.pj-rich`, so what the admin types looks the
+ * same as what a member will read. */
+.pj-editor-surface {
+  min-height: 300px;
+  max-height: 65vh;
+  overflow-y: auto;
+  padding: 16px;
+  outline: none;
+}
+
+/* contenteditable has no placeholder of its own. */
+.pj-editor-surface:empty::before,
+.pj-editor-surface[data-empty='true']::before {
+  content: attr(data-placeholder);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+/* ── Documents & gallery ──────────────────────────────────────────────────── */
+.pj-media-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(165px, 1fr));
+  gap: 12px;
+}
+
+.pj-media-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.025);
+  display: flex;
+  flex-direction: column;
+}
+
+.pj-media-card:hover { border-color: rgba(58, 111, 255, 0.4); }
+
+.pj-media-thumb {
+  border: none;
+  padding: 0;
+  margin: 0;
+  height: 112px;
+  width: 100%;
+  background: var(--bg-active);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.pj-media-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-user-drag: none;
+}
+
+.pj-media-kind {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--text-secondary);
+}
+
+.pj-media-info { padding: 9px 10px; }
+
+.pj-media-name {
+  font-size: 12px
+;
+  font-weight: 550;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pj-media-sub {
+  margin-top: 3px;
+  font-size: 10px;
+  color: var(--text-muted);
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  align-items: center;
+}
+
+.pj-media-sub button {
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 10px;
+  color: var(--red);
+  cursor: pointer;
+}
+
+.pj-media-banner-flag {
+  position: absolute;
+  top: 6px;
+  inset-inline-start: 6px;
+  background: rgba(200, 168, 75, 0.9);
+  color: #1a1403;
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  padding: 2px 6px;
+  border-radius: 999px;
+}
+
+/* ── Secure viewer ────────────────────────────────────────────────────────── */
+.pj-viewer-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(4, 6, 16, 0.86);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.pj-viewer {
+  background: var(--bg-sidebar);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  width: min(1100px, 96vw);
+  max-height: 94vh;
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+}
+
+.pj-viewer-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.pj-viewer-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pj-viewer-nav { display: flex; align-items: center; gap: 8px; }
+
+.pj-viewer-close {
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.pj-viewer-close:hover { color: var(--text-primary); }
+
+/* The stage holds the image, PDF or video. `position: relative` is what the
+ * watermark layer is positioned against. */
+.pj-viewer-stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  background: #05070f;
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.pj-viewer-stage img {
+  max-width: 100%;
+  max-height: 78vh;
+  object-fit: contain;
+  -webkit-user-drag: none;
+}
+
+.pj-viewer-stage iframe,
+.pj-viewer-stage video { width: 100%; height: 78vh; border: none; }
+
+/* The watermark names the person looking at the document, so a screenshot or a
+ * photo of the screen carries its own attribution. It sits above the media and
+ * is pointer-transparent, so it cannot be clicked away and does not stop the
+ * PDF scrolling underneath it. It is a deterrent, not a protection: anyone who
+ * can open devtools can remove this element. */
+.pj-watermark {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  align-content: space-around;
+  gap: 8%;
+  transform: rotate(-24deg) scale(1.35);
+  opacity: 0.17;
+}
+
+.pj-watermark span {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #ffffff;
+  text-align: center;
+  white-space: nowrap;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+.pj-viewer-note {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin: 10px 0 0;
+  text-align: start;
+}
+
+/* ── Admin form ───────────────────────────────────────────────────────────── */
+.pj-form { display: flex; flex-direction: column; gap: 16px; max-width: 1040px; }
+
+.pj-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 14px;
+}
+
+.pj-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+.pj-hint { font-size: 11px; color: var(--text-muted); line-height: 1.5; }
+
+.pj-error {
+  background: rgba(224, 82, 82, 0.1);
+  border: 1px solid rgba(224, 82, 82, 0.3);
+  color: #ef8686;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 12.5px;
+}
+
+.pj-ok {
+  background: rgba(46, 204, 113, 0.1);
+  border: 1px solid rgba(46, 204, 113, 0.28);
+  color: #5ad68c;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 12.5px;
+}
+
+.pj-form-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  padding-top: 4px;
+}
+
+/* ── Member picker ────────────────────────────────────────────────────────── */
+.pj-picker { position: relative; }
+
+.pj-picker-results {
+  position: absolute;
+  z-index: 40;
+  inset-inline: 0;
+  top: calc(100% + 4px);
+  background: var(--bg-sidebar);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  max-height: 260px;
+  overflow-y: auto;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+}
+
+.pj-picker-item {
+  width: 100%;
+  text-align: start;
+  border: none;
+  background: none;
+  padding: 9px 11px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-family: inherit;
+  color: var(--text-primary);
+}
+
+.pj-picker-item:hover,
+.pj-picker-item.highlight { background: var(--bg-active); }
+.pj-picker-note { padding: 10px 11px; font-size: 12px; color: var(--text-muted); }
+.pj-picker-selected { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 8px; }
+
+.pj-token {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 7px 5px 5px;
+  border-radius: 999px
+;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--text-primary);
+  max-width: 100%;
+}
+
+.pj-token span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.pj-token button {
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  padding: 0 2px;
+}
+
+.pj-token button:hover { color: var(--red); }
+
+/* ── Upload tray ──────────────────────────────────────────────────────────── */
+.pj-drop {
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  padding: 22px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.pj-drop:hover,
+.pj-drop.over { border-color: var(--accent-blue); background: rgba(58, 111, 255, 0.06); }
+.pj-drop-title { font-size: 13px; color: var(--text-primary); font-weight: 550; }
+.pj-drop-sub { font-size: 11px; color: var(--text-muted); margin-top: 5px; }
+
+.pj-previews {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.pj-preview {
+  position: relative;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.pj-preview-thumb {
+  height: 84px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-active);
+  overflow: hidden;
+}
+
+.pj-preview-thumb img { width: 100%; height: 100%; object-fit: cover; }
+
+.pj-preview-name {
+  padding: 7px 8px;
+  font-size: 10.5px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pj-preview-remove {
+  position: absolute;
+  top: 5px;
+  inset-inline-end: 5px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(7, 11, 26, 0.85);
+  color: #fff;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pj-preview-remove:hover { background: var(--red); }
+
+/* ── Pagination ───────────────────────────────────────────────────────────── */
+.pj-pager {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.pj-pager-info { font-size: 12px; color: var(--text-secondary); }
+
+/* ── Responsive ───────────────────────────────────────────────────────────── */
+@media (max-width: 1080px) {
+  .pj-detail-layout { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 720px) {
+  .pj-page { padding: 16px; }
+  .pj-grid { grid-template-columns: 1fr; }
+  .pj-form-row { grid-template-columns: 1fr; }
+  .pj-detail-banner { height: 210px; }
+  .pj-detail-name { font-size: 20px; }
+
+  /* The list view collapses back to a stacked card: a 210px banner beside text
+   * leaves nothing readable at phone width. */
+  .pj-card.list { flex-direction: column; }
+  .pj-card.list .pj-card-banner { width: 100%; height: 150px; }
+
+  .pj-viewer { padding: 12px; border-radius: 12px; }
+  .pj-viewer-stage iframe,
+  .pj-viewer-stage video { height: 62vh; }
+  .pj-head { align-items: flex-start; }
+}
+
+/* Honour a reader's preference for less motion: the hover lifts are decoration. */
+@media (prefers-reduced-motion: reduce) {
+  .pj-card,
+  .pj-btn,
+  .pj-btn-primary,
+  .pj-btn-gold { transition: none; }
+  .pj-card:hover,
+  .pj-btn-primary:hover,
+  .pj-btn-gold:hover { transform: none; }
+}

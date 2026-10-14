@@ -2,15 +2,29 @@
 // src/app/onboarding/profile/page.tsx
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/lib/auth';
 import { mmsAPI } from '@/lib/api';
+import LanguageSelector from '@/components/i18n/LanguageSelector';
+import OnboardingProgress from '@/components/onboarding/OnboardingProgress';
 
+// `value` is what is stored and sent to the API and must stay English: it is
+// matched against the directory filters and the admin views. `key` is only for
+// display. Translating the stored industry would break member search (§3).
 const INDUSTRIES = [
-  'Private Equity', 'Real Estate', 'Technology', 'Hospitality',
-  'Finance', 'Family Office', 'Healthcare', 'Energy', 'Other',
+  { value: 'Private Equity', key: 'privateEquity' },
+  { value: 'Real Estate',    key: 'realEstate' },
+  { value: 'Technology',     key: 'technology' },
+  { value: 'Hospitality',    key: 'hospitality' },
+  { value: 'Finance',        key: 'finance' },
+  { value: 'Family Office',  key: 'familyOffice' },
+  { value: 'Healthcare',     key: 'healthcare' },
+  { value: 'Energy',         key: 'energy' },
+  { value: 'Other',          key: 'other' },
 ];
 
 export default function OnboardingProfilePage() {
+  const { t } = useTranslation(['auth', 'common']);
   const { user, loading } = useAuth();
   const router = useRouter();
 
@@ -43,7 +57,7 @@ export default function OnboardingProfilePage() {
     e.preventDefault();
     setError('');
     if (!form.jobTitle || !form.company) {
-      setError('Job title and company are required.');
+      setError(t('auth:onboarding.profile.required'));
       return;
     }
     setSaving(true);
@@ -51,7 +65,7 @@ export default function OnboardingProfilePage() {
       await mmsAPI.submitProfile(form);
       router.push('/onboarding/kyc');
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to save profile. Please try again.');
+      setError(err.response?.data?.error || t('auth:onboarding.profile.failed'));
     } finally {
       setSaving(false);
     }
@@ -61,88 +75,88 @@ export default function OnboardingProfilePage() {
 
   return (
     <div className="onboarding-page">
-      {/* Progress bar */}
-      <div className="onboarding-progress">
-        <div className="ob-step ob-step--done">1 Register</div>
-        <div className="ob-step-line ob-step-line--done" />
-        <div className="ob-step ob-step--active">2 Profile</div>
-        <div className="ob-step-line" />
-        <div className="ob-step">3 KYC</div>
-        <div className="ob-step-line" />
-        <div className="ob-step">4 Review</div>
-      </div>
+      <OnboardingProgress current="profile" />
 
       <div className="onboarding-card">
-        <div className="onboarding-logo">
-          <img src="/images/tbc-logo-1.png" alt="TBC" />
-          <div className="onboarding-brand">TRILLION</div>
-          <div className="onboarding-sub">Business Community</div>
+        {/* Onboarding happens before approval, so the selector has to be here
+            too — this is the only chrome a PENDING member sees (§4). */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <LanguageSelector variant="panel" />
         </div>
 
-        <h1 className="onboarding-title">Complete Your Profile</h1>
-        <p className="onboarding-desc">
-          Tell us about yourself so our team can verify your membership.
-        </p>
+        <div className="onboarding-logo">
+          <img src="/images/tbc-logo-1.png" alt={t('common:brand.full')} />
+          <div className="onboarding-brand">{t('common:brand.name')}</div>
+          <div className="onboarding-sub">{t('common:brand.subTitle')}</div>
+        </div>
+
+        <h1 className="onboarding-title">{t('auth:onboarding.profile.title')}</h1>
+        <p className="onboarding-desc">{t('auth:onboarding.profile.desc')}</p>
 
         <form onSubmit={handleSubmit}>
           <div className="ob-row">
             <div className="comm-form-group">
-              <label className="comm-form-label">Job Title *</label>
-              <input className="comm-form-input" placeholder="e.g. Managing Director"
+              <label className="comm-form-label">{t('auth:onboarding.profile.jobTitleLabel')}</label>
+              <input className="comm-form-input" placeholder={t('auth:onboarding.profile.jobTitlePlaceholder')}
                 value={form.jobTitle} onChange={set('jobTitle')} required />
             </div>
             <div className="comm-form-group">
-              <label className="comm-form-label">Company *</label>
-              <input className="comm-form-input" placeholder="Your company name"
+              <label className="comm-form-label">{t('auth:onboarding.profile.companyLabel')}</label>
+              <input className="comm-form-input" placeholder={t('auth:onboarding.profile.companyPlaceholder')}
                 value={form.company} onChange={set('company')} required />
             </div>
           </div>
 
           <div className="ob-row">
             <div className="comm-form-group">
-              <label className="comm-form-label">Industry</label>
+              <label className="comm-form-label">{t('auth:onboarding.profile.industryLabel')}</label>
               <select className="comm-form-select" value={form.industry} onChange={set('industry')}>
-                <option value="">Select industry</option>
-                {INDUSTRIES.map(i => <option key={i} value={i}>{i}</option>)}
+                <option value="">{t('auth:onboarding.profile.industryPlaceholder')}</option>
+                {INDUSTRIES.map(i => (
+                  <option key={i.value} value={i.value}>{t(`auth:onboarding.industries.${i.key}`)}</option>
+                ))}
               </select>
             </div>
             <div className="comm-form-group">
-              <label className="comm-form-label">Years of Experience</label>
+              <label className="comm-form-label">{t('auth:onboarding.profile.experienceLabel')}</label>
               <input className="comm-form-input" type="number" min="0" max="60"
-                placeholder="e.g. 10" value={form.experienceYears} onChange={set('experienceYears')} />
+                placeholder={t('auth:onboarding.profile.experiencePlaceholder')}
+                value={form.experienceYears} onChange={set('experienceYears')} />
             </div>
           </div>
 
           <div className="ob-row">
             <div className="comm-form-group">
-              <label className="comm-form-label">Country</label>
-              <input className="comm-form-input" placeholder="Your country"
+              <label className="comm-form-label">{t('auth:onboarding.profile.countryLabel')}</label>
+              <input className="comm-form-input" placeholder={t('auth:onboarding.profile.countryPlaceholder')}
                 value={form.country} onChange={set('country')} />
             </div>
             <div className="comm-form-group">
-              <label className="comm-form-label">City</label>
-              <input className="comm-form-input" placeholder="Your city"
+              <label className="comm-form-label">{t('auth:onboarding.profile.cityLabel')}</label>
+              <input className="comm-form-input" placeholder={t('auth:onboarding.profile.cityPlaceholder')}
                 value={form.city} onChange={set('city')} />
             </div>
           </div>
 
           <div className="ob-row">
             <div className="comm-form-group">
-              <label className="comm-form-label">Phone</label>
-              <input className="comm-form-input" placeholder="+1 234 567 890"
+              <label className="comm-form-label">{t('auth:onboarding.profile.phoneLabel')}</label>
+              {/* Phone numbers and LinkedIn URLs are Latin-script regardless of
+                  page direction (§10). */}
+              <input className="comm-form-input ltr-embed" dir="ltr" placeholder="+1 234 567 890"
                 value={form.phone} onChange={set('phone')} />
             </div>
             <div className="comm-form-group">
-              <label className="comm-form-label">LinkedIn</label>
-              <input className="comm-form-input" placeholder="linkedin.com/in/you"
+              <label className="comm-form-label">{t('auth:onboarding.profile.linkedInLabel')}</label>
+              <input className="comm-form-input ltr-embed" dir="ltr" placeholder="linkedin.com/in/you"
                 value={form.linkedIn} onChange={set('linkedIn')} />
             </div>
           </div>
 
           <div className="comm-form-group">
-            <label className="comm-form-label">Short Bio</label>
+            <label className="comm-form-label">{t('auth:onboarding.profile.bioLabel')}</label>
             <textarea className="comm-form-input ob-textarea"
-              placeholder="Briefly describe your background and investment interests…"
+              placeholder={t('auth:onboarding.profile.bioPlaceholder')}
               value={form.bio}
               onChange={set('bio') as any}
               rows={4}
@@ -157,7 +171,7 @@ export default function OnboardingProfilePage() {
             style={{ width: '100%', padding: '13px', marginTop: 4 }}
             disabled={saving}
           >
-            {saving ? 'Saving…' : 'Save & Continue →'}
+            {saving ? t('auth:onboarding.profile.submitting') : t('auth:onboarding.profile.submit')}
           </button>
         </form>
       </div>

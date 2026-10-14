@@ -7,35 +7,18 @@
 import { useRef } from 'react';
 import { motion, useScroll, useTransform } from 'motion/react';
 import { EASE, Reveal, SplitWordsInView, StaggerGroup, StaggerItem, enterInView, useCalm } from './motion';
+import { useTranslation } from 'react-i18next';
 
+// Icons only; the copy lives in landing:inside.surfaces.<key>.
 const SURFACES = [
-  {
-    key: 'deal-room',
-    icon: '◆',
-    title: 'The Deal Room',
-    body: 'Live projects members have brought in - what is being built, what it needs, who is already on it.',
-  },
-  {
-    key: 'directory',
-    icon: '◈',
-    title: 'The member directory',
-    body: 'Who is in the community, what they do, and what they are looking for - searchable by industry.',
-  },
-  {
-    key: 'events',
-    icon: '◎',
-    title: 'Events and sessions',
-    body: 'Members meet in person and online to put real opportunities in front of each other.',
-  },
-  {
-    key: 'wallet',
-    icon: '⬢',
-    title: 'Your member account',
-    body: 'Track what your participation in the community has returned, in one place.',
-  },
-];
+  { key: 'deal-room', icon: '◆' },
+  { key: 'directory', icon: '◈' },
+  { key: 'events', icon: '◎' },
+  { key: 'wallet', icon: '⬢' },
+] as const;
 
 export default function Inside() {
+  const { t } = useTranslation('landing');
   const calm = useCalm();
   const ref = useRef<HTMLElement>(null);
   const { scrollYProgress } = useScroll({ target: ref, offset: ['start end', 'end start'] });
@@ -46,12 +29,12 @@ export default function Inside() {
     <section id="inside" className="lp-section lp-inside" ref={ref}>
       <div className="lp-inside-grid">
         <div className="lp-inside-copy">
-          <Reveal className="lp-tag">Inside the community</Reveal>
+          <Reveal className="lp-tag">{t('inside.tag')}</Reveal>
           <h2 className="lp-section-title lp-align-left">
-            <SplitWordsInView text="What membership opens." />
+            <SplitWordsInView text={t('inside.heading')} />
           </h2>
           <Reveal className="lp-section-sub lp-align-left" delay={0.1}>
-            Approved members get the room, and the tools that keep it working between meetings.
+            {t('inside.sub')}
           </Reveal>
 
           <StaggerGroup className="lp-inside-list" stagger={0.08} as="ul">
@@ -61,8 +44,8 @@ export default function Inside() {
                   {s.icon}
                 </span>
                 <div>
-                  <h3 className="lp-inside-title">{s.title}</h3>
-                  <p className="lp-inside-body">{s.body}</p>
+                  <h3 className="lp-inside-title">{t(`inside.surfaces.${s.key}.title`)}</h3>
+                  <p className="lp-inside-body">{t(`inside.surfaces.${s.key}.body`)}</p>
                 </div>
               </StaggerItem>
             ))}

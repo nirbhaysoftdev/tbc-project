@@ -1,6 +1,8 @@
 // src/app/layout.tsx
 import type { Metadata } from 'next';
 import './globals.css';
+import { I18nProvider } from '@/i18n/I18nProvider';
+import { AuthProvider } from '@/lib/auth';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://trillionbc.com';
 const SITE_NAME = 'Trillion Business Community';
@@ -78,7 +80,11 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    // `lang` and `dir` are the English defaults that the static export ships in
+    // the prerendered HTML. I18nProvider rewrites both on <html> as soon as the
+    // language is resolved on the client, which is also what flips every CSS
+    // logical property for Persian and Arabic. See src/i18n/I18nProvider.tsx.
+    <html lang="en" dir="ltr">
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
@@ -87,7 +93,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           rel="stylesheet"
         />
       </head>
-      <body>{children}</body>
+      <body>
+        {/*
+          I18nProvider wraps the entire application — every page, every layout,
+          every component — so translations and the resolved direction are
+          available everywhere without a single page being duplicated per
+          language. It sits ABOVE AuthProvider (which each page mounts) so a
+          signed-in user's saved locale can be pushed into it from there.
+        */}
+        <I18nProvider><AuthProvider>{children}</AuthProvider></I18nProvider>
+      </body>
     </html>
   );
 }

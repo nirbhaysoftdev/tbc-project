@@ -1,16 +1,18 @@
 'use client';
 // src/app/settings/page.tsx
 import { useState } from 'react';
-import { AuthProvider } from '@/lib/auth';
+import { useTranslation } from 'react-i18next';
 import ProtectedLayout from '@/components/layout/ProtectedLayout';
 import { useAuth } from '@/lib/auth';
 import { profileAPI } from '@/lib/api';
+import LanguageSelector from '@/components/i18n/LanguageSelector';
 
 const API_URL = process.env.NODE_ENV === 'production' 
   ? (process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || '')
   : '';
   
 function SettingsContent() {
+  const { t } = useTranslation(['dashboard', 'common', 'validation']);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const { user, refresh } = useAuth();
   const [name,    setName]    = useState(user?.name || '');
@@ -31,10 +33,10 @@ function SettingsContent() {
       if (curPwd && newPwd) { fd.append('currentPassword', curPwd); fd.append('newPassword', newPwd); }
       await profileAPI.update(fd);
       await refresh();
-      setMsg('Profile updated successfully.');
+      setMsg(t('dashboard:settings.updated'));
       setCurPwd(''); setNewPwd('');
     } catch (e: any) {
-      setErr(e.response?.data?.error || 'Update failed.');
+      setErr(e.response?.data?.error || t('dashboard:settings.updateFailed'));
     }
     setLoading(false);
   };
@@ -47,7 +49,7 @@ function SettingsContent() {
   return (
     <div className="content-left" style={{ maxWidth: 600 }}>
       <div className="page-header">
-        <h1 className="page-title">Settings</h1>
+        <h1 className="page-title">{t('dashboard:settings.title')}</h1>
       </div>
 
       <div style={{ background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:'var(--radius-lg)', padding:28 }}>
@@ -58,14 +60,16 @@ function SettingsContent() {
           </div>
           <div>
             <p style={{ fontWeight:700 }}>{user?.name}</p>
-            <p style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>{user?.email}</p>
-            <p style={{ fontSize:11, color:'var(--accent-blue)', marginTop:4, fontWeight:600 }}>{user?.role}</p>
+            <p className="ltr-embed" style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>{user?.email}</p>
+            <p style={{ fontSize:11, color:'var(--accent-blue)', marginTop:4, fontWeight:600 }}>
+              {user?.role === 'ADMIN' ? t('common:role.administrator') : t('common:role.member')}
+            </p>
           </div>
         </div>
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-    <label className="form-label">PROFILE PHOTO</label>
+    <label className="form-label">{t('dashboard:settings.profilePhoto')}</label>
     <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 8 }}>
       {/* Current photo preview */}
       <div className="sidebar-avatar" style={{ width: 64, height: 64, fontSize: 20, flexShrink: 0 }}>
@@ -89,11 +93,11 @@ function SettingsContent() {
           color:        'var(--text-secondary)',
           display:      'inline-block',
         }}>
-          Choose Photo
+          {t('common:action.choosePhoto')}
         </label>
         {photoFile && (
           <p style={{ fontSize: 11, color: 'var(--green)', marginTop: 4 }}>
-            {photoFile.name} selected
+            {t('validation:file.selected', { name: photoFile.name })}
           </p>
         )}
       </div>
@@ -103,25 +107,39 @@ function SettingsContent() {
 
 
           <div className="form-group">
-            <label className="form-label">DISPLAY NAME</label>
+            <label className="form-label">{t('dashboard:settings.displayName')}</label>
             <input className="form-input" value={name} onChange={e => setName(e.target.value)} />
           </div>
 
-          <p style={{ fontSize:13, fontWeight:700, margin:'20px 0 12px', color:'var(--text-secondary)' }}>Change Password</p>
+          {/* Language lives with the other account preferences. Changing it
+              here takes effect immediately and is written to the member's
+              profile by the selector itself, so there is nothing to "save" and
+              it sits outside the form's submit path (§5). */}
+          <p style={{ fontSize:13, fontWeight:700, margin:'20px 0 8px', color:'var(--text-secondary)' }}>
+            {t('dashboard:settings.languageSection')}
+          </p>
+          <div style={{ marginBottom: 20 }}>
+            <LanguageSelector variant="panel" align="start" />
+            <p style={{ fontSize:11, color:'var(--text-muted)', marginTop:8, lineHeight:1.6 }}>
+              {t('dashboard:settings.languageHint')}
+            </p>
+          </div>
+
+          <p style={{ fontSize:13, fontWeight:700, margin:'20px 0 12px', color:'var(--text-secondary)' }}>{t('dashboard:settings.changePassword')}</p>
           <div className="form-group">
-            <label className="form-label">CURRENT PASSWORD</label>
-            <input type="password" className="form-input" value={curPwd} onChange={e => setCurPwd(e.target.value)} placeholder="Leave blank to keep unchanged" />
+            <label className="form-label">{t('dashboard:settings.currentPassword')}</label>
+            <input type="password" className="form-input" dir="ltr" value={curPwd} onChange={e => setCurPwd(e.target.value)} placeholder={t('dashboard:settings.keepUnchanged')} />
           </div>
           <div className="form-group">
-            <label className="form-label">NEW PASSWORD</label>
-            <input type="password" className="form-input" value={newPwd} onChange={e => setNewPwd(e.target.value)} placeholder="Min 6 characters" />
+            <label className="form-label">{t('dashboard:settings.newPassword')}</label>
+            <input type="password" className="form-input" dir="ltr" value={newPwd} onChange={e => setNewPwd(e.target.value)} placeholder={t('validation:password.min6')} />
           </div>
 
           {msg && <p style={{ color:'var(--green)', fontSize:13, marginBottom:12 }}>{msg}</p>}
           {err && <p className="form-error">{err}</p>}
 
           <button type="submit" className="btn-primary" disabled={loading} style={{ marginTop:8 }}>
-            {loading ? 'Saving...' : 'Save Changes'}
+            {loading ? t('common:action.saving') : t('common:action.saveChanges')}
           </button>
         </form>
       </div>
@@ -131,10 +149,8 @@ function SettingsContent() {
 
 export default function SettingsPage() {
   return (
-    <AuthProvider>
-      <ProtectedLayout>
-        <SettingsContent />
-      </ProtectedLayout>
-    </AuthProvider>
+    <ProtectedLayout>
+      <SettingsContent />
+    </ProtectedLayout>
   );
 }

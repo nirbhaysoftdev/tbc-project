@@ -3,11 +3,14 @@
 // Forgot Password -> Enter Email -> Send OTP -> Verify OTP + Set New Password -> Login
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { Trans, useTranslation } from 'react-i18next';
 import { authAPI } from '@/lib/api';
+import LanguageSelector from '@/components/i18n/LanguageSelector';
 
 type Step = 'email' | 'reset' | 'done';
 
 export default function ForgotPasswordPage() {
+  const { t } = useTranslation(['auth', 'common', 'validation']);
   const [step, setStep]         = useState<Step>('email');
   const [email, setEmail]       = useState('');
   const [otpDigits, setOtpDigits] = useState<string[]>(Array(6).fill(''));
@@ -49,13 +52,16 @@ export default function ForgotPasswordPage() {
     setError('');
     try {
       await authAPI.forgotPassword(email.trim().toLowerCase());
-      setInfo(`If an account exists for ${email}, a 6-digit code has been sent to it.`);
+      // Deliberately does not confirm whether the account exists: the
+      // endpoint is non-enumerating and the message must stay that way in
+      // every language.
+      setInfo(t('auth:forgot.codeSentIfExists', { email }));
       setResendIn(60);
       setStep('reset');
     } catch (err: any) {
       // The endpoint is designed to always succeed; this only triggers on
       // rate limiting or a network failure.
-      setError(err.response?.data?.error || 'Could not send verification code. Please try again.');
+      setError(err.response?.data?.error || t('auth:forgot.couldNotSend'));
     } finally {
       setLoading(false);
     }
@@ -64,7 +70,7 @@ export default function ForgotPasswordPage() {
   const onSubmitEmail = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    if (!/^\S+@\S+\.\S+$/.test(email)) return setError('Enter a valid email');
+    if (!/^\S+@\S+\.\S+$/.test(email)) return setError(t('validation:email'));
     await sendCode();
   };
 
@@ -79,16 +85,16 @@ export default function ForgotPasswordPage() {
     e.preventDefault();
     setError('');
     const code = otpDigits.join('');
-    if (code.length !== 6) return setError('Enter the 6-digit code');
-    if (newPassword.length < 8) return setError('Password must be at least 8 characters');
-    if (newPassword !== confirm) return setError('Passwords do not match');
+    if (code.length !== 6) return setError(t('validation:otp.required'));
+    if (newPassword.length < 8) return setError(t('validation:password.tooShort', { count: 8 }));
+    if (newPassword !== confirm) return setError(t('validation:password.mismatch'));
 
     setLoading(true);
     try {
       await authAPI.resetPassword(email.trim().toLowerCase(), code, newPassword);
       setStep('done');
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Could not reset password');
+      setError(err.response?.data?.error || t('auth:forgot.couldNotReset'));
     } finally {
       setLoading(false);
     }
@@ -97,24 +103,30 @@ export default function ForgotPasswordPage() {
   return (
     <div className="login-page">
       <div className="login-card">
+        {/* Password recovery is a public entry point (§4). */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4 }}>
+          <LanguageSelector variant="panel" />
+        </div>
+
         <div className="login-logo">
-          <img src="/images/tbc-logo-1.png" alt="TBC Logo" />
-          <p className="login-brand">TRILLION</p>
-          <p className="login-sub">BUSINESS COMMUNITY</p>
+          <img src="/images/tbc-logo-1.png" alt={t('common:brand.full')} />
+          <p className="login-brand">{t('common:brand.name')}</p>
+          <p className="login-sub">{t('common:brand.sub')}</p>
         </div>
 
         {step === 'email' && (
           <>
-            <h1 className="login-title">Forgot password</h1>
-            <p className="login-desc">Enter your account email and we&apos;ll send you a verification code.</p>
+            <h1 className="login-title">{t('auth:forgot.requestTitle')}</h1>
+            <p className="login-desc">{t('auth:forgot.requestDesc')}</p>
 
             <form onSubmit={onSubmitEmail}>
               <div className="form-group">
-                <label className="form-label">EMAIL ADDRESS</label>
+                <label className="form-label">{t('auth:forgot.emailLabel')}</label>
                 <input
                   type="email"
                   className="form-input"
-                  placeholder="you@trillionbc.com"
+                  dir="ltr"
+                  placeholder={t('auth:login.emailPlaceholder')}
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   required
@@ -124,7 +136,7 @@ export default function ForgotPasswordPage() {
               {error && <p className="form-error">{error}</p>}
 
               <button type="submit" className="btn-primary" disabled={loading}>
-                {loading ? 'Sending code…' : 'Send verification code'}
+                {loading ? t('auth:forgot.sending') : t('auth:forgot.send')}
               </button>
             </form>
           </>
@@ -132,13 +144,18 @@ export default function ForgotPasswordPage() {
 
         {step === 'reset' && (
           <>
-            <h1 className="login-title">Reset password</h1>
+            <h1 className="login-title">{t('auth:forgot.resetTitle')}</h1>
             <p className="login-desc">
-              Enter the 6-digit code sent to <strong>{email}</strong> and choose a new password.
+              <Trans
+                i18nKey="auth:forgot.resetDesc"
+                values={{ email }}
+                components={[<strong key="0" className="ltr-embed" />]}
+              />
             </p>
 
             <form onSubmit={onSubmitReset}>
-              <div className="comm-otp-row" style={{ marginBottom: 18 }}>
+              {/* Fixed digit sequence — pinned LTR in every language (§10). */}
+              <div className="comm-otp-row ltr-embed" dir="ltr" style={{ marginBottom: 18 }}>
                 {otpDigits.map((d, i) => (
                   <input
                     key={i}
@@ -156,11 +173,12 @@ export default function ForgotPasswordPage() {
               </div>
 
               <div className="form-group">
-                <label className="form-label">NEW PASSWORD</label>
+                <label className="form-label">{t('auth:forgot.newPasswordLabel')}</label>
                 <input
                   type="password"
                   className="form-input"
-                  placeholder="Min 8 characters"
+                  dir="ltr"
+                  placeholder={t('auth:forgot.newPasswordPlaceholder')}
                   value={newPassword}
                   onChange={e => setNewPassword(e.target.value)}
                   required
@@ -168,11 +186,12 @@ export default function ForgotPasswordPage() {
               </div>
 
               <div className="form-group">
-                <label className="form-label">CONFIRM NEW PASSWORD</label>
+                <label className="form-label">{t('auth:forgot.confirmLabel')}</label>
                 <input
                   type="password"
                   className="form-input"
-                  placeholder="Repeat new password"
+                  dir="ltr"
+                  placeholder={t('auth:forgot.confirmPlaceholder')}
                   value={confirm}
                   onChange={e => setConfirm(e.target.value)}
                   required
@@ -183,15 +202,15 @@ export default function ForgotPasswordPage() {
               {error && <p className="form-error">{error}</p>}
 
               <button type="submit" className="btn-primary" disabled={loading}>
-                {loading ? 'Resetting…' : 'Reset password'}
+                {loading ? t('auth:forgot.resetting') : t('auth:forgot.reset')}
               </button>
 
               <div className="comm-otp-resend">
                 {resendIn > 0 ? (
-                  <span>Resend available in {resendIn}s</span>
+                  <span>{t('auth:register.resendIn', { seconds: resendIn })}</span>
                 ) : (
                   <button type="button" className="comm-linkish" onClick={resendCode} disabled={loading}>
-                    Resend code
+                    {t('auth:register.resend')}
                   </button>
                 )}
                 <button
@@ -200,7 +219,7 @@ export default function ForgotPasswordPage() {
                   onClick={() => setStep('email')}
                   disabled={loading}
                 >
-                  Wrong email? Go back
+                  {t('auth:register.wrongEmail')}
                 </button>
               </div>
             </form>
@@ -209,21 +228,19 @@ export default function ForgotPasswordPage() {
 
         {step === 'done' && (
           <>
-            <h1 className="login-title">Password updated</h1>
-            <p className="login-desc">
-              Your password has been reset successfully. You can now log in with your new password.
-            </p>
+            <h1 className="login-title">{t('auth:forgot.doneTitle')}</h1>
+            <p className="login-desc">{t('auth:forgot.doneDesc')}</p>
             <Link href="/login" className="btn-primary" style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }}>
-              Go to Login
+              {t('auth:register.goToLogin')}
             </Link>
           </>
         )}
 
         {step !== 'done' && (
           <p style={{ textAlign: 'center', marginTop: 18, fontSize: 13, color: 'var(--text-muted)' }}>
-            Remembered your password?{' '}
+            {t('auth:forgot.backToLogin')}{' '}
             <Link href="/login" style={{ color: 'var(--accent-blue)', fontWeight: 500 }}>
-              Sign in
+              {t('auth:register.signIn')}
             </Link>
           </p>
         )}

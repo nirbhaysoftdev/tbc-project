@@ -1,5 +1,6 @@
 // src/controllers/eventsController.js
 const prisma = require('../utils/prismaClient');
+const i18n = require('../services/i18n/translationService');
 const { memberCardSelect } = require('../services/memberVisibility');
 
 // ── Get all events ────────────────────────────
@@ -32,7 +33,11 @@ const getEvents = async (req, res) => {
       _count: undefined,
     }));
 
-    res.json({ events: enriched, pagination: { page: parseInt(page), limit: parseInt(limit), total } });
+    const localised = await i18n.localizeMany('Event', enriched, req.language, {
+      onMissing: 'queue',
+    });
+
+    res.json({ events: localised, pagination: { page: parseInt(page), limit: parseInt(limit), total } });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error' });
@@ -54,7 +59,7 @@ const getEvent = async (req, res) => {
       },
     });
     if (!event) return res.status(404).json({ error: 'Event not found' });
-    res.json({ event });
+    res.json({ event: await i18n.localizeOne('Event', event, req.language, { onMissing: 'queue' }) });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error' });
@@ -84,6 +89,13 @@ const createEvent = async (req, res) => {
       },
     });
 
+    // Scheduled after the English row is committed; never able to fail the save.
+    await i18n.registerSource('Event', event.id, {
+      title:       event.title,
+      description: event.description,
+      location:    event.location,
+    });
+
     res.status(201).json({ event });
   } catch (err) {
     console.error(err);
@@ -107,6 +119,13 @@ const updateEvent = async (req, res) => {
     if (imageUrl)     data.imageUrl     = imageUrl;
 
     const event = await prisma.event.update({ where: { id: req.params.id }, data });
+
+    await i18n.registerSource('Event', event.id, {
+      title:       event.title,
+      description: event.description,
+      location:    event.location,
+    });
+
     res.json({ event });
   } catch (err) {
     console.error(err);

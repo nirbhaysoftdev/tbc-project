@@ -37,11 +37,15 @@ const mediaUpload = multer({
 });
 
 router.get('/:id/media',                      mediaCtrl.listMedia);
-router.post('/:id/media',    requireAdmin,    mediaUpload.array('files', 10), mediaCtrl.uploadMedia);
+router.post('/:id/media',    requireAdmin,    mediaUpload.array('files', 20), mediaCtrl.uploadMedia);
 router.delete('/:id/media/:docId', requireAdmin, mediaCtrl.deleteMedia);
 
 router.get('/my-investments',              ctrl.getMyInvestments);
 router.get('/my-investment-requests',      requestCtrl.getMyRequests);
+// Both of these must stay above '/:id', or Express matches "facets" and
+// "people" as project ids.
+router.get('/facets',                      ctrl.getFacets);
+router.get('/people/search', requireAdmin, ctrl.searchPeople);
 router.get('/',                            ctrl.getProjects);
 router.get('/:id',                         ctrl.getProject);
 router.post('/',        requireAdmin,      ctrl.createProject);

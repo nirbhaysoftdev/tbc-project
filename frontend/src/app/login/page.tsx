@@ -1,18 +1,21 @@
 'use client';
 // src/app/login/page.tsx
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/lib/auth';
 import { authAPI } from '@/lib/api';
 import { useGoogleSignIn } from '@/lib/useGoogleSignIn';
+import LanguageSelector from '@/components/i18n/LanguageSelector';
 
 export default function LoginPage() {
+  const { t } = useTranslation(['auth', 'common']);
   const [email,    setEmail]    = useState('');
   const [password, setPassword] = useState('');
   const [error,    setError]    = useState('');
   const [loading,  setLoading]  = useState(false);
-  const { login, applyToken } = useAuth();
+  const { login, applyToken, user, loading: authLoading } = useAuth();
   const router    = useRouter();
 
   const routeAfterAuth = (user: { status?: string }, needsAccountType?: boolean) => {
@@ -20,6 +23,18 @@ export default function LoginPage() {
     if (needsAccountType) return '/onboarding/profile';
     return '/community';
   };
+
+  // Someone already signed in has no business on the sign-in page. Without
+  // this, a stray redirect here showed a login form to a member whose session
+  // was perfectly valid — they could press Back and carry on, which is what
+  // made the whole thing look broken rather than simply wrong.
+  //
+  // `replace`, not `push`: the login page must not end up in the history of a
+  // signed-in session, or Back lands on it again.
+  useEffect(() => {
+    if (authLoading || !user) return;
+    router.replace(user.role === 'ADMIN' ? '/admin' : routeAfterAuth(user));
+  }, [user, authLoading, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,7 +44,9 @@ export default function LoginPage() {
       const u = await login(email, password);
       router.push(routeAfterAuth(u));
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Login failed. Please try again.');
+      // A server-sent message is already localised by the API's own
+      // Accept-Language handling; only our client-side fallback needs t().
+      setError(err.response?.data?.error || t('auth:login.failed'));
     } finally {
       setLoading(false);
     }
@@ -44,7 +61,7 @@ export default function LoginPage() {
       await applyToken(token, user);
       router.push(routeAfterAuth(user, needsAccountType));
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Google sign-in failed');
+      setError(err.response?.data?.error || t('auth:google.failed'));
     } finally {
       setLoading(false);
     }
@@ -55,15 +72,22 @@ export default function LoginPage() {
   return (
     <div className="login-page">
       <div className="login-card">
-        {/* Logo */}
-        <div className="login-logo">
-             <img src="/images/tbc-logo-1.png" alt="TBC Logo" />
-          <p className="login-brand">TRILLION</p>
-          <p className="login-sub">BUSINESS COMMUNITY</p>
+        {/* The selector belongs on the login page itself (§4): a member whose
+            UI language differs from their browser must be able to switch
+            before authenticating, not after. */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4 }}>
+          <LanguageSelector variant="panel" />
         </div>
 
-        <h1 className="login-title">Welcome back</h1>
-        <p className="login-desc">Sign in to your member dashboard</p>
+        {/* Logo */}
+        <div className="login-logo">
+             <img src="/images/tbc-logo-1.png" alt={t('common:brand.full')} />
+          <p className="login-brand">{t('common:brand.name')}</p>
+          <p className="login-sub">{t('common:brand.sub')}</p>
+        </div>
+
+        <h1 className="login-title">{t('auth:login.title')}</h1>
+        <p className="login-desc">{t('auth:login.subtitle')}</p>
 
         {/* Google Sign-in */}
         <div className="comm-google-wrap">
@@ -72,26 +96,27 @@ export default function LoginPage() {
               type="button"
               className="comm-google-fallback"
               onClick={() =>
-                setError(
-                  'Google sign-in is not configured yet. Set NEXT_PUBLIC_GOOGLE_CLIENT_ID and try again.',
-                )
+                setError(t('auth:google.notConfigured'))
               }
             >
-              <GoogleIcon /> Continue with Google
+              <GoogleIcon /> {t('auth:google.continue')}
             </button>
           ) : (
             <div ref={buttonRef} className="comm-google-btn" aria-busy={!googleReady} />
           )}
-          <div className="comm-divider"><span>or sign in with email</span></div>
+          <div className="comm-divider"><span>{t('auth:google.dividerSignIn')}</span></div>
         </div>
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label className="form-label">EMAIL ADDRESS</label>
+            <label className="form-label">{t('auth:login.emailLabel')}</label>
             <input
               type="email"
               className="form-input"
-              placeholder="you@trillionbc.com"
+              // Email addresses are Latin-script even in Arabic and Persian, so
+              // the field keeps LTR input regardless of page direction (§10).
+              dir="ltr"
+              placeholder={t('auth:login.emailPlaceholder')}
               value={email}
               onChange={e => setEmail(e.target.value)}
               required
@@ -99,11 +124,12 @@ export default function LoginPage() {
           </div>
 
           <div className="form-group">
-            <label className="form-label">PASSWORD</label>
+            <label className="form-label">{t('auth:login.passwordLabel')}</label>
             <input
               type="password"
               className="form-input"
-              placeholder="••••••••"
+              dir="ltr"
+              placeholder={t('auth:login.passwordPlaceholder')}
               value={password}
               onChange={e => setPassword(e.target.value)}
               required
@@ -112,21 +138,21 @@ export default function LoginPage() {
 
           <div style={{ textAlign: 'right', marginBottom: 14, marginTop: -8 }}>
             <Link href="/forgot-password" style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-              Forgot password?
+              {t('auth:login.forgotPassword')}
             </Link>
           </div>
 
           {error && <p className="form-error">{error}</p>}
 
           <button type="submit" className="btn-primary" disabled={loading}>
-            {loading ? 'Signing in...' : 'Sign In'}
+            {loading ? t('auth:login.submitting') : t('auth:login.submit')}
           </button>
         </form>
 
         <p style={{ textAlign: 'center', marginTop: 18, fontSize: 13, color: 'var(--text-muted)' }}>
-          Not a member?{' '}
+          {t('auth:login.notAMember')}{' '}
           <Link href="/register" style={{ color: 'var(--accent-blue)', fontWeight: 500 }}>
-            Sign Up
+            {t('auth:login.signUp')}
           </Link>
         </p>
       </div>

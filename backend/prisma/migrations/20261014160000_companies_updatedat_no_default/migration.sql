@@ -1,0 +1,16 @@
+-- Drop the database default on companies.updatedAt.
+--
+-- 20261014100000_company_profiles created the column as
+-- `DEFAULT CURRENT_TIMESTAMP`, but the field is `@updatedAt` in the Prisma
+-- schema, which means Prisma sets the value on every write and expects no
+-- default in the database. The mismatch made `prisma migrate diff` report
+-- drift on this table, which is the signal this project relies on to catch a
+-- change that will not reach production — it has to stay clean to be useful.
+--
+-- A follow-up migration rather than an edit to the applied one: the earlier
+-- file's checksum is already recorded in _prisma_migrations, and changing it
+-- would make Prisma refuse to run on any database that has it.
+--
+-- No behaviour changes. Every insert comes through Prisma, which supplies the
+-- value, and existing rows keep theirs.
+ALTER TABLE "companies" ALTER COLUMN "updatedAt" DROP DEFAULT;

@@ -13,11 +13,13 @@
 
 import { motion } from 'motion/react';
 import { EASE, useCalm } from './motion';
+import { useTranslation } from 'react-i18next';
 
 /** How far the chevron travels, in px. */
 const TRAVEL = 26;
 
 export default function ScrollCue({ to = '#what' }: { to?: string }) {
+  const { t } = useTranslation('landing');
   const calm = useCalm();
 
   const go = () => {
@@ -39,12 +41,12 @@ export default function ScrollCue({ to = '#what' }: { to?: string }) {
         type="button"
         className="lp-cue"
         onClick={go}
-        aria-label="Scroll to the next section"
+        aria-label={t('scrollCue.aria')}
         initial={calm ? false : { opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: calm ? 0 : 0.8, ease: EASE.out, delay: calm ? 0 : 1.5 }}
       >
-        <span className="lp-cue-label">Scroll</span>
+        <span className="lp-cue-label">{t('scrollCue.label')}</span>
 
         <span className="lp-cue-lane" aria-hidden>
           {[0, 1].map((n) => (

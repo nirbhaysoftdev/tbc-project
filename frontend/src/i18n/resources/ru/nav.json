@@ -1,0 +1,42 @@
+{
+  "main": {
+    "community": "Сообщество",
+    "dashboard": "Панель",
+    "projects": "Проекты",
+    "companies": "Компании",
+    "portfolio": "Портфель",
+    "transactions": "Операции",
+    "cards": "Карты",
+    "settings": "Настройки",
+    "adminPanel": "Панель администратора",
+    "activityLogs": "Журнал действий",
+    "withdrawalRequests": "Заявки на вывод",
+    "myProfile": "Мой профиль",
+    "walletShort": "Кошелёк (SalBank)"
+  },
+  "community": {
+    "feed": "Лента",
+    "dealRoom": "Deal Room",
+    "directory": "Сообщество",
+    "events": "События",
+    "messages": "Сообщения"
+  },
+  "landing": {
+    "what": "Сообщество",
+    "advantages": "Преимущества",
+    "howItWorks": "Возможности",
+    "profit": "Доходность",
+    "faq": "Вопросы и ответы",
+    "home": "Trillion Business Community — главная",
+    "sections": "Разделы",
+    "memberLogin": "Вход для участников",
+    "apply": "Подать заявку",
+    "applyForMembership": "Подать заявку на участие"
+  },
+  "alerts": {
+    "none": "Нет новых событий",
+    "summary": "Новых участников: {{members}}, заявок на инвестирование: {{investments}}, заявок на вывод: {{withdrawals}}",
+    "adminQueue": "Новых участников: {{members}}, заявок на инвестирование: {{investments}}",
+    "withdrawalQueue": "Заявок на вывод, ожидающих одобрения: {{count}}"
+  }
+}

@@ -8,17 +8,24 @@
 // carries the payoff of every card, so the whole section can be understood
 // from the chips alone before a word of body copy is read.
 
+import { useMemo } from 'react';
 import Link from 'next/link';
 import { motion } from 'motion/react';
-import { WHY_TRACKS, trackCards, type ValueCard, type ValueTrack } from '@/lib/landing-data';
+import { getWhyTracks, getWhyJoin, trackCards, type ValueCard, type ValueTrack } from '@/lib/landing-data';
 import IsoArt from './IsoArt';
 import { EASE, Reveal, SplitWordsInView, StaggerGroup, StaggerItem, useCalm } from './motion';
+import { useTranslation } from 'react-i18next';
 
 export default function WhyJoin() {
+  const { t } = useTranslation('landing');
+  const WHY_TRACKS = useMemo(() => getWhyTracks(t), [t]);
+  // The nine cards, resolved once and handed to each track, so trackCards()
+  // does not have to reach for a module constant that is now language-aware.
+  const cards = useMemo(() => getWhyJoin(t), [t]);
   return (
     <section id="why" className="lp-section lp-why">
       <div className="lp-section-head">
-        <Reveal className="lp-tag">Why join</Reveal>
+        <Reveal className="lp-tag">{t('tag.whyJoin')}</Reveal>
         <h2 className="lp-section-title">
           <SplitWordsInView text="What membership does for your business." />
         </h2>
@@ -30,25 +37,26 @@ export default function WhyJoin() {
 
       {/* Chip summary: the entire argument in one scannable line-up. */}
       <StaggerGroup className="lp-why-legend" stagger={0.05}>
-        {WHY_TRACKS.map((t) => (
-          <StaggerItem className="lp-why-legend-item" key={t.key}>
-            <TrackGlyph kind={t.key} />
-            <span className="lp-why-legend-n">{t.n}</span>
-            <span className="lp-why-legend-label">{t.label}</span>
+        {/* Renamed from `t` so it no longer shadows the translator function. */}
+        {WHY_TRACKS.map((tr) => (
+          <StaggerItem className="lp-why-legend-item" key={tr.key}>
+            <TrackGlyph kind={tr.key} />
+            <span className="lp-why-legend-n">{tr.n}</span>
+            <span className="lp-why-legend-label">{tr.label}</span>
           </StaggerItem>
         ))}
       </StaggerGroup>
 
       <div className="lp-why-tracks">
         {WHY_TRACKS.map((track) => (
-          <Track track={track} key={track.key} />
+          <Track track={track} cards={cards} key={track.key} />
         ))}
       </div>
 
       <Reveal className="lp-value-foot" delay={0.1}>
-        <span>Any one of these pays for the membership. Most members use several.</span>
+        <span>{t('whyJoin.foot')}</span>
         <Link href="/register" className="lp-btn lp-btn-outline">
-          Apply for membership →
+          {t('whyJoin.cta')}
         </Link>
       </Reveal>
     </section>
@@ -57,8 +65,8 @@ export default function WhyJoin() {
 
 /* ── One track ────────────────────────────────────── */
 
-function Track({ track }: { track: ValueTrack }) {
-  const [lead, ...rest] = trackCards(track);
+function Track({ track, cards }: { track: ValueTrack; cards: ValueCard[] }) {
+  const [lead, ...rest] = trackCards(track, cards);
 
   return (
     <article className="lp-why-track">

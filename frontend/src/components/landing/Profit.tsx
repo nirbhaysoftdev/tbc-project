@@ -7,13 +7,16 @@
 // Presented strictly as a proposed framework throughout - "designed to",
 // "would be", "intended to" - never firmer than the source copy.
 
-import { useState } from 'react';
+import { useState, useMemo} from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'motion/react';
-import { PROFIT } from '@/lib/landing-data';
+import { getProfit } from '@/lib/landing-data';
 import { EASE, Reveal, SplitWordsInView, StaggerGroup, StaggerItem, enterInView, useCalm } from './motion';
+import { useTranslation } from 'react-i18next';
 
 export default function Profit() {
+  const { t } = useTranslation('landing');
+  const PROFIT = useMemo(() => getProfit(t), [t]);
   const calm = useCalm();
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
@@ -30,7 +33,7 @@ export default function Profit() {
       </div>
 
       {/* The flow: value moving left to right through three nodes. */}
-      <div className="lp-profit-flow" aria-label="Business activity leads to the Universal Profit Fund, which leads to eligible members">
+      <div className="lp-profit-flow" aria-label={t('aria.profitFlow')}>
         {PROFIT.steps.map((s, i) => (
           <div className="lp-profit-flow-item" key={s.key}>
             <motion.div

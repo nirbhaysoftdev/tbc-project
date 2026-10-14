@@ -1,0 +1,42 @@
+{
+  "main": {
+    "community": "انجمن",
+    "dashboard": "داشبورد",
+    "projects": "پروژه‌ها",
+    "companies": "شرکت‌ها",
+    "portfolio": "سبد سرمایه",
+    "transactions": "تراکنش‌ها",
+    "cards": "کارت‌ها",
+    "settings": "تنظیمات",
+    "adminPanel": "پنل مدیریت",
+    "activityLogs": "گزارش فعالیت‌ها",
+    "withdrawalRequests": "درخواست‌های برداشت",
+    "myProfile": "نمایه من",
+    "walletShort": "کیف پول (SalBank)"
+  },
+  "community": {
+    "feed": "خوراک",
+    "dealRoom": "Deal Room",
+    "directory": "انجمن",
+    "events": "رویدادها",
+    "messages": "پیام‌ها"
+  },
+  "landing": {
+    "what": "انجمن",
+    "advantages": "مزایا",
+    "howItWorks": "فرصت‌ها",
+    "profit": "سود",
+    "faq": "پرسش‌های متداول",
+    "home": "Trillion Business Community — خانه",
+    "sections": "بخش‌ها",
+    "memberLogin": "ورود اعضا",
+    "apply": "درخواست عضویت",
+    "applyForMembership": "درخواست عضویت"
+  },
+  "alerts": {
+    "none": "موردی در انتظار نیست",
+    "summary": "{{members}} عضو جدید، {{investments}} درخواست سرمایه‌گذاری، {{withdrawals}} درخواست برداشت",
+    "adminQueue": "{{members}} عضو جدید، {{investments}} درخواست سرمایه‌گذاری",
+    "withdrawalQueue": "{{count}} درخواست برداشت در انتظار تأیید"
+  }
+}

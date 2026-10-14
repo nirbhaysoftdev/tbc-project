@@ -8,6 +8,8 @@ import {
   LinearScale, CategoryScale, Filler, Tooltip, Legend, ChartOptions,
 } from 'chart.js';
 import { Line, Bar, Doughnut } from 'react-chartjs-2';
+import { useTranslation } from 'react-i18next';
+import { formatCurrency, formatDate } from '@/i18n/format';
 
 ChartJS.register(
   LineElement, PointElement, BarElement, ArcElement,
@@ -24,12 +26,14 @@ export interface SeriesPoint {
   balance: number;
 }
 
-const eur = (n: number) => `€ ${Number(n || 0).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+// Was hardcoded to 'de-DE'. Chart tooltips now use the same locale-aware
+// formatter as the rest of the app, so an Italian admin sees Italian grouping.
+const eur = (n: number) => formatCurrency(Number(n || 0), 'EUR');
 
+// Axis month labels: was pinned to 'en-GB', now follows the active language.
 const monthLabel = (key: string) => {
   const [y, m] = key.split('-');
-  return new Date(Number(y), Number(m) - 1, 1)
-    .toLocaleDateString('en-GB', { month: 'short', year: '2-digit' });
+  return formatDate(new Date(Number(y), Number(m) - 1, 1), { month: 'short', year: '2-digit' });
 };
 
 const tooltip = {
@@ -67,6 +71,7 @@ const legend = {
 
 /** Capital, available profit and total balance month by month. */
 export function PortfolioChart({ series }: { series: SeriesPoint[] }) {
+  const { t } = useTranslation('admin');
   const labels = series.map((p) => monthLabel(p.month));
 
   const gradient = (color: string, alpha: number) => (ctx: any) => {
@@ -82,21 +87,21 @@ export function PortfolioChart({ series }: { series: SeriesPoint[] }) {
     labels,
     datasets: [
       {
-        label: 'Invested capital',
+        label: t('admin:charts.investedCapital'),
         data: series.map((p) => p.capital),
         borderColor: '#5090ff',
         backgroundColor: gradient('58,111,255', 0.3),
         borderWidth: 2, pointRadius: 0, fill: true, tension: 0.35,
       },
       {
-        label: 'Available profit',
+        label: t('admin:charts.availableProfit'),
         data: series.map((p) => p.profit),
         borderColor: '#4cd98a',
         backgroundColor: gradient('76,217,138', 0.22),
         borderWidth: 2, pointRadius: 0, fill: true, tension: 0.35,
       },
       {
-        label: 'Total balance',
+        label: t('admin:charts.totalBalance'),
         data: series.map((p) => p.balance),
         borderColor: '#c8a84b',
         borderWidth: 2, pointRadius: 0, borderDash: [5, 4], fill: false, tension: 0.35,
@@ -120,23 +125,24 @@ export function PortfolioChart({ series }: { series: SeriesPoint[] }) {
 
 /** Profit credited and capital added per month — the activity behind the curve above. */
 export function MonthlyActivityChart({ series }: { series: SeriesPoint[] }) {
+  const { t } = useTranslation('admin');
   const data = {
     labels: series.map((p) => monthLabel(p.month)),
     datasets: [
       {
-        label: 'Profit credited',
+        label: t('admin:charts.profitCredited'),
         data: series.map((p) => p.profitEarned),
         backgroundColor: 'rgba(76,217,138,0.75)',
         borderRadius: 4, borderSkipped: false,
       },
       {
-        label: 'Capital added',
+        label: t('admin:charts.capitalAdded'),
         data: series.map((p) => p.invested),
         backgroundColor: 'rgba(58,111,255,0.6)',
         borderRadius: 4, borderSkipped: false,
       },
       {
-        label: 'Withdrawn',
+        label: t('admin:charts.withdrawn'),
         data: series.map((p) => p.withdrawn),
         backgroundColor: 'rgba(224,82,82,0.6)',
         borderRadius: 4, borderSkipped: false,

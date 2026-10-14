@@ -1,6 +1,9 @@
 // src/lib/api.ts
 import axios from 'axios';
 import Cookies from 'js-cookie';
+import i18n from '@/i18n';
+import { DEFAULT_LANGUAGE, normalizeLanguage } from '@/i18n/languages';
+import { formatCurrency } from '@/i18n/format';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 
@@ -9,10 +12,14 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-// Attach JWT token on every request
+// Attach JWT token and the active language on every request.
 api.interceptors.request.use((config) => {
   const token = Cookies.get('tbc_token') || (typeof localStorage !== 'undefined' ? localStorage.getItem('tbc_token') : null);
   if (token) config.headers.Authorization = `Bearer ${token}`;
+
+  const lang = normalizeLanguage(i18n.language) || DEFAULT_LANGUAGE;
+  config.headers['Accept-Language'] = lang;
+
   return config;
 });
 
@@ -31,9 +38,10 @@ api.interceptors.response.use(
       );
 
       if (status === 401) {
-        Cookies.remove('tbc_token');
-        localStorage.removeItem('tbc_token');
-        if (path !== '/login') window.location.href = '/login';
+        // Debug mode (in progress): log the response instead of clearing the
+        // token and bouncing to /login, so a 401 can be inspected.
+        try { console.warn('[api] 401 (auth) at', err.config?.url, err.response?.data); } catch (e) {}
+        return Promise.reject(err);
       } else if (
         status === 403 &&
         err.response?.data?.status === 'PENDING' &&
@@ -155,17 +163,42 @@ export const mmsAPI = {
 // ── Profile ───────────────────────────────────
 export const profileAPI = {
   update: (data: FormData) => api.put('/profile', data, { headers: { 'Content-Type': 'multipart/form-data' } }),
+
+  /**
+   * Persist the member's UI language so it follows them to another device.
+   *
+   * Fire-and-forget at the call site (lib/auth.tsx): the language has already
+   * been applied in the browser by the time this runs, so a failure here means
+   * the preference is not remembered, not that the switch did not happen. The
+   * server validates the code against its own allowlist — PATCH /profile/language.
+   */
+  setLanguage: (locale: string) => api.patch('/profile/language', { locale }),
 };
 
 // ── Helpers ───────────────────────────────────
-export const formatEur = (n?: number | null) => {
-  const safe = Number(n) || 0;
+// Formatting lives in src/i18n/format.ts, which reads the active i18next
+// language, memoises its Intl formatters and pins Persian and Arabic to
+// Western digits. It is re-exported here because dozens of call sites across
+// the dashboard, portfolio, transactions, admin, project and company pages
+// import these from '@/lib/api' — re-exporting keeps one implementation
+// behind both import paths rather than a second copy that drifts from it.
+export {
+  formatNumber,
+  formatPercent,
+  formatDate,
+  formatDateTime,
+  formatDateLong,
+  formatRelative,
+  formatCurrency,
+} from '@/i18n/format';
 
-  return `€ ${safe.toLocaleString('en-IE', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2
-  })}`;
-};
+
+/**
+ * Every figure in this portal is euros, so this is the formatter to reach for.
+ * A thin alias over formatCurrency so there is no second place where the
+ * currency, the fraction digits or the numeral system could be decided.
+ */
+export const formatEur = (n?: number | null) => formatCurrency(n, 'EUR');
 
 export const downloadBlob = (blob: Blob, filename: string) => {
   const url = window.URL.createObjectURL(blob);
@@ -229,12 +262,21 @@ export const messagesAPI = {
 export const projectsAPI = {
   getAll:           (params?: Record<string, string>) => api.get('/projects', { params }),
   getOne:           (id: string)              => api.get(`/projects/${id}`),
+  // Category / location / owner / valuation-range options for the listing's
+  // filter bar, built from the live data rather than a hardcoded list.
+  getFacets:        ()                        => api.get('/projects/facets'),
   create:           (data: object)            => api.post('/projects', data),
   update:           (id: string, data: object) => api.put(`/projects/${id}`, data),
   remove:           (id: string)              => api.delete(`/projects/${id}`),
   invest:           (id: string, data: object) => api.post(`/projects/${id}/invest`, data),
   addMilestone:     (id: string, data: object) => api.post(`/projects/${id}/milestones`, data),
   getMyInvestments: ()                        => api.get('/projects/my-investments'),
+
+  // Member search behind the owner / manager / team / investor / partner /
+  // client pickers. Admin-only on the server, and it returns names and
+  // professional fields only - never an email or a phone number.
+  searchPeople:     (q: string, limit = 10) =>
+    api.get('/projects/people/search', { params: { q, limit: String(limit) } }),
 
   // ── Deal-room media (images / PDFs / video) ──
   // A listing returns a short-lived stream URL per item. Those URLs are the only
@@ -244,6 +286,56 @@ export const projectsAPI = {
   uploadMedia:      (id: string, data: FormData) =>
     api.post(`/projects/${id}/media`, data, { headers: { 'Content-Type': 'multipart/form-data' } }),
   removeMedia:      (id: string, docId: string) => api.delete(`/projects/${id}/media/${docId}`),
+};
+
+// ── Companies ───────────────────────────────────
+// The company profile module. Same contract as projectsAPI: server-side
+// search, filters, sorting and pagination, and media that is only reachable
+// through short-lived ticketed URLs.
+export const companiesAPI = {
+  getAll:    (params?: Record<string, string>) => api.get('/companies', { params }),
+  getOne:    (id: string)                      => api.get(`/companies/${id}`),
+  // Category / location / owner / valuation-range options for the filter bar,
+  // built from the live data rather than a hardcoded list.
+  getFacets: ()                                => api.get('/companies/facets'),
+  create:    (data: object)                    => api.post('/companies', data),
+  update:    (id: string, data: object)        => api.put(`/companies/${id}`, data),
+  remove:    (id: string)                      => api.delete(`/companies/${id}`),
+
+  // ── Media (logo, banner, gallery, documents, video) ──
+  // `purpose` tells the server what a batch is for: uploading with
+  // purpose=LOGO or BANNER also points the profile at the new file.
+  listMedia:   (id: string) => api.get(`/companies/${id}/media`),
+  uploadMedia: (id: string, data: FormData) =>
+    api.post(`/companies/${id}/media`, data, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  removeMedia: (id: string, docId: string) => api.delete(`/companies/${id}/media/${docId}`),
+
+  // A Word document is converted to sanitised HTML on the server so it can be
+  // read inside the portal; no browser renders .docx natively. The URL comes
+  // from the media listing, ticket included.
+  previewDoc:  (previewUrl: string) => api.get(previewUrl.replace(/^\/api/, '')),
+};
+
+// ── Connect Now / Enquire Now ───────────────────
+// Replaces published contact details: a member sends a message and the server
+// delivers it to the recipient configured for that project or company.
+//
+// The member's identity is NOT sent. The server takes it from the session
+// token — the name and email shown in the modal are read-only because they are
+// display copies of what the server already knows, not inputs.
+export const enquiriesAPI = {
+  create: (payload: { projectId?: string; companyId?: string; message: string }) =>
+    api.post('/enquiries', payload),
+
+  // The record side: who asked about what, and whether it was delivered.
+  // Admin-only on the server.
+  list: (params?: Record<string, string>) => api.get('/enquiries', { params }),
+
+  // The portal-wide recipients. Several addresses are supported and every one
+  // receives every enquiry. Changing the list emails the addresses added and
+  // removed — the server does that, not the client.
+  getRecipient:    ()                 => api.get('/enquiries/recipient'),
+  updateRecipient: (emails: string[]) => api.put('/enquiries/recipient', { emails }),
 };
 
 // Media stream URLs come back relative to the API root, so they need the same

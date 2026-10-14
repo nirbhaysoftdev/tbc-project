@@ -1,16 +1,17 @@
 'use client';
 // src/app/cards/page.tsx
-import { AuthProvider } from '@/lib/auth';
 import ProtectedLayout from '@/components/layout/ProtectedLayout';
 import DebitCard from '@/components/cards/DebitCard';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/lib/auth';
 
 function CardsContent() {
+  const { t } = useTranslation('dashboard');
   const { user } = useAuth();
   return (
     <div className="content-left">
       <div className="page-header">
-        <h1 className="page-title">My Cards</h1>
+        <h1 className="page-title">{t('cards.pageTitle')}</h1>
       </div>
 
       <div style={{
@@ -26,31 +27,33 @@ function CardsContent() {
         <DebitCard name={user?.name || ''} />
 
         <div style={{ flex: 1, minWidth: 220 }}>
-          <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 20 }}>TBC Platinum Debit Card</h3>
+          <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 20 }}>{t('cards.cardTitle')}</h3>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {[
-              { label: 'Card Status',  value: 'Active', green: true },
-              { label: 'Card Type',    value: 'Debit – Mastercard' },
-              { label: 'Card Number',  value: '**** **** **** 3456' },
-              { label: 'Network',      value: 'Mastercard International' },
-              { label: 'Contactless',  value: 'Enabled' },
-            ].map(({ label, value, green }) => (
-              <div key={label} style={{ display:'flex', justifyContent:'space-between', padding:'10px 0', borderBottom:'1px solid var(--border)' }}>
+              { key: 'status',       label: t('cards.cardStatus'),  value: t('cards.statusActive'), green: true },
+              { key: 'type',         label: t('cards.cardType'),    value: t('cards.typeValue') },
+              // A masked card number is a value, not language: never translated
+              // and always rendered LTR (§10).
+              { key: 'number',       label: t('cards.cardNumber'),  value: '**** **** **** 3456', ltr: true },
+              { key: 'network',      label: t('cards.network'),     value: t('cards.networkValue') },
+              { key: 'contactless',  label: t('cards.contactless'), value: t('cards.enabled') },
+            ].map(({ key, label, value, green, ltr }) => (
+              <div key={key} style={{ display:'flex', justifyContent:'space-between', padding:'10px 0', borderBottom:'1px solid var(--border)' }}>
                 <span style={{ fontSize:12, color:'var(--text-muted)' }}>{label}</span>
-                <span style={{ fontSize:13, fontWeight:600, color: green ? 'var(--green)' : 'var(--text-primary)' }}>{value}</span>
+                <span className={ltr ? 'ltr-embed' : undefined} style={{ fontSize:13, fontWeight:600, color: green ? 'var(--green)' : 'var(--text-primary)' }}>{value}</span>
               </div>
             ))}
           </div>
 
           <div style={{ marginTop: 24 }}>
-            <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>Mastercard Benefits</p>
-            {['Priority Pass Membership', '24/7 Concierge Assistance', 'Exclusive Rewards and Perks'].map(b => (
+            <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>{t('cards.benefitsTitle')}</p>
+            {(['priorityPass', 'concierge', 'rewards'] as const).map(b => (
               <div key={b} className="benefit-item" style={{ marginBottom: 10 }}>
                 <svg viewBox="0 0 24 24" width="16" height="16" className="check-icon" fill="none" stroke="#4fc8e8" strokeWidth="2">
                   <polyline points="20 6 9 17 4 12"/>
                 </svg>
-                <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{b}</span>
+                <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{t(`cards.benefits.${b}`)}</span>
               </div>
             ))}
           </div>
@@ -62,10 +65,8 @@ function CardsContent() {
 
 export default function CardsPage() {
   return (
-    <AuthProvider>
-      <ProtectedLayout>
-        <CardsContent />
-      </ProtectedLayout>
-    </AuthProvider>
+    <ProtectedLayout>
+      <CardsContent />
+    </ProtectedLayout>
   );
 }

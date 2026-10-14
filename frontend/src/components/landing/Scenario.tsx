@@ -10,16 +10,22 @@
 // Narrow screens and reduced-motion get the finished structure immediately,
 // with the same information in a linear read.
 
-import { useRef, useState } from 'react';
+import { useRef, useState, useMemo} from 'react';
 import { motion, useScroll, useMotionValueEvent } from 'motion/react';
-import { SCENARIO } from '@/lib/landing-data';
+import { getScenario, SCENARIO_LAYER_SHAPE } from '@/lib/landing-data';
 import ScenarioElevation from './ScenarioElevation';
 import { EASE, Reveal, SplitWordsInView, useCalm, useMediaQuery } from './motion';
+import { useTranslation } from 'react-i18next';
 
-const LAYERS = SCENARIO.layers;
-const N = LAYERS.length;
+// The layer COUNT drives the scroll maths and is language-independent, so it
+// stays a module constant; the layers themselves are resolved per-language
+// inside the component.
+const N = SCENARIO_LAYER_SHAPE.length;
 
 export default function Scenario() {
+  const { t } = useTranslation('landing');
+  const SCENARIO = useMemo(() => getScenario(t), [t]);
+  const LAYERS = SCENARIO.layers;
   const calm = useCalm();
   const compact = useMediaQuery('(max-width: 900px)');
   const trackRef = useRef<HTMLDivElement>(null);
@@ -91,6 +97,11 @@ function Stack({
   calm: boolean;
   isStatic?: boolean;
 }) {
+  // Its own translator: Stack is a sibling component, not a child of the
+  // section's render, so it cannot inherit the memoised object above.
+  const { t } = useTranslation('landing');
+  const SCENARIO = useMemo(() => getScenario(t), [t]);
+  const LAYERS = SCENARIO.layers;
   const complete = done >= N;
 
   return (
@@ -107,7 +118,7 @@ function Stack({
           foundation at the bottom, where it belongs. */}
       <ol
         className="lp-bld-stack"
-        aria-label={`${SCENARIO.opportunity}, assembled from six member contributions`}
+        aria-label={t('scenario.stackAria', { opportunity: SCENARIO.opportunity })}
       >
         {LAYERS.map((l, i) => {
           const on = i < done;

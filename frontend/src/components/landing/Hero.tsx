@@ -8,14 +8,18 @@
 // the "What it is" section, where it has room to be read.
 
 import Link from 'next/link';
-import { useRef } from 'react';
+import { useRef, useMemo} from 'react';
 import { motion, useScroll, useSpring, useTransform } from 'motion/react';
-import { HERO, STATS } from '@/lib/landing-data';
+import { getHero, getStats } from '@/lib/landing-data';
 import HeroOverlay from './HeroOverlay';
 import ScrollCue from './ScrollCue';
 import { EASE, SplitWords, enter, useCalm } from './motion';
+import { useTranslation } from 'react-i18next';
 
 export default function Hero() {
+  const { t } = useTranslation('landing');
+  const HERO = useMemo(() => getHero(t), [t]);
+  const STATS = useMemo(() => getStats(t), [t]);
   const calm = useCalm();
   const sectionRef = useRef<HTMLElement>(null);
 

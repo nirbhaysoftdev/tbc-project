@@ -1,5 +1,6 @@
 // src/controllers/communityController.js
 const prisma = require('../utils/prismaClient');
+const i18n = require('../services/i18n/translationService');
 const { memberCardSelect, memberProfileSelect } = require('../services/memberVisibility');
 
 // ── Get feed posts ────────────────────────────
@@ -33,7 +34,13 @@ const getFeed = async (req, res) => {
       _count: undefined,
     }));
 
-    res.json({ posts: enriched, pagination: { page: parseInt(page), limit: parseInt(limit), total } });
+    // Member-authored feed posts. Localised like any other dynamic content,
+    // and queued on miss — this route is behind `authenticate` + `requireActive`.
+    const localised = await i18n.localizeMany('Post', enriched, req.language, {
+      onMissing: 'queue',
+    });
+
+    res.json({ posts: localised, pagination: { page: parseInt(page), limit: parseInt(limit), total } });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error' });
@@ -64,6 +71,11 @@ const createPost = async (req, res) => {
       include: {
         author: { select: memberCardSelect() },
       },
+    });
+
+    await i18n.registerSource('Post', post.id, {
+      title:   post.title,
+      content: post.content,
     });
 
     res.status(201).json({ post });
@@ -211,6 +223,16 @@ const updateProfile = async (req, res) => {
       create: { userId: req.user.id, bio, company, industry, country, city, phone, linkedIn, website, interests: interests || [] },
     });
 
+    // `bio` and `jobTitle` are the only profile fields in the translation
+    // registry, and both are already visible to other members through the
+    // directory projection in memberVisibility.js. Nothing newly exposed is
+    // being sent anywhere, and no contact detail, document URL or identity
+    // field is registered for translation (§13).
+    await i18n.registerSource('Profile', profile.id, {
+      bio:      profile.bio,
+      jobTitle: profile.jobTitle,
+    });
+
     res.json({ profile });
   } catch (err) {
     console.error(err);
@@ -229,7 +251,11 @@ const getNotifications = async (req, res) => {
     const unreadCount = await prisma.notification.count({
       where: { userId: req.user.id, read: false },
     });
-    res.json({ notifications, unreadCount });
+    // A member's own notifications — localised for them only, never cached
+    // across users (§11 "respect authorization and tenant boundaries").
+    const localised = await i18n.localizeMany('Notification', notifications, req.language);
+
+    res.json({ notifications: localised, unreadCount });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error' });

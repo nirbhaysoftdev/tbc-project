@@ -11,14 +11,14 @@
 // exactly what is on screen.
 import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { AuthProvider } from '@/lib/auth';
 import ProtectedLayout from '@/components/layout/ProtectedLayout';
-import { adminAPI, formatEur } from '@/lib/api';
+import { adminAPI, formatEur, formatNumber } from '@/lib/api';
 import {
   PortfolioChart, MonthlyActivityChart, ProjectSplitChart,
 } from '@/components/admin/MemberCharts';
 import MemberCapitalModal from '@/components/admin/MemberCapitalModal';
 import { openDocument } from '@/lib/openDocument';
+import { Trans, useTranslation } from 'react-i18next';
 
 const FILE_BASE = process.env.NODE_ENV === 'production'
   ? (process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || '')
@@ -91,6 +91,7 @@ function Table({
 }
 
 function MemberDetailContent() {
+  const { t } = useTranslation(['admin', 'common', 'dashboard']);
   const id = useSearchParams().get('id');
   const router = useRouter();
 
@@ -114,14 +115,14 @@ function MemberDetailContent() {
   useEffect(() => {
     // Reached without ?id= - nothing to load, so say so rather than spin.
     if (!id) {
-      setError('No member selected.');
+      setError(t('admin:memberDetail.noneSelected'));
       setLoading(false);
       return;
     }
     setLoading(true);
     adminAPI.getMemberOverview(id)
       .then(r => setData(r.data))
-      .catch(e => setError(e.response?.data?.error || 'Could not load this member.'))
+      .catch(e => setError(e.response?.data?.error || t('admin:memberDetail.loadFailed')))
       .finally(() => setLoading(false));
   }, [id]);
 
@@ -131,12 +132,12 @@ function MemberDetailContent() {
     setEmailErr('');
     try {
       const res = await adminAPI.sendMemberStatement(id, emailNote.trim() || undefined);
-      setEmailMsg(res.data.message || 'Statement sent.');
+      setEmailMsg(res.data.message || t('admin:memberDetail.statementSent'));
       setEmailOpen(false);
       setEmailNote('');
       setTimeout(() => setEmailMsg(''), 6000);
     } catch (e: any) {
-      setEmailErr(e.response?.data?.error || 'The statement could not be sent.');
+      setEmailErr(e.response?.data?.error || t('admin:memberDetail.statementFailed'));
     } finally {
       setSending(false);
     }
@@ -147,8 +148,8 @@ function MemberDetailContent() {
     return (
       <div className="content-left">
         <div style={{ ...cardStyle, textAlign: 'center', padding: 40 }}>
-          <p style={{ color: 'var(--red)', marginBottom: 16 }}>{error || 'Member not found.'}</p>
-          <button className="btn-secondary" onClick={() => router.push('/admin')}>Back to Admin</button>
+          <p style={{ color: 'var(--red)', marginBottom: 16 }}>{error || t('admin:memberDetail.notFound')}</p>
+          <button className="btn-secondary" onClick={() => router.push('/admin')}>{t('admin:memberDetail.backToAdmin')}</button>
         </div>
       </div>
     );
@@ -160,22 +161,23 @@ function MemberDetailContent() {
   } = data;
   const profile = member.profile || {};
 
+  // `key` is the stable React key; `label` is translated.
   const tiles = [
-    { label: 'Invested Capital', value: formatEur(kpis.investedCapital) },
-    { label: 'Total Balance',    value: formatEur(kpis.totalBalance), accent: 'var(--accent-gold)' },
-    { label: 'Profit Earned',    value: formatEur(kpis.grossProfit), accent: 'var(--green)' },
-    { label: 'Available Profit', value: formatEur(kpis.availableProfit), accent: 'var(--green)' },
-    { label: 'Withdrawn',        value: formatEur(kpis.withdrawnProfit) },
-    { label: 'Pending Withdrawal', value: formatEur(kpis.pendingWithdrawal) },
-    { label: 'Return on Capital', value: `${kpis.roi}%` },
-    { label: 'Projects',         value: kpis.projectCount },
+    { key: 'investedCapital',   label: t('admin:memberDetail.tiles.investedCapital'),   value: formatEur(kpis.investedCapital) },
+    { key: 'totalBalance',      label: t('admin:memberDetail.tiles.totalBalance'),      value: formatEur(kpis.totalBalance), accent: 'var(--accent-gold)' },
+    { key: 'profitEarned',      label: t('admin:memberDetail.tiles.profitEarned'),      value: formatEur(kpis.grossProfit), accent: 'var(--green)' },
+    { key: 'availableProfit',   label: t('admin:memberDetail.tiles.availableProfit'),   value: formatEur(kpis.availableProfit), accent: 'var(--green)' },
+    { key: 'withdrawn',         label: t('admin:memberDetail.tiles.withdrawn'),         value: formatEur(kpis.withdrawnProfit) },
+    { key: 'pendingWithdrawal', label: t('admin:memberDetail.tiles.pendingWithdrawal'), value: formatEur(kpis.pendingWithdrawal) },
+    { key: 'roi',               label: t('admin:memberDetail.tiles.roi'),               value: `${formatNumber(kpis.roi)}%` },
+    { key: 'projects',          label: t('admin:memberDetail.tiles.projects'),          value: formatNumber(kpis.projectCount) },
   ];
 
-  const docs: { label: string; url?: string | null }[] = [
-    { label: 'Trade licence', url: profile.tradeLicenseUrl },
-    { label: 'Resident ID',   url: profile.residentIdUrl },
-    { label: 'Passport',      url: profile.passportUrl },
-    { label: 'CV',            url: profile.cvUrl },
+  const docs: { key: string; label: string; url?: string | null }[] = [
+    { key: 'tradeLicence', label: t('admin:memberDetail.docs.tradeLicence'), url: profile.tradeLicenseUrl },
+    { key: 'residentId',   label: t('admin:memberDetail.docs.residentId'),   url: profile.residentIdUrl },
+    { key: 'passport',     label: t('admin:memberDetail.docs.passport'),     url: profile.passportUrl },
+    { key: 'cv',           label: t('admin:memberDetail.docs.cv'),           url: profile.cvUrl },
   ];
 
   return (
@@ -191,8 +193,9 @@ function MemberDetailContent() {
               border: '1px solid var(--border)', background: 'transparent',
               color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}
-            aria-label="Back to admin panel">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
+            aria-label={t('admin:memberDetail.backAria')}>
+            {/* A back chevron is directional and mirrors in RTL. */}
+            <svg className="rtl-mirror" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M15 18l-6-6 6-6" />
             </svg>
           </button>
@@ -210,15 +213,19 @@ function MemberDetailContent() {
           <div>
             <h1 className="page-title" style={{ marginBottom: 2 }}>{member.name}</h1>
             <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-              {member.email} · Member since {shortDate(kpis.joinedAt)}
+              <span className="ltr-embed">{member.email}</span> · {t('admin:memberDetail.memberSince', { date: shortDate(kpis.joinedAt) })}
             </p>
           </div>
         </div>
 
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <span className={`badge ${badgeFor(member.status)}`}>{member.status}</span>
+          <span className={`badge ${badgeFor(member.status)}`}>
+            {t(`common:status.${String(member.status).toLowerCase()}`, { defaultValue: member.status })}
+          </span>
+          {/* One whole key per state, not "Wallet " + adjective: the adjective
+              inflects with the noun in Italian. */}
           <span className={`badge ${member.walletEnabled ? 'badge-completed' : 'badge-pending'}`}>
-            Wallet {member.walletEnabled ? 'enabled' : 'disabled'}
+            {member.walletEnabled ? t('admin:memberDetail.walletEnabled') : t('admin:memberDetail.walletDisabled')}
           </span>
           <button
             className="btn-primary"
@@ -227,7 +234,7 @@ function MemberDetailContent() {
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M4 6h16v12H4z" /><path d="M4 7l8 6 8-6" />
             </svg>
-            Email Now
+            {t('admin:memberDetail.emailNow')}
           </button>
         </div>
       </div>
@@ -242,68 +249,70 @@ function MemberDetailContent() {
 
       {/* ── KPI tiles ── */}
       <div className="admin-grid">
-        {tiles.map(t => (
-          <div key={t.label} className="admin-stat-card">
-            <p className="admin-stat-label">{t.label}</p>
-            <p className="admin-stat-value" style={t.accent ? { color: t.accent } : undefined}>{t.value}</p>
+        {/* Renamed from `t` so the map variable no longer shadows the
+            translator function. */}
+        {tiles.map(tile => (
+          <div key={tile.key} className="admin-stat-card">
+            <p className="admin-stat-label">{tile.label}</p>
+            <p className="admin-stat-value ltr-embed" style={tile.accent ? { color: tile.accent } : undefined}>{tile.value}</p>
           </div>
         ))}
       </div>
 
       {/* ── Charts ── */}
       <Section
-        title="Portfolio over time"
-        subtitle="Invested capital, available profit and total balance at the end of each month, built from the investment and profit records behind them.">
+        title={t('admin:memberDetail.portfolioTitle')}
+        subtitle={t('admin:memberDetail.portfolioSub')}>
         <div style={{ height: 300 }}>
           {series.length > 1
             ? <PortfolioChart series={series} />
             : <p style={{ color: 'var(--text-muted)', fontSize: 13, padding: 24, textAlign: 'center' }}>
-                Not enough history yet to draw a trend.
+                {t('admin:memberDetail.notEnoughHistory')}
               </p>}
         </div>
       </Section>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1.6fr) minmax(0,1fr)', gap: 20, marginBottom: 20 }}>
         <div style={cardStyle}>
-          <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>Monthly activity</p>
+          <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>{t('admin:memberDetail.monthlyActivity')}</p>
           <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 14 }}>
-            Profit credited, capital added and money withdrawn, month by month.
+            {t('admin:memberDetail.monthlyActivitySub')}
           </p>
           <div style={{ height: 260 }}>
             {series.length
               ? <MonthlyActivityChart series={series} />
-              : <p style={{ color: 'var(--text-muted)', fontSize: 13, padding: 24, textAlign: 'center' }}>No activity yet.</p>}
+              : <p style={{ color: 'var(--text-muted)', fontSize: 13, padding: 24, textAlign: 'center' }}>{t('admin:memberDetail.noActivity')}</p>}
           </div>
         </div>
         <div style={cardStyle}>
-          <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>Capital by project</p>
+          <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>{t('admin:memberDetail.capitalByProject')}</p>
           <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 14 }}>
-            Where this member&apos;s live capital sits.
+            {t('admin:memberDetail.capitalByProjectSub')}
           </p>
           <div style={{ height: 260 }}>
             {byProject.some((p: any) => p.capital > 0)
               ? <ProjectSplitChart rows={byProject} />
-              : <p style={{ color: 'var(--text-muted)', fontSize: 13, padding: 24, textAlign: 'center' }}>No capital booked.</p>}
+              : <p style={{ color: 'var(--text-muted)', fontSize: 13, padding: 24, textAlign: 'center' }}>{t('admin:memberDetail.noCapitalBooked')}</p>}
           </div>
         </div>
       </div>
 
       {/* ── Balance breakdown ── */}
       <Section
-        title="Balance breakdown"
-        subtitle="Opening balance set by the admin tools, plus the capital and profit derived from project records.">
+        title={t('admin:memberDetail.breakdownTitle')}
+        subtitle={t('admin:memberDetail.breakdownSub')}>
         <Table
-          head={['Bucket', 'Opening balance', 'From projects', 'Total']}
+          head={[t('admin:memberDetail.breakdownHead.bucket'), t('admin:memberDetail.breakdownHead.opening'), t('admin:memberDetail.breakdownHead.fromProjects'), t('admin:memberDetail.breakdownHead.total')]}
           align={[false, true, true, true]}
-          empty="No wallet."
+          empty={t('admin:memberDetail.noWallet')}
           rows={[
-            ['Capital', formatEur(breakdown.openingCapital), formatEur(breakdown.projectCapital),
+            [t('admin:memberDetail.rowCapital'), formatEur(breakdown.openingCapital), formatEur(breakdown.projectCapital),
               <strong key="c">{formatEur(breakdown.investedCapital)}</strong>],
-            ['Profit (gross)', formatEur(breakdown.openingProfit), formatEur(breakdown.projectProfit),
+            [t('admin:memberDetail.rowProfitGross'), formatEur(breakdown.openingProfit), formatEur(breakdown.projectProfit),
               <strong key="p">{formatEur(breakdown.grossProfit)}</strong>],
-            ['Less withdrawn', '—', '—', `- ${formatEur(breakdown.withdrawnProfit)}`],
-            ['Less reserved for pending withdrawal', '—', '—', `- ${formatEur(breakdown.pendingWithdrawal)}`],
-            [<strong key="t">Total balance</strong>, '—', '—',
+            [t('admin:memberDetail.rowLessWithdrawn'), '—', '—', `- ${formatEur(breakdown.withdrawnProfit)}`],
+            [t('admin:memberDetail.rowLessReserved'), '—', '—', `- ${formatEur(breakdown.pendingWithdrawal)}`],
+            [<strong key="t">{t('admin:memberDetail.rowTotalBalance')}</strong>, '—', '—',
               <strong key="tv" style={{ color: 'var(--accent-gold)' }}>{formatEur(breakdown.totalBalance)}</strong>],
           ]}
         />
@@ -311,22 +320,24 @@ function MemberDetailContent() {
 
       {/* ── Per project ── */}
       <Section
-        title="Projects"
-        subtitle="Capital and profit per project. Capital with no project is a supported, permanent case, and the opening balance is listed separately because no project stands behind it.">
+        title={t('admin:memberDetail.projectsTitle')}
+        subtitle={t('admin:memberDetail.projectsSub')}>
         <Table
-          head={['Project', 'Category', 'Status', 'Capital', 'Profit']}
+          head={[t('admin:memberDetail.projectsHead.project'), t('admin:memberDetail.projectsHead.category'), t('admin:memberDetail.projectsHead.status'), t('admin:memberDetail.projectsHead.capital'), t('admin:memberDetail.projectsHead.profit')]}
           align={[false, false, false, true, true]}
-          empty="No capital booked against any project."
+          empty={t('admin:memberDetail.noCapitalAnyProject')}
           rows={[
             ...byProject.map((p: any) => [
               p.projectTitle,
               p.category || '—',
-              p.status ? <span key="s" className={`badge ${badgeFor(p.status)}`}>{p.status}</span> : '—',
+              p.status ? <span key="s" className={`badge ${badgeFor(p.status)}`}>
+                {t(`common:status.${String(p.status).toLowerCase()}`, { defaultValue: p.status })}
+              </span> : '—',
               formatEur(p.capital),
               <span key="pr" className="amount-credit">+{formatEur(p.profit)}</span>,
             ]),
             ...(breakdown.openingCapital > 0 || breakdown.openingProfit > 0 ? [[
-              'Opening balance', '—', '—',
+              t('admin:memberDetail.openingBalance'), '—', '—',
               formatEur(breakdown.openingCapital),
               <span key="op" className="amount-credit">+{formatEur(breakdown.openingProfit)}</span>,
             ]] : []),
@@ -336,45 +347,47 @@ function MemberDetailContent() {
 
       {/* ── Investments ── */}
       <Section
-        title={`Investments (${investments.length})`}
-        subtitle="Every capital allocation on record, newest first."
+        title={t('admin:memberDetail.investmentsTitle', { count: investments.length })}
+        subtitle={t('admin:memberDetail.investmentsSub')}
         right={investments.length > 0 ? (
           <button
             style={{ padding:'6px 14px', fontSize:12, borderRadius:6, cursor:'pointer',
               border:'1px solid var(--border)', background:'transparent', color:'var(--text-secondary)' }}
             onClick={() => setCapitalOpen(true)}>
-            Capital records
+            {t('admin:memberDetail.capitalRecords')}
           </button>
         ) : undefined}>
         <Table
-          head={['Project', 'Invested on', 'Amount', 'Returned', 'Outstanding', 'Status']}
+          head={[t('admin:memberDetail.investmentsHead.project'), t('admin:memberDetail.investmentsHead.investedOn'), t('admin:memberDetail.investmentsHead.amount'), t('admin:memberDetail.investmentsHead.returned'), t('admin:memberDetail.investmentsHead.outstanding'), t('admin:memberDetail.investmentsHead.status')]}
           align={[false, false, true, true, true, false]}
-          empty="No investments recorded."
+          empty={t('admin:memberDetail.noInvestments')}
           rows={investments.map((i: any) => [
-            i.project?.title || 'No project',
+            i.project?.title || t('admin:memberDetail.noProject'),
             shortDate(i.investedAt),
             formatEur(i.amount),
             formatEur(i.returnedAmount || 0),
             formatEur(Math.max(0, i.amount - (i.returnedAmount || 0))),
-            <span key="s" className={`badge ${badgeFor(i.status)}`}>{i.status}</span>,
+            <span key="s" className={`badge ${badgeFor(i.status)}`}>
+              {t(`common:status.${String(i.status).toLowerCase()}`, { defaultValue: i.status })}
+            </span>,
           ])}
         />
       </Section>
 
       {/* ── Profit ── */}
       <Section
-        title={`Profit records (${profitRecords.length})`}
-        subtitle="Each monthly cycle or one-time credit, with the capital base and rate that produced it.">
+        title={t('admin:memberDetail.profitTitle', { count: profitRecords.length })}
+        subtitle={t('admin:memberDetail.profitSub')}>
         <Table
-          head={['Project', 'Period', 'Type', 'Rate', 'Capital base', 'Profit', 'Credited']}
+          head={[t('admin:memberDetail.profitHead.project'), t('admin:memberDetail.profitHead.period'), t('admin:memberDetail.profitHead.type'), t('admin:memberDetail.profitHead.rate'), t('admin:memberDetail.profitHead.capitalBase'), t('admin:memberDetail.profitHead.profit'), t('admin:memberDetail.profitHead.credited')]}
           align={[false, false, false, true, true, true, false]}
-          empty="No profit credited yet."
+          empty={t('admin:memberDetail.noProfit')}
           rows={profitRecords.map((r: any) => [
-            r.project?.title || 'No project',
+            r.project?.title || t('admin:memberDetail.noProject'),
             // A one-time period is an internal uniqueness token, not a cycle.
-            String(r.period).startsWith('ONE_TIME') ? 'One-time' : r.period,
-            r.type,
-            r.rate != null ? `${r.rate}%` : '—',
+            String(r.period).startsWith('ONE_TIME') ? t('admin:memberDetail.oneTime') : r.period,
+            t(`admin:investments.type${r.type === 'MONTHLY' ? 'Monthly' : 'OneTime'}`),
+            r.rate != null ? `${formatNumber(r.rate)}%` : '—',
             formatEur(r.capitalSnapshot),
             <span key="a" className="amount-credit">+{formatEur(r.amount)}</span>,
             shortDate(r.generatedAt),
@@ -383,15 +396,15 @@ function MemberDetailContent() {
       </Section>
 
       {profitConfigs.length > 0 && (
-        <Section title="Monthly profit rates in force" subtitle="A rate change takes effect from the next cycle; past records keep the rate that produced them.">
+        <Section title={t('admin:memberDetail.ratesTitle')} subtitle={t('admin:memberDetail.ratesSub')}>
           <Table
-            head={['Project', 'Rate', 'Cycle day', 'Effective from']}
+            head={[t('admin:memberDetail.ratesHead.project'), t('admin:memberDetail.ratesHead.rate'), t('admin:memberDetail.ratesHead.cycleDay'), t('admin:memberDetail.ratesHead.effectiveFrom')]}
             align={[false, true, true, false]}
-            empty="No rate configured."
+            empty={t('admin:memberDetail.noRate')}
             rows={profitConfigs.map((c: any) => [
-              c.project?.title || 'No project',
-              `${c.rate}%`,
-              c.monthlyProfitDay,
+              c.project?.title || t('admin:memberDetail.noProject'),
+              `${formatNumber(c.rate)}%`,
+              formatNumber(c.monthlyProfitDay),
               shortDate(c.effectiveFrom),
             ])}
           />
@@ -399,88 +412,98 @@ function MemberDetailContent() {
       )}
 
       {/* ── Transactions ── */}
-      <Section title={`Transactions (${transactions.length})`} subtitle="The ledger as the member sees it, newest first.">
+      <Section title={t('admin:memberDetail.transactionsTitle', { count: transactions.length })} subtitle={t('admin:memberDetail.transactionsSub')}>
         <Table
-          head={['Date', 'Description', 'Category', 'Project', 'Amount', 'Balance after', 'Status']}
+          head={[t('admin:memberDetail.txHead.date'), t('admin:memberDetail.txHead.description'), t('admin:memberDetail.txHead.category'), t('admin:memberDetail.txHead.project'), t('admin:memberDetail.txHead.amount'), t('admin:memberDetail.txHead.balanceAfter'), t('admin:memberDetail.txHead.status')]}
           align={[false, false, false, false, true, true, false]}
-          empty="No transactions."
-          rows={transactions.map((t: any) => [
-            shortDate(t.createdAt),
-            t.description || '—',
-            t.category || '—',
-            t.project?.title || '—',
-            <span key="a" className={t.type === 'DEBIT' ? 'amount-debit' : 'amount-credit'}>
-              {t.type === 'DEBIT' ? '-' : '+'}{formatEur(t.amount)}
+          empty={t('admin:memberDetail.noTransactions')}
+          // The map variable is `tx`, not `t`: it used to shadow the translator.
+          rows={transactions.map((tx: any) => [
+            shortDate(tx.createdAt),
+            tx.description || '—',
+            tx.category ? t(`dashboard:transactions.category.${tx.category}`, { defaultValue: tx.category }) : '—',
+            tx.project?.title || '—',
+            <span key="a" className={tx.type === 'DEBIT' ? 'amount-debit' : 'amount-credit'}>
+              {tx.type === 'DEBIT' ? '-' : '+'}{formatEur(tx.amount)}
             </span>,
-            t.balanceAfter != null ? formatEur(t.balanceAfter) : '—',
-            <span key="s" className={`badge ${badgeFor(t.status)}`}>{t.status}</span>,
+            tx.balanceAfter != null ? formatEur(tx.balanceAfter) : '—',
+            <span key="s" className={`badge ${badgeFor(tx.status)}`}>
+              {t(`dashboard:transactions.txStatus.${tx.status}`, { defaultValue: tx.status })}
+            </span>,
           ])}
         />
       </Section>
 
       {/* ── Withdrawals & requests ── */}
-      <Section title={`Withdrawal requests (${withdrawRequests.length})`}>
+      <Section title={t('admin:memberDetail.withdrawalsTitle', { count: withdrawRequests.length })}>
         <Table
-          head={['Date', 'Bank', 'IBAN', 'Amount', 'Status']}
+          head={[t('admin:memberDetail.wdHead.date'), t('admin:memberDetail.wdHead.bank'), t('admin:memberDetail.wdHead.iban'), t('admin:memberDetail.wdHead.amount'), t('admin:memberDetail.wdHead.status')]}
           align={[false, false, false, true, false]}
-          empty="No withdrawal requests."
+          empty={t('admin:memberDetail.noWithdrawals')}
           rows={withdrawRequests.map((w: any) => [
             shortDate(w.createdAt),
             w.bankName || '—',
-            w.iban || '—',
+            <span key="ib" className="ltr-embed">{w.iban || '—'}</span>,
             formatEur(w.amount),
-            <span key="s" className={`badge ${badgeFor(w.status)}`}>{w.status}</span>,
+            <span key="s" className={`badge ${badgeFor(w.status)}`}>
+              {t(`common:status.${String(w.status).toLowerCase()}`, { defaultValue: w.status })}
+            </span>,
           ])}
         />
       </Section>
 
-      <Section title={`Investment requests (${investmentRequests.length})`} subtitle="Asks from the Deal Room. A request has no financial effect until admin completes it.">
+      <Section title={t('admin:memberDetail.requestsTitle', { count: investmentRequests.length })} subtitle={t('admin:memberDetail.requestsSub')}>
         <Table
-          head={['Date', 'Project', 'Requested', 'Actual', 'Status']}
+          head={[t('admin:memberDetail.reqHead.date'), t('admin:memberDetail.reqHead.project'), t('admin:memberDetail.reqHead.requested'), t('admin:memberDetail.reqHead.actual'), t('admin:memberDetail.reqHead.status')]}
           align={[false, false, true, true, false]}
-          empty="No investment requests."
+          empty={t('admin:memberDetail.noRequests')}
           rows={investmentRequests.map((r: any) => [
             shortDate(r.createdAt),
             r.project?.title || '—',
             formatEur(r.requestedAmount),
             r.actualAmount != null ? formatEur(r.actualAmount) : '—',
-            <span key="s" className={`badge ${badgeFor(r.status)}`}>{r.status}</span>,
+            <span key="s" className={`badge ${badgeFor(r.status)}`}>
+              {t(`admin:requests.statusLabel.${r.status}`, { defaultValue: r.status })}
+            </span>,
           ])}
         />
       </Section>
 
       {/* ── Member details ── */}
-      <Section title="Member details">
+      <Section title={t('admin:memberDetail.detailsTitle')}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 14 }}>
-          {[
-            ['Full name', member.name],
-            ['Email', member.email],
-            ['Phone', [profile.phoneDialCode, profile.phone].filter(Boolean).join(' ') || '—'],
-            ['Account type', member.accountType || '—'],
-            ['KYC status', member.kycStatus || '—'],
-            ['Company', profile.company || '—'],
-            ['Industry', profile.industry || '—'],
-            ['City', profile.city || '—'],
-            ['Country', profile.country || '—'],
-            ['VAT number', profile.vatNumber || '—'],
-            ['Billing address', profile.billingAddress || profile.businessAddress || '—'],
-            ['Joined', shortDate(member.createdAt)],
-            ['First investment', shortDate(kpis.firstInvestmentAt)],
-          ].map(([label, value]) => (
-            <div key={label as string}>
+          {/* `ltr` marks the values that must not be bidi-reordered: email,
+              phone and VAT number. `id` keys the cell, not the label. */}
+          {([
+            { id: 'fullName',  label: t('admin:memberDetail.fields.fullName'),  value: member.name },
+            { id: 'email',     label: t('admin:memberDetail.fields.email'),     value: member.email, ltr: true },
+            { id: 'phone',     label: t('admin:memberDetail.fields.phone'),     value: [profile.phoneDialCode, profile.phone].filter(Boolean).join(' ') || '—', ltr: true },
+            { id: 'type',      label: t('admin:memberDetail.fields.accountType'), value: member.accountType || '—' },
+            { id: 'kyc',       label: t('admin:memberDetail.fields.kycStatus'), value: member.kycStatus ? t(`common:status.${String(member.kycStatus).toLowerCase()}`, { defaultValue: member.kycStatus }) : '—' },
+            { id: 'company',   label: t('admin:memberDetail.fields.company'),   value: profile.company || '—' },
+            { id: 'industry',  label: t('admin:memberDetail.fields.industry'),  value: profile.industry || '—' },
+            { id: 'city',      label: t('admin:memberDetail.fields.city'),      value: profile.city || '—' },
+            { id: 'country',   label: t('admin:memberDetail.fields.country'),   value: profile.country || '—' },
+            { id: 'vat',       label: t('admin:memberDetail.fields.vat'),       value: profile.vatNumber || '—', ltr: true },
+            { id: 'billing',   label: t('admin:memberDetail.fields.billing'),   value: profile.billingAddress || profile.businessAddress || '—' },
+            { id: 'joined',    label: t('admin:memberDetail.fields.joined'),    value: shortDate(member.createdAt) },
+            { id: 'firstInv',  label: t('admin:memberDetail.fields.firstInvestment'), value: shortDate(kpis.firstInvestmentAt) },
+          ] as { id: string; label: string; value: string; ltr?: boolean }[]).map(({ id, label, value, ltr }) => (
+            <div key={id}>
               <p style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>{label}</p>
-              <p style={{ fontSize: 13, color: 'var(--text-primary)', wordBreak: 'break-word' }}>{(value as string) || '—'}</p>
+              <p className={ltr ? 'ltr-embed' : undefined}
+                style={{ fontSize: 13, color: 'var(--text-primary)', wordBreak: 'break-word' }}>{value || '—'}</p>
             </div>
           ))}
         </div>
 
         <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
           <p style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
-            Documents
+            {t('admin:memberDetail.documentsTitle')}
           </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {docs.filter(d => d.url).map(d => (
-              <button key={d.label} onClick={() => openDocument(d.url)}
+              <button key={d.key} onClick={() => openDocument(d.url)}
                 style={{
                   padding: '6px 12px', fontSize: 12, borderRadius: 6, cursor: 'pointer',
                   border: '1px solid rgba(58,111,255,0.3)', background: 'rgba(58,111,255,0.1)', color: 'var(--accent-blue)',
@@ -494,11 +517,11 @@ function MemberDetailContent() {
                   padding: '6px 12px', fontSize: 12, borderRadius: 6, cursor: 'pointer',
                   border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)',
                 }}>
-                {k.documentType} ({k.status})
+                {t('admin:memberDetail.kycDoc', { type: k.documentType, status: k.status })}
               </button>
             ))}
             {docs.every(d => !d.url) && (member.kycDocuments || []).length === 0 && (
-              <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>No documents on file.</p>
+              <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>{t('admin:memberDetail.noDocuments')}</p>
             )}
           </div>
         </div>
@@ -516,22 +539,27 @@ function MemberDetailContent() {
       {emailOpen && (
         <div className="modal-overlay" onClick={() => !sending && setEmailOpen(false)}>
           <div className="modal-box" onClick={e => e.stopPropagation()} style={{ maxWidth: 480 }}>
-            <p className="modal-title">Email this statement</p>
+            <p className="modal-title">{t('admin:memberDetail.emailTitle')}</p>
             <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 16 }}>
-              {member.name} will receive everything on this screen — balances, projects, investments,
-              profit records, transactions and withdrawals — as a branded statement at{' '}
-              <strong style={{ color: 'var(--text-primary)' }}>{member.email}</strong>.
+              <Trans
+                i18nKey="admin:memberDetail.emailIntro"
+                values={{ name: member.name, email: member.email }}
+                components={[
+                  <span key="0" />,
+                  <strong key="1" className="ltr-embed" style={{ color: 'var(--text-primary)' }} />,
+                ]}
+              />
             </p>
 
             <label style={{ fontSize: 12, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>
-              Note to include (optional)
+              {t('admin:memberDetail.noteLabel')}
             </label>
             <textarea
               className="filter-input"
               rows={3}
               value={emailNote}
               onChange={e => setEmailNote(e.target.value)}
-              placeholder="e.g. Your Q3 profit cycle has been credited."
+              placeholder={t('admin:memberDetail.notePlaceholder')}
               style={{ width: '100%', resize: 'vertical', marginBottom: 14 }}
             />
 
@@ -542,12 +570,12 @@ function MemberDetailContent() {
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
               <button type="button" className="btn-secondary" disabled={sending}
                 onClick={() => setEmailOpen(false)}>
-                Cancel
+                {t('common:action.cancel')}
               </button>
               <button type="button" className="btn-primary" disabled={sending}
                 style={{ width: 'auto', padding: '10px 22px' }}
                 onClick={handleSend}>
-                {sending ? 'Sending…' : 'Send email'}
+                {sending ? t('admin:memberDetail.sending') : t('admin:memberDetail.sendEmail')}
               </button>
             </div>
           </div>
@@ -559,13 +587,11 @@ function MemberDetailContent() {
 
 export default function AdminMemberDetailPage() {
   return (
-    <AuthProvider>
-      <ProtectedLayout requireAdmin>
-        {/* useSearchParams needs a Suspense boundary during prerender. */}
-        <Suspense fallback={<div className="spinner" />}>
-          <MemberDetailContent />
-        </Suspense>
-      </ProtectedLayout>
-    </AuthProvider>
+    <ProtectedLayout requireAdmin>
+      {/* useSearchParams needs a Suspense boundary during prerender. */}
+      <Suspense fallback={<div className="spinner" />}>
+        <MemberDetailContent />
+      </Suspense>
+    </ProtectedLayout>
   );
 }

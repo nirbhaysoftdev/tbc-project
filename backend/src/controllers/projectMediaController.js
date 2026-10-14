@@ -65,6 +65,18 @@ function verifyTicket(token, { docId, projectId }) {
   return payload;
 }
 
+/**
+ * The viewable URL for one document, ticket included.
+ *
+ * Exported because the project payloads need it too: a project's banner image
+ * is one of its documents, and the listing has to be able to render it without
+ * a second round trip per card.
+ */
+function streamUrlFor({ projectId, docId, userId }) {
+  return `/projects/${projectId}/media/${docId}/stream`
+    + `?t=${signTicket({ docId, projectId, userId })}`;
+}
+
 /** The shape a client is allowed to see - never the stored path. */
 function publicMedia(doc, req) {
   return {
@@ -75,8 +87,7 @@ function publicMedia(doc, req) {
     mimeType:   doc.mimeType,
     sizeBytes:  doc.sizeBytes,
     uploadedAt: doc.uploadedAt,
-    streamUrl:  `/projects/${doc.projectId}/media/${doc.id}/stream`
-                  + `?t=${signTicket({ docId: doc.id, projectId: doc.projectId, userId: req.user.id })}`,
+    streamUrl:  streamUrlFor({ projectId: doc.projectId, docId: doc.id, userId: req.user.id }),
   };
 }
 
@@ -235,6 +246,6 @@ const deleteMedia = async (req, res) => {
 };
 
 module.exports = {
-  MEDIA_DIR, KIND_BY_MIME, kindOf, ensureDir,
+  MEDIA_DIR, KIND_BY_MIME, kindOf, ensureDir, streamUrlFor, publicMedia,
   listMedia, uploadMedia, streamMedia, deleteMedia,
 };

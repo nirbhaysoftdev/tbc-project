@@ -1,6 +1,8 @@
 'use client';
 import { useState } from 'react';
 import { withdrawAPI } from '@/lib/api';
+import { useTranslation } from 'react-i18next';
+import { formatEur } from '@/lib/api';
 
 interface Props {
   balance:   number;
@@ -10,6 +12,7 @@ interface Props {
 }
 
 export default function WithdrawModal({ balance, userName, onClose, onSuccess }: Props) {
+  const { t } = useTranslation(['dashboard', 'common']);
  const nameParts = userName.split(' ');
   const [form, setForm] = useState({
     firstName:   nameParts[0] || '',
@@ -36,7 +39,7 @@ export default function WithdrawModal({ balance, userName, onClose, onSuccess }:
       return;
     }
     if (parseFloat(form.amount) <= 0) {
-      setError('Amount must be greater than 0.');
+      setError(t('dashboard:withdraw.amountPositive'));
       return;
     }
 
@@ -46,7 +49,7 @@ export default function WithdrawModal({ balance, userName, onClose, onSuccess }:
       onSuccess();
       onClose();
     } catch (e: any) {
-      setError(e.response?.data?.error || 'Submission failed.');
+      setError(e.response?.data?.error || t('dashboard:withdraw.submissionFailed'));
     }
     setLoading(false);
   };
@@ -85,27 +88,29 @@ export default function WithdrawModal({ balance, userName, onClose, onSuccess }:
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
           <div>
-            <h2 style={{ fontSize: 18, fontWeight: 700 }}>Withdraw Funds</h2>
+            <h2 style={{ fontSize: 18, fontWeight: 700 }}>{t('dashboard:withdraw.cta')}</h2>
             <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3 }}>
-              Available Profit:
-              <span style={{ color: 'var(--green)', fontWeight: 700, marginLeft: 6 }}>
-                €{balance.toLocaleString()}
+              {t('dashboard:withdraw.availableProfit')}
+              {/* marginInlineStart, and formatEur rather than toLocaleString():
+                  the figure now follows the active locale (§10). */}
+              <span className="ltr-embed" style={{ color: 'var(--green)', fontWeight: 700, marginInlineStart: 6 }}>
+                {formatEur(balance)}
               </span>
             </p>
           </div>
-          <button onClick={onClose} style={{ color: 'var(--text-muted)', fontSize: 20, lineHeight: 1 }}>×</button>
+          <button onClick={onClose} aria-label={t('common:action.close')} style={{ color: 'var(--text-muted)', fontSize: 20, lineHeight: 1 }}>×</button>
         </div>
 
         <form onSubmit={handleSubmit}>
           {/* Name row */}
           <div style={{ ...rowStyle, marginBottom: 14 }}>
             <div>
-              <label style={labelStyle}>FIRST NAME</label>
+              <label style={labelStyle}>{t('dashboard:withdraw.firstNameLabel')}</label>
               <input style={inputStyle} value={form.firstName}
                 onChange={e => set('firstName', e.target.value)} required />
             </div>
             <div>
-              <label style={labelStyle}>LAST NAME</label>
+              <label style={labelStyle}>{t('dashboard:withdraw.lastNameLabel')}</label>
               <input style={inputStyle} value={form.lastName}
                 onChange={e => set('lastName', e.target.value)} required />
             </div>
@@ -113,7 +118,7 @@ export default function WithdrawModal({ balance, userName, onClose, onSuccess }:
 
           {/* Company */}
           <div style={{ marginBottom: 14 }}>
-            <label style={labelStyle}>COMPANY NAME</label>
+            <label style={labelStyle}>{t('dashboard:withdraw.companyNameLabel')}</label>
             <input style={inputStyle} value={form.companyName}
               onChange={e => set('companyName', e.target.value)} required />
           </div>
@@ -121,27 +126,30 @@ export default function WithdrawModal({ balance, userName, onClose, onSuccess }:
           {/* Bank row */}
           <div style={{ ...rowStyle, marginBottom: 14 }}>
             <div>
-              <label style={labelStyle}>BANK NAME</label>
+              <label style={labelStyle}>{t('dashboard:withdraw.bankNameLabel')}</label>
               <input style={inputStyle} value={form.bankName}
                 onChange={e => set('bankName', e.target.value)} required />
             </div>
             <div>
-              <label style={labelStyle}>SWIFT NUMBER</label>
-              <input style={inputStyle} value={form.swiftNumber}
+              <label style={labelStyle}>{t('dashboard:withdraw.swiftLabel')}</label>
+              {/* SWIFT/BIC is an alphanumeric banking code: LTR always (§10). */}
+              <input style={inputStyle} className="ltr-embed" dir="ltr" value={form.swiftNumber}
                 onChange={e => set('swiftNumber', e.target.value)} required />
             </div>
           </div>
 
           {/* IBAN */}
           <div style={{ marginBottom: 14 }}>
-            <label style={labelStyle}>IBAN</label>
-            <input style={inputStyle} value={form.iban}
+            <label style={labelStyle}>{t('dashboard:withdraw.ibanLabel')}</label>
+            {/* An IBAN must never be reordered by bidi — a wrong digit order
+                here is a failed payment (§10). */}
+            <input style={inputStyle} className="ltr-embed" dir="ltr" value={form.iban}
               onChange={e => set('iban', e.target.value)} required />
           </div>
 
           {/* Address */}
           <div style={{ marginBottom: 14 }}>
-            <label style={labelStyle}>ADDRESS</label>
+            <label style={labelStyle}>{t('dashboard:withdraw.addressLabel')}</label>
             <input style={inputStyle} value={form.address}
               onChange={e => set('address', e.target.value)} required />
           </div>
@@ -149,7 +157,7 @@ export default function WithdrawModal({ balance, userName, onClose, onSuccess }:
           {/* Amount + Balance row */}
           <div style={{ ...rowStyle, marginBottom: 14 }}>
             <div>
-              <label style={labelStyle}>AMOUNT (€)</label>
+              <label style={labelStyle}>{t('dashboard:withdraw.amountLabel')}</label>
               <input style={{
                   ...inputStyle,
                   borderColor: parseFloat(form.amount) > balance ? 'var(--red)' : undefined,
@@ -159,20 +167,21 @@ export default function WithdrawModal({ balance, userName, onClose, onSuccess }:
                 onChange={e => set('amount', e.target.value)} required />
               {parseFloat(form.amount) > balance && (
                 <p style={{ fontSize: 11, color: 'var(--red)', marginTop: 4 }}>
-                  Exceeds available profit
+                  {t('dashboard:withdraw.exceeds')}
                 </p>
               )}
             </div>
             <div>
-              <label style={labelStyle}>AVAILABLE PROFIT</label>
+              <label style={labelStyle}>{t('dashboard:withdraw.availableProfitLabel')}</label>
               <input style={{ ...inputStyle, opacity: 0.6, cursor: 'not-allowed' }}
-                value={`€${balance.toLocaleString()}`} readOnly />
+                className="ltr-embed" dir="ltr"
+                value={formatEur(balance)} readOnly />
             </div>
           </div>
 
           {/* Reason */}
           <div style={{ marginBottom: 20 }}>
-            <label style={labelStyle}>REASON</label>
+            <label style={labelStyle}>{t('dashboard:withdraw.reasonLabel')}</label>
             <textarea style={{ ...inputStyle, height: 80, resize: 'vertical' } as any}
               value={form.reason}
               onChange={e => set('reason', e.target.value)} required />
@@ -185,11 +194,11 @@ export default function WithdrawModal({ balance, userName, onClose, onSuccess }:
           )}
 
           <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-            <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
+            <button type="button" className="btn-secondary" onClick={onClose}>{t('common:action.cancel')}</button>
             <button type="submit" className="btn-primary"
               style={{ width: 'auto', padding: '10px 28px', marginTop: 0 }}
               disabled={loading || parseFloat(form.amount) > balance}>
-              {loading ? 'Submitting...' : 'Submit Request'}
+              {loading ? t('common:action.submitting') : t('dashboard:withdraw.submit')}
             </button>
           </div>
         </form>

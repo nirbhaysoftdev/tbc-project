@@ -2,13 +2,17 @@
 // src/app/onboarding/kyc/page.tsx
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/lib/auth';
+import LanguageSelector from '@/components/i18n/LanguageSelector';
+import OnboardingProgress from '@/components/onboarding/OnboardingProgress';
 import { mmsAPI } from '@/lib/api';
 
 type DocSlot = { file: File | null; type: string };
 
 export default function OnboardingKycPage() {
   const { user, loading, refresh } = useAuth();
+  const { t } = useTranslation(['auth', 'common', 'validation']);
   const router = useRouter();
 
   const [docs, setDocs] = useState<DocSlot[]>([
@@ -35,7 +39,7 @@ export default function OnboardingKycPage() {
     setError('');
     const filled = docs.filter(d => d.file);
     if (filled.length === 0) {
-      setError('Please upload at least one document.');
+      setError(t('auth:onboarding.kyc.atLeastOne'));
       return;
     }
     setSubmitting(true);
@@ -51,7 +55,7 @@ export default function OnboardingKycPage() {
       await refresh();
       router.push('/onboarding/pending');
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Upload failed. Please try again.');
+      setError(err.response?.data?.error || t('auth:onboarding.kyc.uploadFailed'));
     } finally {
       setSubmitting(false);
     }
@@ -61,46 +65,42 @@ export default function OnboardingKycPage() {
 
   return (
     <div className="onboarding-page">
-      {/* Progress */}
-      <div className="onboarding-progress">
-        <div className="ob-step ob-step--done">1 Register</div>
-        <div className="ob-step-line ob-step-line--done" />
-        <div className="ob-step ob-step--done">2 Profile</div>
-        <div className="ob-step-line ob-step-line--done" />
-        <div className="ob-step ob-step--active">3 KYC</div>
-        <div className="ob-step-line" />
-        <div className="ob-step">4 Review</div>
-      </div>
+      <OnboardingProgress current="kyc" />
 
       <div className="onboarding-card">
-        <div className="onboarding-logo">
-          <img src="/images/tbc-logo-1.png" alt="TBC" />
-          <div className="onboarding-brand">TRILLION</div>
-          <div className="onboarding-sub">Business Community</div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <LanguageSelector variant="panel" />
         </div>
 
-        <h1 className="onboarding-title">Identity Verification</h1>
-        <p className="onboarding-desc">
-          Upload your identification and business documents for KYC verification.
-          Accepted formats: JPG, PNG, PDF (max 10 MB each).
-        </p>
+        <div className="onboarding-logo">
+          <img src="/images/tbc-logo-1.png" alt={t('common:brand.full')} />
+          <div className="onboarding-brand">{t('common:brand.name')}</div>
+          <div className="onboarding-sub">{t('common:brand.subTitle')}</div>
+        </div>
+
+        <h1 className="onboarding-title">{t('auth:onboarding.kyc.title')}</h1>
+        <p className="onboarding-desc">{t('auth:onboarding.kyc.desc')}</p>
 
         <form onSubmit={handleSubmit}>
           {docs.map((doc, idx) => (
             <div key={idx} className="kyc-doc-slot">
               <div className="ob-row" style={{ alignItems: 'flex-end' }}>
                 <div className="comm-form-group" style={{ flex: 1 }}>
-                  <label className="comm-form-label">Document Type</label>
+                  <label className="comm-form-label">{t('auth:onboarding.kyc.documentType')}</label>
                   <select className="comm-form-select"
                     value={doc.type} onChange={e => setType(idx, e.target.value)}>
-                    <option value="id_proof">ID Proof (Passport / National ID)</option>
-                    <option value="business_proof">Business Proof (Registration / License)</option>
-                    <option value="address_proof">Address Proof (Utility Bill)</option>
+                    {/* The `value` is the stored document type and stays
+                        English — the admin KYC review matches on it. */}
+                    <option value="id_proof">{t('auth:onboarding.kyc.types.idProof')}</option>
+                    <option value="business_proof">{t('auth:onboarding.kyc.types.businessProof')}</option>
+                    <option value="address_proof">{t('auth:onboarding.kyc.types.addressProof')}</option>
                   </select>
                 </div>
                 <div className="comm-form-group" style={{ flex: 2 }}>
                   <label className="comm-form-label">
-                    {idx === 0 ? 'Document *' : 'Additional Document (optional)'}
+                    {idx === 0
+                      ? t('auth:onboarding.kyc.documentRequired')
+                      : t('auth:onboarding.kyc.documentOptional')}
                   </label>
                   <input
                     type="file"
@@ -114,7 +114,7 @@ export default function OnboardingKycPage() {
               </div>
               {doc.file && (
                 <p style={{ fontSize: 12, color: 'var(--green)', marginTop: -6, marginBottom: 8 }}>
-                  {doc.file.name} selected
+                  {t('validation:file.selected', { name: doc.file.name })}
                 </p>
               )}
             </div>
@@ -122,7 +122,7 @@ export default function OnboardingKycPage() {
 
           <div style={{ marginTop: 4, marginBottom: 16 }}>
             <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-              All documents are stored securely and used solely for membership verification.
+              {t('auth:onboarding.kyc.privacyNote')}
             </p>
           </div>
 
@@ -141,7 +141,7 @@ export default function OnboardingKycPage() {
               }}
               onClick={() => router.push('/onboarding/profile')}
             >
-              ← Back
+              {t('auth:register.back')}
             </button>
             <button
               type="submit"
@@ -149,7 +149,7 @@ export default function OnboardingKycPage() {
               style={{ flex: 2, padding: '13px' }}
               disabled={submitting}
             >
-              {submitting ? 'Uploading…' : 'Submit for Review →'}
+              {submitting ? t('auth:onboarding.kyc.submitting') : t('auth:onboarding.kyc.submit')}
             </button>
           </div>
         </form>

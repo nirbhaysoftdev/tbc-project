@@ -1,15 +1,19 @@
 'use client';
+import { useMemo } from 'react';
 // src/components/landing/WhatItIs.tsx - 02 · What is it?
 //
 // The hero shows the room; this section explains what happens in it. The
 // opportunity-flow diagram moved here from the hero, where it now has space
 // to be read alongside the definition rather than competing with a headline.
 
-import { WHAT_IT_IS } from '@/lib/landing-data';
+import { getWhatItIs } from '@/lib/landing-data';
 import HeroStage from './HeroStage';
 import { Reveal, SplitWordsInView, StaggerGroup, StaggerItem } from './motion';
+import { useTranslation } from 'react-i18next';
 
 export default function WhatItIs() {
+  const { t } = useTranslation('landing');
+  const WHAT_IT_IS = useMemo(() => getWhatItIs(t), [t]);
   return (
     <section id="what" className="lp-section lp-what">
       <div className="lp-what-grid">

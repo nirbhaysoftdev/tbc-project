@@ -1,8 +1,8 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { AuthProvider } from '@/lib/auth';
 import ProtectedLayout from '@/components/layout/ProtectedLayout';
-import { withdrawAPI } from '@/lib/api';
+import { useTranslation } from 'react-i18next';
+import { withdrawAPI, formatEur, formatDate } from '@/lib/api';
 import { useAdminAlerts } from '@/lib/adminAlerts';
 
 interface Request {
@@ -22,6 +22,7 @@ interface Request {
 }
 
 function WithdrawalsContent() {
+  const { t } = useTranslation(['admin', 'common']);
   const [requests, setRequests] = useState<Request[]>([]);
   const [loading, setLoading]   = useState(true);
   const [selected, setSelected] = useState<Request | null>(null);
@@ -49,7 +50,7 @@ function WithdrawalsContent() {
       await load();
       setSelected(null);
     } catch (e: any) {
-      alert(e.response?.data?.error || 'Action failed');
+      alert(e.response?.data?.error || t('admin:withdrawals.actionFailedAlert'));
     }
     setProcessing('');
   };
@@ -63,9 +64,9 @@ function WithdrawalsContent() {
   return (
     <div className="content-left">
       <div className="page-header">
-        <h1 className="page-title">Withdrawal Requests</h1>
+        <h1 className="page-title">{t('admin:withdrawals.title')}</h1>
         <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-          {requests.filter(r => r.status === 'PENDING').length} pending
+          {t('admin:withdrawals.pending', { count: requests.filter(r => r.status === 'PENDING').length })}
         </span>
       </div>
 
@@ -73,20 +74,20 @@ function WithdrawalsContent() {
         <div className="spinner" />
       ) : requests.length === 0 ? (
         <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-muted)' }}>
-          No withdrawal requests yet
+          {t('admin:withdrawals.empty')}
         </div>
       ) : (
         <div className="tx-table-wrap">
           <table className="tx-table">
             <thead>
               <tr>
-                <th>Member</th>
-                <th>Amount</th>
-                <th>Bank</th>
-                <th>Reason</th>
-                <th>Date</th>
-                <th>Status</th>
-                <th>Action</th>
+                <th>{t('admin:withdrawals.columns.member')}</th>
+                <th>{t('admin:withdrawals.columns.amount')}</th>
+                <th>{t('admin:withdrawals.columns.bank')}</th>
+                <th>{t('admin:withdrawals.columns.reason')}</th>
+                <th>{t('admin:withdrawals.columns.requested')}</th>
+                <th>{t('admin:withdrawals.columns.status')}</th>
+                <th>{t('admin:withdrawals.columns.actions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -94,25 +95,28 @@ function WithdrawalsContent() {
                 <tr key={r.id}>
                   <td>
                     <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{r.user.name}</div>
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{r.user.email}</div>
+                    <div className="ltr-embed" style={{ fontSize: 11, color: 'var(--text-muted)' }}>{r.user.email}</div>
                   </td>
-                  <td style={{ fontWeight: 700, color: 'var(--red)' }}>
-                    €{r.amount.toLocaleString()}
+                  {/* formatEur replaces a hardcoded €-prefixed toLocaleString,
+                      so the amount follows the active locale. */}
+                  <td className="ltr-embed" style={{ fontWeight: 700, color: 'var(--red)' }}>
+                    {formatEur(r.amount)}
                   </td>
                   <td>
                     <div>{r.bankName}</div>
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{r.iban}</div>
+                    {/* An IBAN must never be bidi-reordered (§10). */}
+                    <div className="ltr-embed" style={{ fontSize: 11, color: 'var(--text-muted)' }}>{r.iban}</div>
                   </td>
                   <td style={{ maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {r.reason}
                   </td>
-                  <td>{new Date(r.createdAt).toLocaleDateString()}</td>
+                  <td>{formatDate(r.createdAt)}</td>
                   <td>
                     <span style={{
                       padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600,
                       color: statusColor(r.status), background: statusBg(r.status),
                     }}>
-                      {r.status}
+                      {t(`common:status.${r.status.toLowerCase()}`, { defaultValue: r.status })}
                     </span>
                   </td>
                   <td>
@@ -125,11 +129,11 @@ function WithdrawalsContent() {
                             background: 'rgba(76,217,138,0.15)', color: 'var(--green)',
                             border: '1px solid rgba(76,217,138,0.3)', cursor: 'pointer',
                           }}>
-                          Review
+                          {t('admin:withdrawals.review')}
                         </button>
                       </div>
                     ) : (
-                      <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Done</span>
+                      <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{t('admin:withdrawals.done')}</span>
                     )}
                   </td>
                 </tr>
@@ -143,41 +147,48 @@ function WithdrawalsContent() {
       {selected && (
         <div className="modal-overlay" onClick={() => setSelected(null)}>
           <div className="modal-box" onClick={e => e.stopPropagation()} style={{ width: 500 }}>
-            <h2 className="modal-title">Withdrawal Request - {selected.user.name}</h2>
+            <h2 className="modal-title">{t('admin:withdrawals.reviewTitle')} - {selected.user.name}</h2>
 
-            {[
-              ['Member',       selected.user.name],
-              ['Email',        selected.user.email],
-              ['Full Name',    `${selected.firstName} ${selected.lastName}`],
-              ['Company',      selected.companyName],
-              ['Bank',         selected.bankName],
-              ['IBAN',         selected.iban],
-              ['SWIFT',        selected.swiftNumber],
-              ['Address',      selected.address],
-              ['Amount',       `€${selected.amount.toLocaleString()}`],
-              ['Reason',       selected.reason],
-            ].map(([label, value]) => (
-              <div key={label} style={{
+            {/* `ltr: true` marks the banking identifiers — email, IBAN, SWIFT
+                and the amount — that must not be reordered by bidi in an RTL
+                page. `id` keys the row so a translated label is never the key. */}
+            {([
+              { id: 'member',   label: t('admin:withdrawals.columns.member'), value: selected.user.name },
+              { id: 'email',    label: t('common:label.email'),               value: selected.user.email, ltr: true },
+              { id: 'fullName', label: t('admin:withdrawals.fullName'),       value: `${selected.firstName} ${selected.lastName}` },
+              { id: 'company',  label: t('common:label.company'),             value: selected.companyName },
+              { id: 'bank',     label: t('admin:withdrawals.columns.bank'),   value: selected.bankName },
+              { id: 'iban',     label: t('admin:withdrawals.columns.iban'),   value: selected.iban, ltr: true },
+              { id: 'swift',    label: t('admin:withdrawals.swift'),          value: selected.swiftNumber, ltr: true },
+              { id: 'address',  label: t('admin:withdrawals.address'),        value: selected.address },
+              { id: 'amount',   label: t('common:label.amount'),              value: formatEur(selected.amount), ltr: true },
+              { id: 'reason',   label: t('admin:withdrawals.columns.reason'), value: selected.reason },
+            ] as { id: string; label: string; value: string; ltr?: boolean }[]).map(({ id, label, value, ltr }) => (
+              <div key={id} style={{
                 display: 'flex', justifyContent: 'space-between',
                 padding: '8px 0', borderBottom: '1px solid var(--border)',
               }}>
                 <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>{label}</span>
-                <span style={{ fontSize: 13, color: 'var(--text-primary)', maxWidth: 280, textAlign: 'right' }}>{value}</span>
+                {/* `end`, not `right`, so the value hugs the reading edge. */}
+                <span className={ltr ? 'ltr-embed' : undefined}
+                  style={{ fontSize: 13, color: 'var(--text-primary)', maxWidth: 280, textAlign: 'end' }}>
+                  {value}
+                </span>
               </div>
             ))}
 
             <div className="modal-actions" style={{ marginTop: 24 }}>
-              <button className="btn-secondary" onClick={() => setSelected(null)}>Close</button>
+              <button className="btn-secondary" onClick={() => setSelected(null)}>{t('common:action.close')}</button>
               <button className="btn-danger"
                 disabled={processing === selected.id + 'reject'}
                 onClick={() => handle(selected.id, 'reject')}>
-                {processing === selected.id + 'reject' ? 'Rejecting...' : 'Reject'}
+                {processing === selected.id + 'reject' ? t('admin:withdrawals.rejecting') : t('admin:withdrawals.reject')}
               </button>
               <button className="btn-primary"
                 style={{ width: 'auto', padding: '10px 24px', marginTop: 0 }}
                 disabled={processing === selected.id + 'approve'}
                 onClick={() => handle(selected.id, 'approve')}>
-                {processing === selected.id + 'approve' ? 'Approving...' : 'Approve & Debit'}
+                {processing === selected.id + 'approve' ? t('admin:withdrawals.approving') : t('admin:withdrawals.approveDebit')}
               </button>
             </div>
           </div>
@@ -189,10 +200,8 @@ function WithdrawalsContent() {
 
 export default function WithdrawalsPage() {
   return (
-    <AuthProvider>
-      <ProtectedLayout requireAdmin>
-        <WithdrawalsContent />
-      </ProtectedLayout>
-    </AuthProvider>
+    <ProtectedLayout requireAdmin>
+      <WithdrawalsContent />
+    </ProtectedLayout>
   );
 }

@@ -111,6 +111,22 @@ enum ProjectStatus {
   CANCELLED
 }
 
+// Delivery state of a Connect Now / Enquire Now message. A row is written
+// BEFORE the email is attempted, so a failed send leaves evidence instead of
+// vanishing - the enquiry is the record, the email is the delivery.
+enum EnquiryStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+enum CompanyStatus {
+  DRAFT
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
 enum InvestmentStatus {
   PENDING
   CONFIRMED
@@ -131,6 +147,11 @@ model User {
   walletEnabled Boolean        @default(false)
   accountType   AccountType?
   emailVerified Boolean        @default(false)
+  // Preferred UI language, validated against the allowlist in
+  // services/i18n/languages.js before it is ever written. Null means "never
+  // chosen", which is what lets browser detection still apply on a new device.
+  // Nullable and additive on purpose: no existing row changes meaning.
+  locale        String?
   googleId      String?        @unique
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
@@ -156,6 +177,9 @@ model User {
 
   // Deal Room
   projectsOwned       Project[]            @relation("ProjectOwner")
+  projectsManaged     Project[]            @relation("ProjectManager")
+  companiesCreated    Company[]            @relation("CompanyCreator")
+  enquiries           Enquiry[]            @relation("MemberEnquiries")
   investments         Investment[]
   investmentRequests  InvestmentRequest[]
 
@@ -562,10 +586,42 @@ model Project {
   targetIRR        Float?
   location         String?
   imageUrl         String?
+  // ── Project showcase module ────────────────────────────────────────────────
+  // Everything below is additive and nullable: a deal-room project created
+  // before this module existed keeps working with all of it null.
+  //
+  // `valuation` is the headline figure the showcase displays and is ALWAYS in
+  // euros. It is deliberately separate from `targetAmount`, which is the
+  // funding ask the wallet ledger prices investments against - a project can
+  // be worth 4M and be raising 400k.
+  valuation        Float?
+  // What the project is, as rich text from the WYSIWYG editor. Sanitised
+  // server-side on every write (services/richText.js); never trusted as it
+  // arrives, because it is rendered with dangerouslySetInnerHTML.
+  detailsHtml      String?
+  // When the project itself was established - not when this row was created.
+  establishedAt    DateTime?
+  // The ProjectDocument chosen as the banner. A plain column rather than a
+  // relation: the document cascades on delete and a dangling id simply falls
+  // back to the first image, which is what a missing banner should do anyway.
+  bannerDocId      String?
+  primaryObjective String?
+  managerId        String?
+  // People attached to the project, stored as [{ id, name, role? }]. Members
+  // are snapshotted by name on save so a removed account does not blank the
+  // showcase; `id` still links back to the member where one exists.
+  teamMembers      Json?
+  investors        Json?
+  partners         Json?
+  clients          Json?
+  url              String?
+  contact          String?
+
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
   owner       User              @relation("ProjectOwner", fields: [ownerId], references: [id])
+  manager     User?             @relation("ProjectManager", fields: [managerId], references: [id])
   documents   ProjectDocument[]
   investments Investment[]
   milestones  Milestone[]
@@ -576,7 +632,12 @@ model Project {
   profitConfigs      ProfitConfig[]
   profitRecords      ProfitRecord[]
   transactions       Transaction[]
+  enquiries          Enquiry[]
 
+  @@index([ownerId])
+  @@index([managerId])
+  @@index([category])
+  @@index([status])
   @@map("projects")
 }
 
@@ -602,6 +663,155 @@ model ProjectDocument {
 
   @@index([projectId])
   @@map("project_documents")
+}
+
+// ─── COMPANY PROFILES ─────────────────────────────────────────────────────────
+// The company profile module: the directory of member companies, their
+// profiles, media and documents. It deliberately mirrors `Project` field for
+// field where the two mean the same thing, so the two modules can share the
+// rich-text sanitiser, the people normaliser and the whole frontend design
+// system rather than growing two of each.
+//
+// What is different, and why:
+//   - a company has MANY owners and MANY locations, so those are arrays, not
+//     single columns;
+//   - `ownerIds` is a scalar list beside the `owners` JSON. The JSON is what
+//     the profile displays (it also holds owners who are not portal members);
+//     `ownerIds` is what the listing's owner filter queries, because Postgres
+//     can index and `has`-match a text array, while filtering inside a JSON
+//     array of objects cannot be done reliably;
+//   - presentation videos can be an upload OR an embedded link, so there is a
+//     `videoLinks` column as well as video documents.
+model Company {
+  id            String        @id @default(uuid())
+  name          String
+  category      String
+  status        CompanyStatus @default(ACTIVE)
+
+  // Card text. `description` is the short line the listing shows;
+  // `detailsHtml` is the WYSIWYG body, sanitised on write
+  // (services/richText.js) because it is rendered as HTML.
+  description   String?
+  detailsHtml   String?
+
+  // Always euros, like every other figure in the portal.
+  valuation     Float?
+  establishedAt DateTime?
+
+  // Logo and banner are CompanyDocument rows, referenced by id rather than by
+  // relation: a document cascades on delete, and a dangling id falls back to
+  // "no logo", which is the right behaviour for a deleted image.
+  logoDocId     String?
+  bannerDocId   String?
+
+  // Owners: the display list, and the member ids the filter queries.
+  owners        Json?
+  ownerIds      String[]      @default([])
+
+  // A company can operate in several places; the listing filters on `has`.
+  locations     String[]      @default([])
+
+  teamMembers   Json?
+
+  websiteUrl    String?
+  contactPerson String?
+  // contactEmail and contactPhone are stored for administration only. They are
+  // stripped from every member-facing payload - members reach a company
+  // through "Connect Now", not through a published address.
+  contactEmail  String?
+  contactPhone  String?
+
+  // Embedded presentation videos: [{ url, title }]. Only YouTube and Vimeo
+  // URLs are accepted, normalised to their embed form on write - an arbitrary
+  // URL in an iframe is someone else's page running inside the portal.
+  videoLinks    Json?
+
+  // Who created the profile. Not "the owner": ownership is the list above.
+  createdById   String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  createdBy User?             @relation("CompanyCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  documents CompanyDocument[]
+  enquiries Enquiry[]
+
+  @@index([category])
+  @@index([status])
+  @@index([createdById])
+  // GIN, because these are scalar lists queried with `has` — that is what makes
+  // the listing's owner and location filters index scans rather than a scan of
+  // every row. Declared here as well as in the migration so `migrate diff`
+  // reports no drift; without them Prisma would plan to drop both indexes.
+  @@index([ownerIds], type: Gin)
+  @@index([locations], type: Gin)
+  @@map("companies")
+}
+
+// Media on a company profile. Same arrangement as ProjectDocument: the stored
+// path never leaves the server and the bytes are only reachable through a
+// short-lived, per-document ticket (companyMediaController.js).
+model CompanyDocument {
+  id         String   @id @default(uuid())
+  companyId  String
+  name       String
+  fileUrl    String   // basename inside storage/company-media, never sent out
+  // Which viewer the client opens: IMAGE | PDF | DOC | VIDEO.
+  kind       String   @default("PDF")
+  // What the file is FOR: LOGO | BANNER | GALLERY | DOCUMENT | VIDEO | OTHER.
+  // Separate from `kind` because a logo and a gallery photo are both images.
+  purpose    String   @default("DOCUMENT")
+  mimeType   String?
+  sizeBytes  Int?
+  uploadedBy String?
+  uploadedAt DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([companyId, purpose])
+  @@map("company_documents")
+}
+
+// ─── CONNECT NOW / ENQUIRE NOW ────────────────────────────────────────────────
+// A member's enquiry about a project or a company.
+//
+// This table is the record of the enquiry; the email is only its delivery. The
+// row is written first and updated with the outcome, so a message that failed
+// to send is still recoverable rather than lost in a log line.
+//
+// `memberId` is taken from the session on the server and never from the
+// request body — the submitted name and email fields are read-only in the UI,
+// which is a convenience, not a guarantee.
+//
+// Exactly one of projectId / companyId is set. A CHECK constraint enforces
+// that in the database rather than trusting every future caller.
+model Enquiry {
+  id             String        @id @default(uuid())
+  memberId       String
+  projectId      String?
+  companyId      String?
+  // The project or company name as it was when the enquiry was sent, so the
+  // record still reads correctly after a rename or a deletion.
+  subjectName    String
+  message        String
+  // The address the enquiry actually went to, resolved at send time. Stored
+  // because the configured recipient can change afterwards and this is the
+  // audit trail of where the message went.
+  recipientEmail String
+  status         EnquiryStatus @default(PENDING)
+  error          String?
+  createdAt      DateTime      @default(now())
+  sentAt         DateTime?
+
+  member  User     @relation("MemberEnquiries", fields: [memberId], references: [id], onDelete: Cascade)
+  project Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  company Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+
+  @@index([memberId, createdAt])
+  @@index([projectId])
+  @@index([companyId])
+  @@index([status])
+  @@map("enquiries")
 }
 
 model Investment {
@@ -730,4 +940,136 @@ model UserKpiSummary {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("user_kpi_summary")
+}
+
+// ─── TRANSLATIONS ─────────────────────────────────────────────────────────────
+//
+// English stays the single authoritative copy of every business record. None of
+// the models above gain a per-language column and no record is duplicated per
+// language; translations live beside them in one polymorphic table, keyed by
+// (entity type, entity id, field, language).
+//
+// That shape is used in preference to per-model `title_it` / `title_ru` columns
+// because the set of translatable fields changes far more often than the set of
+// languages, and because a new translatable model then needs no migration at
+// all — only an entry in the TRANSLATABLE registry in
+// services/i18n/translatable.js.
+//
+// Referential integrity: `entityId` cannot be a foreign key when it points at
+// six different tables, so orphans are swept by
+// services/i18n/translationService.pruneOrphans() rather than by a cascade.
+// That is the one trade-off of the polymorphic design and it is deliberate: the
+// alternative (a nullable FK per model) grows a column for every new content
+// type and still cannot express "any entity".
+
+enum TranslationStatus {
+  // Produced by the machine-translation provider and not reviewed by a human.
+  MACHINE
+  // A human has checked or corrected it. Never overwritten by a machine job.
+  HUMAN_REVIEWED
+  // The English source changed after this translation was made. Still readable,
+  // but the API serves English instead until a fresh translation lands.
+  OUTDATED
+  // Every retry was exhausted. Recorded so the failure is visible and the API
+  // can fall back to English without re-queueing forever.
+  FAILED
+}
+
+enum TranslationJobStatus {
+  QUEUED
+  RUNNING
+  DONE
+  // Retryable failure: `runAfter` holds the backoff deadline.
+  FAILED
+  // Attempts exhausted. Needs an explicit admin retry.
+  DEAD
+}
+
+// The current translation of one field of one record into one language.
+model Translation {
+  id            String            @id @default(uuid())
+  entityType    String
+  entityId      String
+  field         String
+  language      String
+  value         String
+  // sha256 of the exact English source this value was produced from. The API
+  // compares it against the live source hash: a mismatch means outdated, which
+  // is detected on read even if the job that should have marked it never ran.
+  sourceHash    String
+  // Monotonic per entity (see ContentVersion). A job carrying a LOWER version
+  // than the stored row is dropped, so a slow job for old copy can never
+  // overwrite a translation of newer copy (requirement §6.A.7).
+  sourceVersion Int               @default(1)
+  status        TranslationStatus @default(MACHINE)
+  // "text" or "html" — decides whether the value is sanitised as markup and
+  // whether the provider is asked for HTML-aware translation.
+  format        String            @default("text")
+  provider      String?
+  providerModel String?
+  reviewedBy    String?
+  reviewedAt    DateTime?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  // One current translation per field per language — this is what makes a
+  // duplicate row impossible and lets the writer be a single upsert.
+  @@unique([entityType, entityId, field, language])
+  @@index([entityType, entityId])
+  @@index([status])
+  @@map("translations")
+}
+
+// A unit of pending translation work.
+//
+// Deliberately a table and not Redis/BullMQ: the queue depth here is a handful
+// of rows per admin save, the worker is the API process itself, and adding a
+// Redis dependency for that would be infrastructure this project does not need
+// (requirement §6, and the project's own deployment constraints).
+model TranslationJob {
+  id            String               @id @default(uuid())
+  entityType    String
+  entityId      String
+  field         String
+  language      String
+  sourceText    String
+  sourceHash    String
+  sourceVersion Int                  @default(1)
+  format        String               @default("text")
+  status        TranslationJobStatus @default(QUEUED)
+  attempts      Int                  @default(0)
+  maxAttempts   Int                  @default(5)
+  lastError     String?
+  // Backoff deadline. The worker only claims rows whose runAfter has passed.
+  runAfter      DateTime             @default(now())
+  // Claim stamp. A row RUNNING for longer than the stale timeout is reclaimed,
+  // so a process killed mid-job does not strand its work.
+  lockedAt      DateTime?
+  lockedBy      String?
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  // Concurrent requests to translate the same content into the same language
+  // collapse onto one row (requirement §6.A.12). The hash is part of the key so
+  // edited copy still enqueues fresh work.
+  @@unique([entityType, entityId, field, language, sourceHash])
+  @@index([status, runAfter])
+  @@map("translation_jobs")
+}
+
+// The English source version of one record.
+//
+// Exists so no business model needs a `version` column: `version` increments
+// whenever any translatable field of that record changes, and `fieldHashes`
+// records the hash each field had at that point, which is how "which fields
+// actually changed on this save" is answered without diffing the old row.
+model ContentVersion {
+  entityType  String
+  entityId    String
+  version     Int      @default(1)
+  fieldHashes Json     @default("{}")
+  updatedAt   DateTime @updatedAt
+
+  @@id([entityType, entityId])
+  @@map("content_versions")
 }

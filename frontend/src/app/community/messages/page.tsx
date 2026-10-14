@@ -1,7 +1,8 @@
 'use client';
 // src/app/community/messages/page.tsx
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { messagesAPI, communityAPI } from '@/lib/api';
+import { useTranslation } from 'react-i18next';
+import { messagesAPI, communityAPI, formatDate, formatNumber } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 
 const API_URL = process.env.NODE_ENV === 'production'
@@ -19,6 +20,7 @@ function initial(name?: string) {
 
 // ── New Conversation Search ────────────────────
 function NewConvModal({ onClose, onSelect }: { onClose: () => void; onSelect: (user: any) => void }) {
+  const { t } = useTranslation('community');
   const [search,  setSearch]  = useState('');
   const [results, setResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -37,11 +39,11 @@ function NewConvModal({ onClose, onSelect }: { onClose: () => void; onSelect: (u
   return (
     <div className="comm-modal-overlay" onClick={onClose}>
       <div className="comm-modal" style={{ width: 420 }} onClick={e => e.stopPropagation()}>
-        <div className="comm-modal-title">New Message</div>
-        <input className="comm-form-input" placeholder="Search members…"
+        <div className="comm-modal-title">{t('messages.newMessage')}</div>
+        <input className="comm-form-input" placeholder={t('messages.searchMembers')}
           value={search} onChange={e => setSearch(e.target.value)} autoFocus />
         <div style={{ marginTop: 12, maxHeight: 300, overflowY: 'auto' }}>
-          {loading && <div style={{ padding: 12, textAlign: 'center', fontSize: 12, color: 'var(--text-muted)' }}>Searching…</div>}
+          {loading && <div style={{ padding: 12, textAlign: 'center', fontSize: 12, color: 'var(--text-muted)' }}>{t('messages.searching')}</div>}
           {results.map(m => (
             <div key={m.id}
               style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 4px', cursor: 'pointer', borderBottom: '1px solid var(--border)' }}
@@ -52,12 +54,12 @@ function NewConvModal({ onClose, onSelect }: { onClose: () => void; onSelect: (u
               </div>
               <div>
                 <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{m.name}</div>
-                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{m.profile?.company || 'Member'}</div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{m.profile?.company || t('messages.memberFallback')}</div>
               </div>
             </div>
           ))}
           {!loading && search && results.length === 0 && (
-            <div style={{ padding: 16, textAlign: 'center', fontSize: 13, color: 'var(--text-muted)' }}>No members found</div>
+            <div style={{ padding: 16, textAlign: 'center', fontSize: 13, color: 'var(--text-muted)' }}>{t('messages.noMembersFound')}</div>
           )}
         </div>
       </div>
@@ -67,6 +69,7 @@ function NewConvModal({ onClose, onSelect }: { onClose: () => void; onSelect: (u
 
 // ── Main Page ──────────────────────────────────
 export default function MessagesPage() {
+  const { t } = useTranslation(['community', 'common']);
   const { user }    = useAuth();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -149,28 +152,31 @@ export default function MessagesPage() {
     }
   };
 
-  const formatMsgTime = (iso: string) => {
-    const d = new Date(iso);
-    return d.toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' });
-  };
+  // Was hardcoded to 'en'; now follows the active language.
+  const formatMsgTime = (iso: string) =>
+    formatDate(iso, { hour: '2-digit', minute: '2-digit' });
 
   return (
     <div style={{ maxWidth: 1200, margin: '0 auto', padding: '24px 28px' }}>
-      <div className="comm-chat-layout" style={{ height: 'calc(100vh - 120px)' }}>
+      {/* The chat scrolls internally, so it has to be told how much viewport is
+        * left. `--app-chrome-h` is the topbar + community sub-nav; the 48px is
+        * this page's own vertical padding. */}
+      <div className="comm-chat-layout"
+        style={{ height: 'calc(100vh - var(--app-chrome-h) - 48px)' }}>
 
         {/* ── Conversation List ──────────────── */}
         <div className="comm-chat-sidebar">
           <div className="comm-chat-sidebar-header" style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span>Messages</span>
+            <span>{t('messages.title')}</span>
             <button className="comm-btn comm-btn-primary" style={{ padding: '5px 12px', fontSize: 11 }}
               onClick={() => setNewConvOpen(true)}>
-              + New
+              {t('messages.new')}
             </button>
           </div>
           <div className="comm-chat-list">
             {conversations.length === 0 ? (
               <div className="comm-empty" style={{ padding: '40px 20px' }}>
-                <div className="comm-empty-text" style={{ fontSize: 12 }}>No conversations yet</div>
+                <div className="comm-empty-text" style={{ fontSize: 12 }}>{t('messages.empty')}</div>
               </div>
             ) : (
               conversations.map(({ partner, lastMessage, unreadCount }) => (
@@ -186,11 +192,11 @@ export default function MessagesPage() {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div className="comm-chat-item-name">{partner.name}</div>
                     <div className="comm-chat-item-preview">
-                      {lastMessage?.content || 'Start a conversation…'}
+                      {lastMessage?.content || t('messages.startConversation')}
                     </div>
                   </div>
                   {unreadCount > 0 && (
-                    <span className="comm-chat-unread">{unreadCount}</span>
+                    <span className="comm-chat-unread">{formatNumber(unreadCount)}</span>
                   )}
                 </div>
               ))
@@ -202,9 +208,9 @@ export default function MessagesPage() {
         <div className="comm-chat-area">
           {!activePartner ? (
             <div className="comm-empty" style={{ flex: 1 }}>
-              <div className="comm-empty-text">Select a conversation</div>
-              <div className="comm-empty-sub">or start a new one</div>
-              <button className="comm-btn comm-btn-primary" onClick={() => setNewConvOpen(true)}>New Message</button>
+              <div className="comm-empty-text">{t('messages.selectTitle')}</div>
+              <div className="comm-empty-sub">{t('messages.selectSub')}</div>
+              <button className="comm-btn comm-btn-primary" onClick={() => setNewConvOpen(true)}>{t('messages.newMessage')}</button>
             </div>
           ) : (
             <>
@@ -218,7 +224,7 @@ export default function MessagesPage() {
                 <div>
                   <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{activePartner.name}</div>
                   <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                    {activePartner.profile?.company || 'Member'}
+                    {activePartner.profile?.company || t('messages.memberFallback')}
                   </div>
                 </div>
               </div>
@@ -231,7 +237,7 @@ export default function MessagesPage() {
                   </div>
                 ) : messages.length === 0 ? (
                   <div className="comm-empty">
-                    <div className="comm-empty-text">Say hello to {activePartner.name}</div>
+                    <div className="comm-empty-text">{t('messages.sayHello', { name: activePartner.name })}</div>
                   </div>
                 ) : (
                   messages.map(msg => {
@@ -246,6 +252,10 @@ export default function MessagesPage() {
                           </div>
                         )}
                         <div>
+                          {/* Member-to-member messages are deliberately NOT
+                              translated: they are private correspondence and
+                              are excluded from the translation registry so
+                              their text is never sent to a provider (§13). */}
                           <div className="comm-msg-bubble">{msg.content}</div>
                           <div className="comm-msg-time">{formatMsgTime(msg.createdAt)}</div>
                         </div>
@@ -260,13 +270,15 @@ export default function MessagesPage() {
               <div className="comm-chat-input-row">
                 <input
                   className="comm-chat-input"
-                  placeholder={`Message ${activePartner.name}…`}
+                  placeholder={t('messages.placeholder', { name: activePartner.name })}
                   value={newMsg}
                   onChange={e => setNewMsg(e.target.value)}
                   onKeyDown={handleKeyDown}
                 />
-                <button className="comm-chat-send" onClick={send} disabled={!newMsg.trim() || sending}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <button className="comm-chat-send" onClick={send} disabled={!newMsg.trim() || sending}
+                  aria-label={t('messages.send')}>
+                  {/* A send arrow points "forward" and so mirrors in RTL. */}
+                  <svg className="rtl-mirror" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
                   </svg>
                 </button>

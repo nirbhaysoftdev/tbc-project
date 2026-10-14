@@ -4,14 +4,18 @@
 import Link from 'next/link';
 import { motion } from 'motion/react';
 import { EASE, Reveal, SplitWordsInView, enterInView, useCalm } from './motion';
+import { useTranslation } from 'react-i18next';
 
+// Numerals and keys only; the copy lives in landing:finalCta.steps.<key>.
+// `t` as a field name is gone — it shadowed the translator function.
 const NEXT_STEPS = [
-  { n: '01', t: 'Apply', s: 'Tell us about your business and what you bring.' },
-  { n: '02', t: 'Verify', s: 'Complete your profile and identity check.' },
-  { n: '03', t: 'Join the room', s: 'Approved members get full access to the community.' },
-];
+  { n: '01', key: 'apply' },
+  { n: '02', key: 'verify' },
+  { n: '03', key: 'join' },
+] as const;
 
 export default function FinalCta() {
+  const { t } = useTranslation('landing');
   const calm = useCalm();
 
   return (
@@ -24,14 +28,11 @@ export default function FinalCta() {
           transition={{ duration: 7, ease: 'easeInOut', repeat: Infinity }}
         />
 
-        <span className="lp-tag">Membership by application</span>
+        <span className="lp-tag">{t('finalCta.tag')}</span>
         <h2 className="lp-cta-title">
-          <SplitWordsInView text="Step inside the community." />
+          <SplitWordsInView text={t('finalCta.heading')} />
         </h2>
-        <p className="lp-cta-sub">
-          Bring a business, an idea or capital. Leave with the people who can turn it into
-          something.
-        </p>
+        <p className="lp-cta-sub">{t('finalCta.sub')}</p>
 
         <ol className="lp-cta-steps">
           {NEXT_STEPS.map((s, i) => (
@@ -46,21 +47,22 @@ export default function FinalCta() {
               )}
             >
               <span className="lp-cta-step-n">{s.n}</span>
-              <span className="lp-cta-step-t">{s.t}</span>
-              <span className="lp-cta-step-s">{s.s}</span>
+              <span className="lp-cta-step-t">{t(`finalCta.steps.${s.key}.title`)}</span>
+              <span className="lp-cta-step-s">{t(`finalCta.steps.${s.key}.sub`)}</span>
             </motion.li>
           ))}
         </ol>
 
         <div className="lp-cta-actions">
           <Link href="/register" className="lp-btn lp-btn-primary lp-btn-lg">
-            <span>Apply for membership</span>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <span>{t('finalCta.apply')}</span>
+            {/* Forward arrow — mirrors with the text in RTL. */}
+            <svg className="rtl-mirror" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
               <path d="M5 12h14M13 6l6 6-6 6" />
             </svg>
           </Link>
           <Link href="/login" className="lp-btn lp-btn-outline lp-btn-lg">
-            I’m already a member
+            {t('finalCta.alreadyMember')}
           </Link>
         </div>
       </Reveal>

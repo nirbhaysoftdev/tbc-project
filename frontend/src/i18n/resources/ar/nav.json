@@ -1,0 +1,42 @@
+{
+  "main": {
+    "community": "المجتمع",
+    "dashboard": "لوحة التحكم",
+    "projects": "المشاريع",
+    "companies": "الشركات",
+    "portfolio": "المحفظة",
+    "transactions": "العمليات",
+    "cards": "البطاقات",
+    "settings": "الإعدادات",
+    "adminPanel": "لوحة المسؤول",
+    "activityLogs": "سجل النشاط",
+    "withdrawalRequests": "طلبات السحب",
+    "myProfile": "ملفي الشخصي",
+    "walletShort": "المحفظة (SalBank)"
+  },
+  "community": {
+    "feed": "التغذية",
+    "dealRoom": "Deal Room",
+    "directory": "المجتمع",
+    "events": "الفعاليات",
+    "messages": "الرسائل"
+  },
+  "landing": {
+    "what": "المجتمع",
+    "advantages": "المزايا",
+    "howItWorks": "الفرص",
+    "profit": "الأرباح",
+    "faq": "الأسئلة الشائعة",
+    "home": "Trillion Business Community — الصفحة الرئيسية",
+    "sections": "الأقسام",
+    "memberLogin": "دخول الأعضاء",
+    "apply": "تقديم طلب",
+    "applyForMembership": "تقديم طلب عضوية"
+  },
+  "alerts": {
+    "none": "لا توجد تحديثات معلّقة",
+    "summary": "{{members}} عضو جديد، {{investments}} طلب استثمار، {{withdrawals}} طلب سحب",
+    "adminQueue": "{{members}} عضو جديد، {{investments}} طلب استثمار",
+    "withdrawalQueue": "{{count}} طلب سحب في انتظار الموافقة"
+  }
+}

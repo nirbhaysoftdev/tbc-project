@@ -7,16 +7,19 @@
 // its own so the section is alive without demanding interaction, and pauses
 // the moment anyone touches it.
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, useMemo} from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence, useInView } from 'motion/react';
-import { INDUSTRIES } from '@/lib/landing-data';
+import { getIndustries } from '@/lib/landing-data';
 import { onSector } from '@/lib/sector-bus';
 import { EASE, Reveal, SplitWordsInView, useCalm } from './motion';
+import { useTranslation } from 'react-i18next';
 
 const DWELL_MS = 5200;
 
 export default function Community() {
+  const { t } = useTranslation('landing');
+  const INDUSTRIES = useMemo(() => getIndustries(t), [t]);
   const calm = useCalm();
   const [active, setActive] = useState(0);
   const [paused, setPaused] = useState(false);
@@ -58,9 +61,9 @@ export default function Community() {
   return (
     <section id="community" className="lp-section lp-community">
       <div className="lp-section-head">
-        <Reveal className="lp-tag">Our community</Reveal>
+        <Reveal className="lp-tag">{t('tag.community')}</Reveal>
         <h2 className="lp-section-title">
-          <SplitWordsInView text="Multiple industries in one room." />
+          <SplitWordsInView text={t('community.heading')} />
         </h2>
         <Reveal className="lp-section-sub" delay={0.1}>
           What each sector brings is, almost always, what somebody in another sector has been
@@ -127,7 +130,7 @@ export default function Community() {
                           </span>
                         ) : null}
                         <span className="lp-brandplate-text">
-                          <span className="lp-brandplate-kicker">In this sector</span>
+                          <span className="lp-brandplate-kicker">{t('community.inThisSector')}</span>
                           <span className="lp-brandplate-name">{b.name}</span>
                         </span>
                         <Link
@@ -145,11 +148,11 @@ export default function Community() {
                 ) : null}
                 <dl className="lp-show-pairs">
                   <div>
-                    <dt>Brings</dt>
+                    <dt>{t('community.brings')}</dt>
                     <dd>{ind.brings}</dd>
                   </div>
                   <div>
-                    <dt>Looking for</dt>
+                    <dt>{t('community.seeks')}</dt>
                     <dd>{ind.seeks}</dd>
                   </div>
                 </dl>
@@ -173,7 +176,7 @@ export default function Community() {
         {/* Filmstrip - twelve thumbnails, six across in two rows, so a
            visitor can take in every industry at a glance and jump straight
            to one. */}
-        <div className="lp-strip" role="tablist" aria-label="Industry sectors">
+        <div className="lp-strip" role="tablist" aria-label={t('aria.sectors')}>
           {INDUSTRIES.map((s, i) => {
             const isOn = i === active;
             return (
@@ -196,7 +199,7 @@ export default function Community() {
 
       <Reveal className="lp-community-strap" delay={0.1}>
         Different businesses. Different ideas. Different opportunities.{' '}
-        <strong>One community for all.</strong>
+        <strong>{t('community.closing')}</strong>
       </Reveal>
     </section>
   );

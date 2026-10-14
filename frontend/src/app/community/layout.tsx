@@ -1,42 +1,35 @@
 'use client';
 // src/app/community/layout.tsx
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/auth';
+//
+// The community pages now sit inside the same app shell as every other
+// authenticated page, so the left sidebar — Projects, Companies, Community,
+// Settings and the rest — is present on the feed, the deal room, the member
+// directory, events and messages.
+//
+// Before this, these pages rendered their own full-width top nav and nothing
+// else, which meant stepping into /community was a one-way door: there was no
+// way to reach Projects or Companies without editing the URL.
+//
+// `CommunityNav` stays, in its `subnav` variant: the community's five sections
+// are its own navigation and still need a home. The identity, language and
+// log-out controls it used to carry are dropped there, because the sidebar and
+// topbar already provide them and two avatars on one screen is just confusing.
+//
+// The auth guard that used to live here is gone too — ProtectedLayout already
+// does exactly that, and having both meant two components racing to redirect.
+import ProtectedLayout from '@/components/layout/ProtectedLayout';
 import CommunityNav from '@/components/community/CommunityNav';
-import { AuthProvider } from '@/lib/auth';
-
-function CommunityLayoutInner({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (loading) return;
-    if (!user) router.replace('/login');
-  }, [user, loading, router]);
-
-  if (loading) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
-        <div className="spinner" />
-      </div>
-    );
-  }
-
-  if (!user) return null;
-
-  return (
-    <div className="comm-layout">
-      <CommunityNav />
-      {children}
-    </div>
-  );
-}
 
 export default function CommunityLayout({ children }: { children: React.ReactNode }) {
   return (
-    <AuthProvider>
-      <CommunityLayoutInner>{children}</CommunityLayoutInner>
-    </AuthProvider>
+    <ProtectedLayout>
+      <div className="comm-shell">
+        <CommunityNav variant="subnav" />
+        {/* `.content-wrap` above is `overflow: hidden`, so the scrolling
+          * container has to be here — the same arrangement `.content-left`
+          * uses on the dashboard. */}
+        <div className="comm-shell-scroll">{children}</div>
+      </div>
+    </ProtectedLayout>
   );
 }

@@ -1,33 +1,58 @@
 // src/lib/landing-data.ts
-// Single source of content for the public landing experience.
-// Keeping it out of the components lets copy be edited without touching markup.
+//
+// Structure and assets for the public landing experience. The COPY lives in
+// src/i18n/resources/<lang>/landing.json; this module supplies everything that
+// is not language — keys, icons, images, logos, links, categories, surface
+// treatments and the numbers behind the stat counters.
+//
+// Why factories rather than plain constants
+// -----------------------------------------
+// These used to be module-level `const`s holding English strings. A module
+// constant is evaluated once at import time, so it cannot react to a language
+// change. Each export is therefore now a `get*(t)` function: a component calls
+// it with its own `t`, inside a `useMemo` keyed on `t`, and React re-renders
+// the section when the language changes. The shape returned is identical to
+// the old constant, so the components' markup is unchanged.
+//
+// Company and brand names are NOT translated. "Emirates NBD", "Barceló",
+// "Kalaani Realtors" and "FIFA" are proper nouns and stay in this file; only
+// the descriptive copy around them is keyed.
+
+import type { TFunction } from 'i18next';
+
+/** The `t` any of these factories accepts — namespace-prefixed keys. */
+type T = TFunction<string[] | string, undefined>;
+
+/* ── 01 · HERO ───────────────────────────────────── */
+
+export const getHero = (t: T) => ({
+  eyebrow: t('landing:hero.eyebrow'),
+  titleLead: t('landing:hero.titleLead'),
+  titleMid: t('landing:hero.titleMid'),
+  titleAccent: t('landing:hero.titleAccent'),
+  desc: t('landing:hero.desc'),
+  // `href` is a route and never translated (§3).
+  primary: { label: t('landing:hero.primary'), href: '/register' },
+  secondary: { label: t('landing:hero.secondary'), href: '#how-it-works' },
+});
 
 /* ── 02 · WHAT IS IT ─────────────────────────────── */
 
-export const WHAT_IT_IS = {
-  tag: 'What it is',
-  title: 'A private community for business owners.',
-  lead:
-    'Trillion Business Community brings together owners, operators and investors from a dozen different industries - and puts them in one room.',
-  body:
-    'Every member arrives with something another member needs: a project, a service, a skill, capital, a market, an idea. On your own, those matches are almost impossible to find. Inside the community, they are the point.',
-  marks: [
-    { k: 'Members', v: 'Business owners, operators, investors' },
-    { k: 'Industries', v: '12 sectors, from construction to fashion' },
-    { k: 'Reach', v: '80+ countries' },
-    { k: 'Entry', v: 'By application, reviewed on merit' },
-  ],
-};
+export const getWhatItIs = (t: T) => ({
+  tag: t('landing:whatItIs.tag'),
+  title: t('landing:whatItIs.title'),
+  lead: t('landing:whatItIs.lead'),
+  body: t('landing:whatItIs.body'),
+  marks: (['members', 'industries', 'reach', 'entry'] as const).map((k) => ({
+    k: t(`landing:whatItIs.marks.${k}.k`),
+    v: t(`landing:whatItIs.marks.${k}.v`),
+  })),
+});
 
 /* ── 02B · ADVANTAGES ────────────────────────────── */
-/* Institutional privileges members reach through community partners -
-   ported from the reference design given for this section. Bank names,
-   perks and partner copy are the exact content supplied; nothing here is
-   invented beyond what was asked. Real logo assets already in the repo
-   (Zurich, Barceló, Kalaani, IVF) are wired in; partners the repo has no
-   asset for render as a plain monogram tile instead of a fabricated mark.
-   The full country list is illustrative, supporting the "80+ countries"
-   stat already used elsewhere (WHAT_IT_IS.marks, STATS). */
+/* Institutional privileges members reach through community partners. Logo
+   assets that exist in the repo are wired in; a partner with no asset renders
+   as a monogram tile instead of a fabricated mark. */
 
 export type AdvBrand = {
   key: string;
@@ -51,149 +76,96 @@ export type AdvCard = {
   footRight: string;
 };
 
-export const ADVANTAGES = {
-  tag: 'Institutional advantages & global vetting',
-  title: 'Global footprint.',
-  titleAccent: 'Unrivaled institutional access.',
-  sub: 'Direct sovereignty for community members. Instant priority allocation across tier-1 international banks, Zurich insurance structures, private aviation fleets, luxury hospitality and sovereign fiscal law.',
-  hubs: [
-    { key: 'dubai', flag: '🇦🇪', label: 'Dubai / UAE', tag: 'HQ' },
-    { key: 'eu', flag: '🇪🇺', label: 'All EU countries' },
-    { key: 'italy', flag: '🇮🇹', label: 'Italy' },
-    { key: 'singapore', flag: '🇸🇬', label: 'Singapore' },
-    { key: 'china', flag: '🇨🇳', label: 'China' },
-    { key: 'indonesia', flag: '🇮🇩', label: 'Indonesia' },
-    { key: 'russia', flag: '🇷🇺', label: 'Russia' },
-    { key: 'kenya', flag: '🇰🇪', label: 'Kenya' },
-  ],
-  categories: [
-    { key: 'banking', label: 'Capital & Banking' },
-    { key: 'insurance-law', label: 'Insurance & Fiscal Law' },
-    { key: 'mobility-lifestyle', label: 'Mobility & Living' },
-    { key: 'media-medical', label: 'Health & Media' },
-  ] as { key: AdvCard['cat']; label: string }[],
-  cards: [
-    {
-      key: 'banking',
-      cat: 'banking',
-      icon: 'bank',
-      title: 'We Trust these Banks',
-      subtitle: 'Institutional onboarding & escrow',
-      badge: '5 institutions',
-      brands: [
-        { key: 'enbd', name: 'Emirates NBD', sub: 'Corporate & private', hoverDetail: 'Corporate and private banking services', mono: 'ENBD', logo: '/images/partners/bank-nbd.png', },
-        { key: 'mashreq', name: 'Mashreq', sub: 'NEO & treasury', hoverDetail: 'NEO banking and treasury services', mono: 'M', logo: '/images/partners/bank-mashreq.png' },
-        { key: 'wio', name: 'Wio Bank', sub: 'Digital commercial', hoverDetail: 'Digital commercial banking for businesses', mono: 'W', logo: '/images/partners/bank-wio.png' },
-        { key: 'fab', name: 'FAB', sub: 'First Abu Dhabi', hoverDetail: 'First Abu Dhabi banking for businesses', mono: 'FAB', logo: '/images/partners/bank-fab.png' },
-        { key: 'sib', name: 'Sharjah Islamic Bank (SIB)', sub: 'Sharia-compliant desk', hoverDetail: 'Sharia-compliant banking and finance solutions', mono: 'SIB', wide: true, logo: '/images/partners/bank-sib.png' },
-      ],
-      footLeft: '',
-      footRight: 'Privileges included',
-    },
-    {
-      key: 'zurich',
-      cat: 'insurance-law',
-      icon: 'shield',
-      title: 'Wealth & Risk Underwriting',
-      subtitle: 'Institutional global cover',
-      badge: 'A+ rated',
-      desc: 'Enterprise risk mitigation, cross-border key-person policies, and generational wealth succession umbrella.',
-      brands: [
-        { key: 'zurich', name: 'Zurich Insurance', sub: 'Comprehensive life & corporate policies', hoverDetail: 'Life Insurance & Guaranteed Capital Protection', logo: '/images/partners/zurich.png' },
-      ],
-      footLeft: 'Priority risk desk',
-      footRight: 'Underwriting terms',
-    },
-    {
-      key: 'legal-fiscal',
-      cat: 'insurance-law',
-      icon: 'legal',
-      title: 'Fiscal Advisory & Law Firms',
-      subtitle: 'Cross-border tax & legal shield',
-      badge: 'EU · GCC · Asia',
-      desc: 'Elite international legal chambers specialising in holding structures, double-taxation treaties, and residency corridors.',
-      brands: [
-        { key: 'legal', name: 'International Legal Chambers', sub: 'Corporate governance & mergers', hoverDetail: 'Corporate governance and merger advisory', wide: true, logo: '/images/partners/justyta.png' },
-         { key: 'fiscal', name: 'Sovereign Fiscal Consultancies', sub: 'Zero-friction tax structuring', hoverDetail: 'Tax structuring for cross-border businesses', wide: true, logo: '/images/brands/cnca.webp' },
-      ],
-      footLeft: 'Retainer consultation',
-      footRight: 'Confidential review',
-    },
-    {
-      key: 'tga',
-      cat: 'mobility-lifestyle',
-      icon: 'jet',
-      title: 'Private Jet Charters',
-      subtitle: 'Direct runway clearance',
-      badge: '2hr mobilization',
-      desc: 'Guaranteed charter availability with empty-leg allocations across Dubai, European capitals, and Asia-Pacific.',
-      brands: [
-        { key: 'tga', name: 'TGA', sub: 'Private jet aviation', hoverDetail: 'Private jet charter and aviation services', logo: '/images/partners/tga.png', mono: 'TGA' },
-      ],
-      footLeft: 'Fleet: Global 7500 / Challenger',
-      footRight: 'Request flight',
-    },
-    {
-      key: 'barcelo',
-      cat: 'mobility-lifestyle',
-      icon: 'hotel',
-      title: 'Hospitality & Residences',
-      subtitle: 'VIP upgrade concierge',
-      badge: 'Global keys',
-      desc: 'Permanent reserved suite availability, discreet private check-in, and dining access for members and delegates.',
-      brands: [
-        { key: 'barcelo', name: 'Barceló', sub: 'Hotel group', hoverDetail: 'Reserved hotel stays, upgrades and dining', logo: '/images/partners/webp/barcelo.png' },
-         { key: 'radisson', name: 'Radisson', sub: 'Hotel group', hoverDetail: 'Hotel stays, member upgrades and dining', logo: '/images/brands/radisson-bl.jpeg' },
-      ],
-      footLeft: 'Complimentary presidential upgrades',
-      footRight: 'View portfolio',
-    },
-    {
-      key: 'kalaani',
-      cat: 'mobility-lifestyle',
-      icon: 'estate',
-      title: 'Ultra-Prime Real Estate',
-      subtitle: 'Off-market asset acquisitions',
-      badge: 'Trophy deals',
-      desc: 'Confidential acquisition of freehold commercial towers, prime residential compounds, and waterfront sanctuaries.',
-      brands: [
-        { key: 'kalaani', name: 'Kalaani', sub: 'Real estate partners', hoverDetail: 'Off-market real estate asset acquisitions', logo: '/images/brands/kalaani-realtors.png' },
-      ],
-      footLeft: 'Private deal room',
-      footRight: 'Access listings',
-    },
-        {
-      key: 'Charity',
-      cat: 'mobility-lifestyle',
-      icon: 'estate',
-      title: 'Charity Foundation',
-      subtitle: 'charity for childrens & family',
-      badge: 'Charity Foundation',
-      desc: 'Confidential acquisition of freehold commercial towers, prime residential compounds, and waterfront sanctuaries.',
-      brands: [
-        { key: 'Eben-ezer', name: 'Eben Ezer', sub: 'Non-profit organization', hoverDetail: 'Non-profit support for children and families', logo: '/images/partners/webp/eben-exer.png' },
-      ],
-      footLeft: 'Private deal room',
-      footRight: 'Access listings',
-    },
-   
-    // {
-    //   key: 'media',
-    //   cat: 'media-medical',
-    //   icon: 'media',
-    //   title: 'Media Production & Events',
-    //   subtitle: 'Institutional influence',
-    //   badge: 'Broadcast tier',
-    //   desc: 'High-caliber documentary film production, international investor summit curation, and tier-1 press distribution.',
-    //   brands: [
-    //     { key: 'media', name: 'Global Event & Media Hub', sub: 'Broadcast curation & production', mono: 'GM', logo: '/images/brands/chef-arena.png' },
-    //   ],
-    //   footLeft: 'Stage & keynote allocation',
-    //   footRight: 'Production desk',
-    // },
-  ] as AdvCard[],
+/** Brand marks and monograms, keyed. Names are proper nouns; copy is keyed. */
+const ADV_BRAND_ASSETS: Record<string, { name: string; mono?: string; logo?: string; wide?: true }> = {
+  enbd:        { name: 'Emirates NBD', mono: 'ENBD', logo: '/images/partners/bank-nbd.png' },
+  mashreq:     { name: 'Mashreq', mono: 'M', logo: '/images/partners/bank-mashreq.png' },
+  wio:         { name: 'Wio Bank', mono: 'W', logo: '/images/partners/bank-wio.png' },
+  fab:         { name: 'FAB', mono: 'FAB', logo: '/images/partners/bank-fab.png' },
+  sib:         { name: 'Sharjah Islamic Bank (SIB)', mono: 'SIB', wide: true, logo: '/images/partners/bank-sib.png' },
+  zurich:      { name: 'Zurich Insurance', logo: '/images/partners/zurich.png' },
+  legal:       { name: 'International Legal Chambers', wide: true, logo: '/images/partners/justyta.png' },
+  fiscal:      { name: 'Sovereign Fiscal Consultancies', wide: true, logo: '/images/brands/cnca.webp' },
+  tga:         { name: 'TGA', mono: 'TGA', logo: '/images/partners/tga.png' },
+  barcelo:     { name: 'Barceló', logo: '/images/partners/webp/barcelo.png' },
+  radisson:    { name: 'Radisson', logo: '/images/brands/radisson-bl.jpeg' },
+  kalaani:     { name: 'Kalaani', logo: '/images/brands/kalaani-realtors.png' },
+  'Eben-ezer': { name: 'Eben Ezer', logo: '/images/partners/webp/eben-exer.png' },
 };
 
+const advBrand = (t: T, key: string): AdvBrand => ({
+  key,
+  ...ADV_BRAND_ASSETS[key],
+  name: ADV_BRAND_ASSETS[key].name,
+  sub: t(`landing:advantages.brands.${key}.sub`),
+  hoverDetail: t(`landing:advantages.brands.${key}.hoverDetail`),
+});
+
+/** Non-text shape of each advantage card. */
+const ADV_CARDS: {
+  key: string;
+  cat: AdvCard['cat'];
+  icon: AdvCard['icon'];
+  brands: string[];
+  hasDesc: boolean;
+}[] = [
+  { key: 'banking',      cat: 'banking',            icon: 'bank',   brands: ['enbd', 'mashreq', 'wio', 'fab', 'sib'], hasDesc: false },
+  { key: 'zurich',       cat: 'insurance-law',      icon: 'shield', brands: ['zurich'],                                hasDesc: true },
+  { key: 'legal-fiscal', cat: 'insurance-law',      icon: 'legal',  brands: ['legal', 'fiscal'],                       hasDesc: true },
+  { key: 'tga',          cat: 'mobility-lifestyle', icon: 'jet',    brands: ['tga'],                                   hasDesc: true },
+  { key: 'barcelo',      cat: 'mobility-lifestyle', icon: 'hotel',  brands: ['barcelo', 'radisson'],                   hasDesc: true },
+  { key: 'kalaani',      cat: 'mobility-lifestyle', icon: 'estate', brands: ['kalaani'],                               hasDesc: true },
+  { key: 'Charity',      cat: 'mobility-lifestyle', icon: 'estate', brands: ['Eben-ezer'],                             hasDesc: true },
+];
+
+/** Flags stay as emoji — a flag is not language and is never translated. */
+const ADV_HUBS = [
+  { key: 'dubai', flag: '🇦🇪', tagKey: 'dubaiTag' },
+  { key: 'eu', flag: '🇪🇺' },
+  { key: 'italy', flag: '🇮🇹' },
+  { key: 'singapore', flag: '🇸🇬' },
+  { key: 'china', flag: '🇨🇳' },
+  { key: 'indonesia', flag: '🇮🇩' },
+  { key: 'russia', flag: '🇷🇺' },
+  { key: 'kenya', flag: '🇰🇪' },
+];
+
+export const getAdvantages = (t: T) => ({
+  tag: t('landing:advantages.tag'),
+  title: t('landing:advantages.title'),
+  titleAccent: t('landing:advantages.titleAccent'),
+  sub: t('landing:advantages.sub'),
+  hubs: ADV_HUBS.map((h) => ({
+    key: h.key,
+    flag: h.flag,
+    label: t(`landing:advantages.hubs.${h.key}`),
+    ...(h.tagKey ? { tag: t(`landing:advantages.hubs.${h.tagKey}`) } : {}),
+  })),
+  categories: (['banking', 'insurance-law', 'mobility-lifestyle', 'media-medical'] as const).map((key) => ({
+    key,
+    label: t(`landing:advantages.categories.${key}`),
+  })) as { key: AdvCard['cat']; label: string }[],
+  cards: ADV_CARDS.map((c) => ({
+    key: c.key,
+    cat: c.cat,
+    icon: c.icon,
+    title: t(`landing:advantages.cards.${c.key}.title`),
+    subtitle: t(`landing:advantages.cards.${c.key}.subtitle`),
+    badge: t(`landing:advantages.cards.${c.key}.badge`),
+    ...(c.hasDesc ? { desc: t(`landing:advantages.cards.${c.key}.desc`) } : {}),
+    brands: c.brands.map((b) => advBrand(t, b)),
+    footLeft: t(`landing:advantages.cards.${c.key}.footLeft`),
+    footRight: t(`landing:advantages.cards.${c.key}.footRight`),
+  })) as AdvCard[],
+});
+
+/**
+ * Countries the advantages network reaches.
+ *
+ * Only `.length` is ever rendered (see GlobalReach.tsx), so these names are
+ * never shown to a user and deliberately are NOT translated — doing so would
+ * mean maintaining 86 country names in four languages for a number.
+ */
 export const ADVANTAGE_COUNTRIES = [
   'United States', 'Canada', 'Mexico', 'Brazil', 'Argentina', 'Chile', 'Colombia', 'Peru',
   'United Kingdom', 'Ireland', 'France', 'Germany', 'Italy', 'Spain', 'Portugal', 'Netherlands',
@@ -210,13 +182,9 @@ export const ADVANTAGE_COUNTRIES = [
 
 /* ── 03 · WHY JOIN ───────────────────────────────── */
 /* Concrete outcomes, not "build relationships". Each card answers: how does
-   this help my business specifically?
-
-   The nine outcomes are grouped into three tracks, because read as a flat
-   wall of nine they all weigh the same and none of them lands. Each track
-   opens with a rail - index, label, one line - and then one lead card that
-   carries the commercial argument plus two supporting cards. `tag` is the
-   scannable payoff, so the section can be read by chips alone. */
+   this help my business specifically? The nine outcomes are grouped into three
+   tracks, because read as a flat wall of nine they all weigh the same and none
+   of them lands. */
 
 export type ValueCard = {
   key: string;
@@ -231,162 +199,67 @@ export type ValueCard = {
   featured?: true;
   /** Which isometric scene to draw. */
   iso:
-    | 'early'
-    | 'direct'
-    | 'inbound'
-    | 'partner'
-    | 'supply'
-    | 'expertise'
-    | 'intro'
-    | 'idea'
-    | 'market';
+    | 'early' | 'direct' | 'inbound' | 'partner' | 'supply'
+    | 'expertise' | 'intro' | 'idea' | 'market';
 };
 
-export const WHY_JOIN: ValueCard[] = [
-  {
-    key: 'opportunities',
-    iso: 'early',
-    icon: '◈',
-    tag: 'Earlier information',
-    title: 'Hear about work before it is public',
-    body:
-      'Projects, tenders and expansion plans get discussed between members while they are still being shaped - not after they have gone to the open market.',
-    short: 'Discussed while still being shaped.',
-    featured: true,
-  },
-  {
-    key: 'intros',
-    iso: 'intro',
-    icon: '⬖',
-    tag: 'Warm access',
-    title: 'Get introduced, not cold-emailed',
-    body:
-      'A warm introduction from inside the community opens doors that a cold approach to the same company would not.',
-    short: 'Doors a cold approach would not open.',
-  },
-  {
-    key: 'capital',
-    iso: 'direct',
-    icon: '◆',
-    tag: 'Direct capital',
-    title: 'Sit across from capital, directly',
-    body:
-      'Members who invest are in the same community as members who build. Conversations start without an intermediary deciding whether they happen.',
-    short: 'No intermediary deciding if it happens.',
-  },
-  {
-    key: 'partners',
-    iso: 'partner',
-    icon: '⬗',
-    tag: 'Bigger mandates',
-    title: 'Find the partner a deal is missing',
-    body:
-      'A project you cannot take alone becomes one you can, once you know the member who covers the half you do not.',
-    short: 'The half of the deal you cannot cover, covered.',
-    featured: true,
-  },
-  {
-    key: 'suppliers',
-    iso: 'supply',
-    icon: '⬢',
-    tag: 'Vouched supply',
-    title: 'Source suppliers you can vouch for',
-    body:
-      'Materials, logistics, legal, technical, creative - sourced from members another member has already worked with and will answer for.',
-    short: 'Vouched for by a member who has used them.',
-  },
-  {
-    key: 'expertise',
-    iso: 'expertise',
-    icon: '◇',
-    tag: 'Borrowed know-how',
-    title: 'Borrow expertise you do not employ',
-    body:
-      'Entering a new market, a new regulation, a new category - ask the member who has already done it instead of paying to learn it twice.',
-    short: 'Ask the member who has already done it.',
-  },
-  {
-    key: 'referrals',
-    iso: 'inbound',
-    icon: '⬟',
-    tag: 'Inbound that compounds',
-    title: 'Become the member others send work to',
-    body:
-      'Referrals move in both directions. The members who contribute most are the ones the community thinks of first - and that compounds.',
-    short: 'The community thinks of you first.',
-    featured: true,
-  },
-  {
-    key: 'markets',
-    iso: 'market',
-    icon: '⬣',
-    tag: 'Faster entry',
-    title: 'Enter a market with someone already in it',
-    body:
-      'Expanding into a new country or sector is faster alongside a member who operates there than it is alone.',
-    short: 'Faster alongside a member already there.',
-  },
-  {
-    key: 'ideas',
-    iso: 'idea',
-    icon: '✦',
-    tag: 'New ventures',
-    title: 'Leave with ideas you have not started',
-    body:
-      'Seeing what other industries need is where new products, services and ventures come from. Most start as a remark in a conversation.',
-    short: 'New ventures start as a remark.',
-  },
+/** Icons and scene names — presentation, not language. */
+const VALUE_CARDS: { key: string; iso: ValueCard['iso']; icon: string; featured?: true }[] = [
+  { key: 'opportunities', iso: 'early',     icon: '◈', featured: true },
+  { key: 'intros',        iso: 'intro',     icon: '⬖' },
+  { key: 'capital',       iso: 'direct',    icon: '◆' },
+  { key: 'partners',      iso: 'partner',   icon: '⬗', featured: true },
+  { key: 'suppliers',     iso: 'supply',    icon: '⬢' },
+  { key: 'expertise',     iso: 'expertise', icon: '◇' },
+  { key: 'referrals',     iso: 'inbound',   icon: '⬟', featured: true },
+  { key: 'markets',       iso: 'market',    icon: '⬣' },
+  { key: 'ideas',         iso: 'idea',      icon: '✦' },
 ];
 
-/* The three tracks, in reading order. `cards` are ValueCard keys; the first
-   one in each track is the featured lead. */
+export const getWhyJoin = (t: T): ValueCard[] =>
+  VALUE_CARDS.map((c) => ({
+    key: c.key,
+    iso: c.iso,
+    icon: c.icon,
+    ...(c.featured ? { featured: c.featured } : {}),
+    tag: t(`landing:whyJoin.cards.${c.key}.tag`),
+    title: t(`landing:whyJoin.cards.${c.key}.title`),
+    body: t(`landing:whyJoin.cards.${c.key}.body`),
+    short: t(`landing:whyJoin.cards.${c.key}.short`),
+  }));
 
 export type ValueTrack = {
   key: string;
   n: string;
   label: string;
   line: string;
-  /** Photo for the track rail - reuses the sector thumbnails, which are
-      already sized and compressed for the page. */
+  /** Photo for the track rail — reuses the sector thumbnails. */
   image: string;
   alt: string;
   cards: string[];
 };
 
-export const WHY_TRACKS: ValueTrack[] = [
-  {
-    key: 'flow',
-    n: '01',
-    label: 'Deal flow',
-    line: 'Work, capital and introductions reach you earlier than they reach the market.',
-    image: '/images/sectors/thumb/finance.webp',
-    alt: 'Members reviewing a deal around a boardroom table',
-    cards: ['opportunities', 'intros', 'capital'],
-  },
-  {
-    key: 'capability',
-    n: '02',
-    label: 'Capability',
-    line: 'Take on what you could not take alone - partners, supply and expertise on call.',
-    image: '/images/sectors/thumb/consulting.webp',
-    alt: 'Two member businesses working a project together',
-    cards: ['partners', 'suppliers', 'expertise'],
-  },
-  {
-    key: 'compounding',
-    n: '03',
-    label: 'Compounding',
-    line: 'Standing you build once keeps returning work, markets and ideas afterwards.',
-    image: '/images/sectors/thumb/academy-traning.webp',
-    alt: 'A full room of members at a community session',
-    cards: ['referrals', 'markets', 'ideas'],
-  },
+const VALUE_TRACKS: { key: string; n: string; image: string; cards: string[] }[] = [
+  { key: 'flow',        n: '01', image: '/images/sectors/thumb/finance.webp',         cards: ['opportunities', 'intros', 'capital'] },
+  { key: 'capability',  n: '02', image: '/images/sectors/thumb/consulting.webp',      cards: ['partners', 'suppliers', 'expertise'] },
+  { key: 'compounding', n: '03', image: '/images/sectors/thumb/academy-traning.webp', cards: ['referrals', 'markets', 'ideas'] },
 ];
 
+export const getWhyTracks = (t: T): ValueTrack[] =>
+  VALUE_TRACKS.map((tr) => ({
+    key: tr.key,
+    n: tr.n,
+    image: tr.image,
+    cards: tr.cards,
+    label: t(`landing:whyJoin.tracks.${tr.key}.label`),
+    line: t(`landing:whyJoin.tracks.${tr.key}.line`),
+    alt: t(`landing:whyJoin.tracks.${tr.key}.alt`),
+  }));
+
 /** The cards of one track, lead first. */
-export const trackCards = (track: ValueTrack): ValueCard[] =>
+export const trackCards = (track: ValueTrack, cards: ValueCard[]): ValueCard[] =>
   track.cards
-    .map((k) => WHY_JOIN.find((c) => c.key === k))
+    .map((k) => cards.find((c) => c.key === k))
     .filter((c): c is ValueCard => Boolean(c));
 
 /* ── 04 · HOW IT WORKS ───────────────────────────── */
@@ -401,58 +274,30 @@ export type FlowStep = {
   chips: string[];
 };
 
-export const FLOW: FlowStep[] = [
-  {
-    key: 'discover',
-    n: '01',
-    title: 'Discover',
-    line: 'Something surfaces.',
-    body:
-      'A member brings an opportunity, a requirement, a challenge or an idea into the community - a project starting, a gap in a supply chain, a market opening up.',
-    chips: ['A new project', 'A requirement', 'An idea', 'A challenge'],
-  },
-  {
-    key: 'connect',
-    n: '02',
-    title: 'Connect',
-    line: 'The right members step forward.',
-    body:
-      'Instead of searching the open market, the member finds the people inside the community whose business, expertise or capital is relevant to it.',
-    chips: ['Relevant industries', 'Proven members', 'Warm introductions'],
-  },
-  {
-    key: 'collaborate',
-    n: '03',
-    title: 'Collaborate',
-    line: 'Each brings a different piece.',
-    body:
-      'One member has the expertise. One has the service. One has the capital. One has the market. One has done it before. Separately, none of them is enough.',
-    chips: ['Expertise', 'Services', 'Capital', 'Resources', 'Experience'],
-  },
-  {
-    key: 'create',
-    n: '04',
-    title: 'Create',
-    line: 'Something real takes shape.',
-    body:
-      'A partnership, a joint project, a new service, a new product, a new company - built out of parts that already existed in the room.',
-    chips: ['A partnership', 'A project', 'A new venture', 'A new product'],
-  },
-  {
-    key: 'grow',
-    n: '05',
-    title: 'Grow',
-    line: 'Every business involved is bigger.',
-    body:
-      'The result is not one winner. Each member who contributed carries revenue, a reference and a relationship back into their own business.',
-    chips: ['Revenue', 'References', 'Relationships', 'New capability'],
-  },
+const FLOW_STEPS = [
+  { key: 'discover', n: '01' },
+  { key: 'connect', n: '02' },
+  { key: 'collaborate', n: '03' },
+  { key: 'create', n: '04' },
+  { key: 'grow', n: '05' },
 ];
 
+export const getFlow = (t: T): FlowStep[] =>
+  FLOW_STEPS.map((s) => ({
+    key: s.key,
+    n: s.n,
+    title: t(`landing:flow.${s.key}.title`),
+    line: t(`landing:flow.${s.key}.line`),
+    body: t(`landing:flow.${s.key}.body`),
+    // returnObjects pulls the chip array straight out of the resource file, so
+    // a language can carry a different number of chips if it reads better.
+    chips: t(`landing:flow.${s.key}.chips`, { returnObjects: true }) as unknown as string[],
+  }));
+
 /* ── 05 · REAL SCENARIO ──────────────────────────── */
-/* A worked example, built as a structure that assembles from the
-   foundation up - one layer per member business. Order is bottom-up:
-   index 0 is the foundation, the last entry is the top. */
+/* A worked example, built as a structure that assembles from the foundation
+   up — one layer per member business. Order is bottom-up: index 0 is the
+   foundation, the last entry is the top. */
 
 export type ScenarioLayer = {
   key: string;
@@ -466,75 +311,37 @@ export type ScenarioLayer = {
   fill: 'solid' | 'hatch' | 'grain' | 'grid' | 'light';
 };
 
-export const SCENARIO = {
-  tag: 'A worked example',
-  title: 'One opportunity. Six businesses.',
-  sub:
-    'A single construction project enters the community. Every member who sees it adds the part they already have.',
-  opportunity: 'A construction project',
+/** Language-independent layer order; Scenario needs the count statically. */
+export const SCENARIO_LAYER_SHAPE: { key: string; icon: string; fill: ScenarioLayer['fill'] }[] = [
+  { key: 'investor',   icon: '◆', fill: 'solid' },
+  { key: 'consultant', icon: '◇', fill: 'hatch' },
+  { key: 'supplier',   icon: '⬢', fill: 'grain' },
+  { key: 'builder',    icon: '▦', fill: 'solid' },
+  { key: 'tech',       icon: '◉', fill: 'grid' },
+  { key: 'marketing',  icon: '✦', fill: 'light' },
+];
+
+export const getScenario = (t: T) => ({
+  tag: t('landing:scenario.tag'),
+  title: t('landing:scenario.title'),
+  sub: t('landing:scenario.sub'),
+  opportunity: t('landing:scenario.opportunity'),
   opportunityIcon: '▦',
-  layers: [
-    {
-      key: 'investor',
-      layer: 'Capital',
-      role: 'Investor',
-      icon: '◆',
-      brings: 'Provides the capital',
-      gains: 'Takes a position early',
-      fill: 'solid',
-    },
-    {
-      key: 'consultant',
-      layer: 'Expertise',
-      role: 'Consultant',
-      icon: '◇',
-      brings: 'Specialist expertise',
-      gains: 'Builds a long engagement',
-      fill: 'hatch',
-    },
-    {
-      key: 'supplier',
-      layer: 'Materials',
-      role: 'Supplier',
-      icon: '⬢',
-      brings: 'Materials and logistics',
-      gains: 'Secures a long order book',
-      fill: 'grain',
-    },
-    {
-      key: 'builder',
-      layer: 'Structure',
-      role: 'Construction company',
-      icon: '▦',
-      brings: 'Executes the build',
-      gains: 'Wins the contract',
-      fill: 'solid',
-    },
-    {
-      key: 'tech',
-      layer: 'Systems',
-      role: 'Technology company',
-      icon: '◉',
-      brings: 'Software and systems',
-      gains: 'Lands a reference client',
-      fill: 'grid',
-    },
-    {
-      key: 'marketing',
-      layer: 'Brand',
-      role: 'Marketing company',
-      icon: '✦',
-      brings: 'Branding and launch',
-      gains: 'Adds a flagship account',
-      fill: 'light',
-    },
-  ] as ScenarioLayer[],
-  outcome: 'Funded, built, and launched',
-  closing: 'One member brought it in. Six businesses got paid.',
-};
+  layers: SCENARIO_LAYER_SHAPE.map((l) => ({
+    key: l.key,
+    icon: l.icon,
+    fill: l.fill,
+    layer: t(`landing:scenario.layers.${l.key}.layer`),
+    role: t(`landing:scenario.layers.${l.key}.role`),
+    brings: t(`landing:scenario.layers.${l.key}.brings`),
+    gains: t(`landing:scenario.layers.${l.key}.gains`),
+  })) as ScenarioLayer[],
+  outcome: t('landing:scenario.outcome'),
+  closing: t('landing:scenario.closing'),
+});
 
 /* ── 06 · INDUSTRIES ─────────────────────────────── */
-/* The twelve sectors represented in the community. */
+/* The sectors represented in the community. */
 
 export type Industry = {
   key: string;
@@ -546,13 +353,12 @@ export type Industry = {
   thumb: string;
   /**
    * Member companies operating in this sector, shown on a plate under the
-   * sector name. Optional - a sector with none simply omits the plate.
-   * `href` is where its "Know more" button points; falls back to the
-   * membership application, since there are no per-brand pages yet.
+   * sector name. Optional — a sector with none simply omits the plate.
+   * Company names are proper nouns and are not translated.
    */
   brands?: {
     name: string;
-    /** Optional - a brand with no mark is credited by name alone. */
+    /** Optional — a brand with no mark is credited by name alone. */
     logo?: string;
     href?: string;
     /**
@@ -561,383 +367,193 @@ export type Industry = {
      */
     plate?: 'light' | 'dark';
   }[];
-  /** What members in this sector typically bring to the room. */
   brings: string;
-  /** What they typically come looking for. */
   seeks: string;
 };
 
-export const INDUSTRIES: Industry[] = [
-  {
-    key: 'oil-gas',
-    name: 'Petrol, Oil & Gas',
-    short: 'Oil & Gas',
-    brands: [{ name: 'Commissionaria Falcon', logo: '/images/brands/falcon-com.png' }],
-    icon: '⬢',
-    image: '/images/sectors/hd/oil-gas.webp',
-    thumb: '/images/sectors/thumb/oil-gas.webp',
-    brings: 'Supply contracts, trading routes, heavy infrastructure experience',
-    seeks: 'Capital partners, logistics, regulatory expertise',
-  },
-  {
-    key: 'consulting',
-    name: 'International Consulting',
-    short: 'Consulting',
-    brands: [
-      {
-        name: 'National Council of Chartered Accountants and Accounting Experts',
-        logo: '/images/brands/cnca.webp',
-      },
-    ],
-    icon: '◇',
-    image: '/images/sectors/hd/consulting.webp',
-    thumb: '/images/sectors/thumb/consulting.webp',
-    brings: 'Market entry expertise, structuring, cross-border know-how',
-    seeks: 'Clients entering new markets, local partners',
-  },
-  {
-    key: 'healthcare',
-    name: 'Healthcare, Science & Research',
-    short: 'Healthcare',
-    brands: [
-      { name: 'IVF Mediterranean Centre', logo: '/images/brands/ivf.png' },
-    ],
-    icon: '◈',
-    image: '/images/sectors/hd/medical-healthcare.webp',
-    thumb: '/images/sectors/thumb/medical-healthcare.webp',
-    brings: 'Clinical and research capability, regulated-sector discipline',
-    seeks: 'Research funding, technology partners, distribution',
-  },
-  {
-    key: 'finance',
-    name: 'Trade & Finance',
-    short: 'Finance',
-    brands: [
-      { name: 'BenX Capital Investment', logo: '/images/brands/benx-capital.png' },
-    ],
-    icon: '◆',
-    image: '/images/sectors/hd/finance.webp',
-    thumb: '/images/sectors/thumb/finance.webp',
-    brings: 'Capital, trade instruments, deal structuring',
-    seeks: 'Fundable projects, operators worth backing',
-  },
-  {
-    key: 'real-estate',
-    name: 'Real Estate',
-    short: 'Real Estate',
-    brands: [
-      {
-        name: 'Kalaani Realtors',
-        logo: '/images/brands/kalaani-realtors.png',
-        plate: 'dark',
-      },
-    ],
-    icon: '▦',
-    image: '/images/sectors/real-estate.png',
-    thumb: '/images/sectors/real-estate.png',
-    brings: 'Assets, development pipelines, local market access',
-    seeks: 'Co-investors, contractors, tenants and operators',
-  },
-  {
-    key: 'building',
-    name: 'Building, Interior & Architecture',
-    short: 'Building',
-    icon: '▤',
-    image: '/images/sectors/hd/interior-architecture.png',
-    thumb: '/images/sectors/thumb/interior-architecture.png',
-    brands: [{ name: 'MASK Architects', 
-      logo: '/images/brands/mask-architects.webp',
-      plate: 'dark', 
-     }],
-    brings: 'Design and delivery capability, trusted trades',
-    seeks: 'Projects, suppliers, developer relationships',
-  },
-  {
-    key: 'film',
-    name: 'Media & Movie Production',
-    short: 'Media & Movie',
-    icon: '◐',
-    image: '/images/sectors/hd/movie-production.webp',
-    thumb: '/images/sectors/thumb/movie-production.webp',
-     brands: [
-      {
-        name: 'Chefs Arena',
-        logo: '/images/brands/chef-arena.png',
-      },
-    ],
-    brings: 'Production capacity, creative and distribution reach',
-    seeks: 'Production finance, brand partners, locations',
-  },
-  {
-    key: 'fashion',
-    name: 'Italian Fashion Consulting',
-    short: 'Fashion',
-    icon: '✧',
-    image: '/images/sectors/hd/italian-fashion-consulting.webp',
-    thumb: '/images/sectors/thumb/italian-fashion-consulting.webp',
-    brands: [{ name: 'Bottega Martinese', 
-      logo: '/images/brands/bottega-mart.png',
-     }],
-    brings: 'Manufacturing access, brand and buyer relationships',
-    seeks: 'Retail partners, new markets, investment',
-  },
-  {
-    key: 'sports',
-    name: 'Sports Academy',
-    short: 'Sports',
-    icon: '◎',
-    image: '/images/sectors/hd/football-training.webp',
-    thumb: '/images/sectors/thumb/football-training.webp',
-       brands: [{ name: 'FIFA', 
-     }],
-    brings: 'Talent pipelines, facilities, audience and sponsorship reach',
-    seeks: 'Sponsors, facility investment, international partners',
-  },
-  {
-    key: 'energy',
-    name: 'Energy Division',
-    short: 'Energy',
-    icon: '▲',
-    image: '/images/sectors/hd/solar-energy.webp',
-    thumb: '/images/sectors/thumb/solar-energy.webp',
-     brands: [{ name: 'Energy Division', 
-      logo: '/images/brands/energy-division.png',
-     }],
-    brings: 'Generation and efficiency projects, long-term offtake',
-    seeks: 'Project finance, land, technical partners',
-  },
-  {
-    key: 'technology',
-    name: 'Innovation & Technology',
-    short: 'Technology',
-    brands: [{ name: 'CMS Consulting Management System', logo: '/images/brands/cms.webp' }],
-    icon: '◉',
-    image: '/images/sectors/hd/innovation-technology.png',
-    thumb: '/images/sectors/thumb/innovation-technology.png',
-    brings: 'Software, automation, data capability for other sectors',
-    seeks: 'Reference clients, industry expertise, capital',
-  },
-  {
-    key: 'academy',
-    name: 'Academy & Training Courses',
-    short: 'Academy',
-    icon: '⬟',
-    image: '/images/sectors/hd/academy-traning.webp',
-    thumb: '/images/sectors/thumb/academy-traning.webp',
-    brands: [{ name: 'Scurria Studio Tributario', logo: '/images/partners/webp/scurri.webp', plate: 'dark',  }],
-    brings: 'Training, certification and workforce development',
-    seeks: 'Corporate clients, accreditation partners',
-  },
-   {
-    key: 'food',
-    name: 'Food & Beverage Division',
-    short: 'F&B Division',
-    brands: [
-      {
-        name: 'Sicily Restaurant',
-        logo: '/images/brands/sicily.png',
-      },
-    ],
-    icon: '◇',
-    image: '/images/sectors/hd/food-s.png',
-    thumb: '/images/sectors/thumb/food-s.png',
-    brings: 'Hospitality brands, culinary concepts, supply networks, customer experience expertise',
-    seeks: 'Investment, expansion partners, premium suppliers, franchise opportunities, technology & real-estate partners',
-  },
+/**
+ * The language-independent shape of the industry list: keys, icons, imagery.
+ *
+ * Exported because HeroStage derives its ring geometry from the list at module
+ * scope, and that geometry depends only on the count and order — never on the
+ * copy. Translated names come from getIndustries() at render time.
+ */
+export const INDUSTRY_SHAPE: {
+  key: string;
+  icon: string;
+  image: string;
+  thumb: string;
+  brands?: Industry['brands'];
+}[] = [
+  { key: 'oil-gas',     icon: '⬢', image: '/images/sectors/hd/oil-gas.webp',                     thumb: '/images/sectors/thumb/oil-gas.webp',
+    brands: [{ name: 'Commissionaria Falcon', logo: '/images/brands/falcon-com.png' }] },
+  { key: 'consulting',  icon: '◇', image: '/images/sectors/hd/consulting.webp',                  thumb: '/images/sectors/thumb/consulting.webp',
+    brands: [{ name: 'National Council of Chartered Accountants and Accounting Experts', logo: '/images/brands/cnca.webp' }] },
+  { key: 'healthcare',  icon: '◈', image: '/images/sectors/hd/medical-healthcare.webp',          thumb: '/images/sectors/thumb/medical-healthcare.webp',
+    brands: [{ name: 'IVF Mediterranean Centre', logo: '/images/brands/ivf.png' }] },
+  { key: 'finance',     icon: '◆', image: '/images/sectors/hd/finance.webp',                     thumb: '/images/sectors/thumb/finance.webp',
+    brands: [{ name: 'BenX Capital Investment', logo: '/images/brands/benx-capital.png' }] },
+  { key: 'real-estate', icon: '▦', image: '/images/sectors/real-estate.png',                     thumb: '/images/sectors/real-estate.png',
+    brands: [{ name: 'Kalaani Realtors', logo: '/images/brands/kalaani-realtors.png', plate: 'dark' }] },
+  { key: 'building',    icon: '▤', image: '/images/sectors/hd/interior-architecture.png',        thumb: '/images/sectors/thumb/interior-architecture.png',
+    brands: [{ name: 'MASK Architects', logo: '/images/brands/mask-architects.webp', plate: 'dark' }] },
+  { key: 'film',        icon: '◐', image: '/images/sectors/hd/movie-production.webp',            thumb: '/images/sectors/thumb/movie-production.webp',
+    brands: [{ name: 'Chefs Arena', logo: '/images/brands/chef-arena.png' }] },
+  { key: 'fashion',     icon: '✧', image: '/images/sectors/hd/italian-fashion-consulting.webp',  thumb: '/images/sectors/thumb/italian-fashion-consulting.webp',
+    brands: [{ name: 'Bottega Martinese', logo: '/images/brands/bottega-mart.png' }] },
+  { key: 'sports',      icon: '◎', image: '/images/sectors/hd/football-training.webp',           thumb: '/images/sectors/thumb/football-training.webp',
+    brands: [{ name: 'FIFA' }] },
+  { key: 'energy',      icon: '▲', image: '/images/sectors/hd/solar-energy.webp',                thumb: '/images/sectors/thumb/solar-energy.webp',
+    brands: [{ name: 'Energy Division', logo: '/images/brands/energy-division.png' }] },
+  { key: 'technology',  icon: '◉', image: '/images/sectors/hd/innovation-technology.png',        thumb: '/images/sectors/thumb/innovation-technology.png',
+    brands: [{ name: 'CMS Consulting Management System', logo: '/images/brands/cms.webp' }] },
+  { key: 'academy',     icon: '⬟', image: '/images/sectors/hd/academy-traning.webp',             thumb: '/images/sectors/thumb/academy-traning.webp',
+    brands: [{ name: 'Scurria Studio Tributario', logo: '/images/partners/webp/scurri.webp', plate: 'dark' }] },
+  { key: 'food',        icon: '◇', image: '/images/sectors/hd/food-s.png',                       thumb: '/images/sectors/thumb/food-s.png',
+    brands: [{ name: 'Sicily Restaurant', logo: '/images/brands/sicily.png' }] },
 ];
 
+export const getIndustries = (t: T): Industry[] =>
+  INDUSTRY_SHAPE.map((i) => ({
+    key: i.key,
+    icon: i.icon,
+    image: i.image,
+    thumb: i.thumb,
+    ...(i.brands ? { brands: i.brands } : {}),
+    name: t(`landing:industries.${i.key}.name`),
+    short: t(`landing:industries.${i.key}.short`),
+    brings: t(`landing:industries.${i.key}.brings`),
+    seeks: t(`landing:industries.${i.key}.seeks`),
+  }));
+
 /* ── 07 · PARTNERS ───────────────────────────────── */
-/* Only the logos present in the project. `name` is omitted
-   where the project has no name on record - nothing invented.
-   `category` is left unset here on purpose - assign 'brand' | 'partner' |
-   'service' by hand per entry once the real classification is known. */
+/* Only the logos present in the project. `name` is omitted where the project
+   has no name on record — nothing invented. Partner names are proper nouns and
+   are not translated; the `industry` LABEL is, through
+   landing:partnerIndustry.<value>. */
 
 export type PartnerCategory = 'brand' | 'partner' | 'service';
-/** Industry label shown under each partner card. Left unset where the
-   partner's business type isn't clear from the name on record - nothing
-   invented. */
 export type PartnerIndustry =
-  | 'Hotel group'
-  | 'Media House'
-  | 'Hotel & Restaurant'
-  | 'Medical & Hospital'
-  | 'Restaurant & cafe'
-  | 'Petrol Oil & Gas'
-  | 'Fashion'
-  | 'Real Estate'
-  | 'Capital & Finance'
-  | 'Interior & construction'
-  | 'Energy & solar'
-  | 'Law firm'
-  | 'Media Channel';
+  | 'Hotel group' | 'Media House' | 'Hotel & Restaurant' | 'Medical & Hospital'
+  | 'Restaurant & cafe' | 'Petrol Oil & Gas' | 'Fashion' | 'Real Estate'
+  | 'Capital & Finance' | 'Interior & construction' | 'Energy & solar'
+  | 'Law firm' | 'Media Channel';
 export type Partner = { name?: string; src: string; category?: PartnerCategory; industry?: PartnerIndustry };
 
 export const PARTNERS: Partner[] = [
-  { name: 'Jo-crop', src: '/images/partners/webp/jo-corp.png' ,  category: 'partner'},
-  { name: 'Nat', src: '/images/partners/webp/nat.webp' ,  category: 'partner'},
-  { name: 'Sarni Oils', src: '/images/brands/Sarni.png' ,  category: 'partner', industry: 'Petrol Oil & Gas' },
-  { name: 'Villa Florio', src: '/images/brands/villa-fl.png' ,  category: 'partner', industry: 'Hotel & Restaurant' },
-  { name: 'Si Vallé', src: '/images/brands/su-vall.png' ,  category: 'partner' },
+  { name: 'Jo-crop', src: '/images/partners/webp/jo-corp.png', category: 'partner' },
+  { name: 'Nat', src: '/images/partners/webp/nat.webp', category: 'partner' },
+  { name: 'Sarni Oils', src: '/images/brands/Sarni.png', category: 'partner', industry: 'Petrol Oil & Gas' },
+  { name: 'Villa Florio', src: '/images/brands/villa-fl.png', category: 'partner', industry: 'Hotel & Restaurant' },
+  { name: 'Si Vallé', src: '/images/brands/su-vall.png', category: 'partner' },
   { name: 'Sebex Aviations', src: '/images/partners/webp/sebex-aviations.webp' },
-  { name: 'ASRA', src: '/images/partners/webp/arazsam.png' ,  category: 'partner'},
-  { name: 'Alco', src: '/images/partners/webp/falcon-bio.png',  category: 'partner' },
-  { name: 'Scurri', src: '/images/brands/scurria.png' , category: 'service' },
-  { name: 'MIB constructions',src: '/images/partners/webp/l1.webp' ,  category: 'partner', industry: 'Interior & construction' },
-  { name: 'Agriper', src: '/images/partners/webp/extra1.webp' ,  category: 'partner' },
+  { name: 'ASRA', src: '/images/partners/webp/arazsam.png', category: 'partner' },
+  { name: 'Alco', src: '/images/partners/webp/falcon-bio.png', category: 'partner' },
+  { name: 'Scurri', src: '/images/brands/scurria.png', category: 'service' },
+  { name: 'MIB constructions', src: '/images/partners/webp/l1.webp', category: 'partner', industry: 'Interior & construction' },
+  { name: 'Agriper', src: '/images/partners/webp/extra1.webp', category: 'partner' },
   { name: 'Plus Salus', src: '/images/partners/webp/extra3.webp', category: 'service', industry: 'Medical & Hospital' },
-  { name: 'Energy Division', src: 'images/brands/energy-division.png' ,  category: 'partner', industry: 'Energy & solar' },
-  { name: 'CMS', src: '/images/brands/cms.webp' ,  category: 'partner' },
-  { name: 'BCL', src: '/images/brands/BCL.png' ,  category: 'partner' },
-  // { name: 'MASK', src: '/images/brands/mask-architects.webp' ,  category: 'partner', industry: 'Interior & construction' },
-  // { name: 'Bottega Martinese', src: '/images/brands/bottega-mart.png' , category: 'brand', industry: 'Fashion' },
-  { name: 'Kalaani Realtors', src: '/images/brands/kalaani-realtors.png' , category: 'brand', industry: 'Real Estate' },
-  { name: 'IVF Mediterranean Centre', src: '/images/brands/ivf.png',  category: 'partner', industry: 'Medical & Hospital' },
-  { name: 'Commissionaria Falcon', src: '/images/brands/falcon-com.png' ,  category: 'partner', industry: 'Petrol Oil & Gas' },
-   { name: 'Goethe', src: '/images/brands/goethe-.png' ,  category: 'partner', industry: 'Hotel & Restaurant' },
-     
-  // { name: 'National Council of Chartered Accountants and Accounting Experts', src: '/images/brands/cnca.webp', category: 'service' },
+  { name: 'Energy Division', src: 'images/brands/energy-division.png', category: 'partner', industry: 'Energy & solar' },
+  { name: 'CMS', src: '/images/brands/cms.webp', category: 'partner' },
+  { name: 'BCL', src: '/images/brands/BCL.png', category: 'partner' },
+  { name: 'Kalaani Realtors', src: '/images/brands/kalaani-realtors.png', category: 'brand', industry: 'Real Estate' },
+  { name: 'IVF Mediterranean Centre', src: '/images/brands/ivf.png', category: 'partner', industry: 'Medical & Hospital' },
+  { name: 'Commissionaria Falcon', src: '/images/brands/falcon-com.png', category: 'partner', industry: 'Petrol Oil & Gas' },
+  { name: 'Goethe', src: '/images/brands/goethe-.png', category: 'partner', industry: 'Hotel & Restaurant' },
   { name: 'Sicily Restaurant', src: '/images/brands/sicily.png', category: 'brand', industry: 'Restaurant & cafe' },
 ];
 
-/* ── Stats ───────────────────────────────────────── */
+/** Translated label for a partner's industry, falling back to the raw value. */
+export const partnerIndustryLabel = (t: T, industry?: PartnerIndustry): string =>
+  industry ? t(`landing:partnerIndustry.${industry}`, { defaultValue: industry }) : '';
 
-export const STATS = [
-  { value: 150, suffix: '+', label: 'Vetted members', sub: 'reviewed on merit' },
-  { value: 12, suffix: '', label: 'Industries represented', sub: 'from construction to fashion' },
-  { value: 80, suffix: '+', label: 'Countries reached', sub: 'members operating globally' },
+/* ── Stats ───────────────────────────────────────── */
+/* `value` and `suffix` are numeric and are formatted by the counter component,
+   not translated. */
+
+const STAT_SHAPE = [
+  { key: 'members', value: 150, suffix: '+' },
+  { key: 'industries', value: 12, suffix: '' },
+  { key: 'countries', value: 80, suffix: '+' },
 ];
+
+export const getStats = (t: T) =>
+  STAT_SHAPE.map((s) => ({
+    key: s.key,
+    value: s.value,
+    suffix: s.suffix,
+    label: t(`landing:stats.${s.key}.label`),
+    sub: t(`landing:stats.${s.key}.sub`),
+  }));
 
 /* ── FAQ ─────────────────────────────────────────── */
 
-export const FAQS: { q: string; a: string }[] = [
-  {
-    q: 'What is Trillion Business Community?',
-    a: 'A private business community for owners, operators and investors across twelve industries - construction, finance, real estate, technology, energy, healthcare, fashion and more. Members join to discover opportunities, find the partners and expertise a project needs, and build ventures with people they can vouch for.',
-  },
-  {
-    q: 'Who is it for?',
-    a: 'Business owners, senior operators and investors who are actively building something and are prepared to contribute, not only receive. Membership is by application and reviewed on merit - what matters is whether you bring something other members need.',
-  },
-  {
-    q: 'What do I actually get as a member?',
-    a: 'Access to the members and businesses inside the community, to opportunities as they are being shaped rather than after they reach the open market, to introductions that would be cold approaches otherwise, and to the community’s Deal Room, events and working sessions where members bring live projects to the table.',
-  },
-  {
-    q: 'How does membership help my business commercially?',
-    a: 'Three routes, in practice. You find work - projects and requirements that other members bring in. You find what a deal is missing - the supplier, partner, specialist or capital that makes it viable. And you become someone the community refers work to, which compounds the longer you contribute.',
-  },
-  {
-    q: 'What happens at community events?',
-    a: 'Members meet in person and online to put real projects in front of each other - what is being built, what it needs, who can help. Alongside that, sessions and workshops where members with direct experience in a sector walk others through it.',
-  },
-  {
-    q: 'How do I join?',
-    a: 'Apply through the site. You complete a profile covering your business and what you bring, verify your identity, and the application is reviewed. Approved members get full access to the community and its Deal Room.',
-  },
-];
+const FAQ_KEYS = ['whatIsIt', 'whoFor', 'whatYouGet', 'commercial', 'events', 'howToJoin'];
+
+export const getFaqs = (t: T): { key: string; q: string; a: string }[] =>
+  FAQ_KEYS.map((k) => ({
+    key: k,
+    q: t(`landing:faq.${k}.q`),
+    a: t(`landing:faq.${k}.a`),
+  }));
 
 /* ── 07B · UNIVERSAL PROFIT ──────────────────────── */
-/* Content ported as supplied. This is presented throughout as a proposed
-   framework - "designed to", "would be", "intended to" - never rewritten
-   into firmer language than the source copy uses. */
+/* Presented throughout as a PROPOSED framework — "designed to", "would be",
+   "intended to". Translations must preserve that conditional register: this is
+   financial copy, and firming it up would change its legal meaning. */
 
-export const PROFIT = {
-  tag: 'Universal Profit',
-  title: 'Share the community’s profit together',
-  lead: 'A portion of participating projects’ profits, shared with eligible active members.',
+const PROFIT_STEPS = [
+  { key: 'activity', n: '01', icon: '◆' },
+  { key: 'fund', n: '02', icon: '⬢' },
+  { key: 'share', n: '03', icon: '◈' },
+];
+const PROFIT_TRACKS = [
+  { key: 'community', icon: '◈' },
+  { key: 'direct', icon: '◆' },
+];
+const PROFIT_WAYS = [
+  { key: 'intros', icon: '⬖' },
+  { key: 'expertise', icon: '◇' },
+  { key: 'opportunities', icon: '✦' },
+  { key: 'activities', icon: '◎' },
+  { key: 'conduct', icon: '⬟' },
+];
+const PROFIT_FAQ_KEYS = ['invest', 'guaranteed', 'howMuch'];
 
-  /** The flow visual: value moves left to right through three nodes. Each
-      gets one short line - the full explanation lives in `body`, used as
-      the node's aria-label / title attribute rather than printed copy. */
-  steps: [
-    {
-      key: 'activity',
-      n: '01',
-      icon: '◆',
-      title: 'Business activity',
-      line: 'Participating projects create value.',
-      body:
-        'Participating projects pursue commercial opportunities through products, services and partnerships. Their financial results form the basis for any potential profit allocation.',
-    },
-    {
-      key: 'fund',
-      n: '02',
-      icon: '⬢',
-      title: 'Universal Profit Fund',
-      line: 'A defined portion is allocated.',
-      body:
-        'Under the proposed framework, a defined portion of participating projects’ net profits would be allocated to the Universal Profit Fund, according to the applicable programme and project terms.',
-    },
-    {
-      key: 'share',
-      n: '03',
-      icon: '◈',
-      title: 'Eligible members',
-      line: 'The outcome is shared.',
-      body:
-        'The fund is intended to support distributions to eligible active members, including those who have not invested directly in the contributing project. Eligibility, allocation methods and distribution schedules would be set out in the final programme terms.',
-    },
-  ],
-
-  tracks: [
-    {
-      key: 'community',
-      icon: '◈',
-      title: 'Community participation',
-      line: 'A connection to the community’s success - no direct investment required.',
-    },
-    {
-      key: 'direct',
-      icon: '◆',
-      title: 'Direct project participation',
-      line: 'Invest in a project directly, under that project’s own terms.',
-    },
-  ],
-
-  waysTitle: 'Meaningful participation matters',
-  waysLead: 'A strong community depends on members who bring ideas, expertise and commitment.',
-  ways: [
-    { icon: '⬖', label: 'Warm introductions' },
-    { icon: '◇', label: 'Professional expertise' },
-    { icon: '✦', label: 'New opportunities' },
-    { icon: '◎', label: 'Community activities' },
-    { icon: '⬟', label: 'Responsible conduct' },
-  ],
-  waysNote: 'The final programme terms will define the requirements for active-member eligibility.',
-
-  faqs: [
-    {
-      q: 'Do I need to invest in every project to benefit?',
-      a: 'No - eligible active members are intended to be included without requiring direct investment in each contributing project. Separate project participation has its own terms.',
-    },
-    {
-      q: 'Is Universal Profit a guaranteed income?',
-      a: 'No. Any distribution would depend on actual profits, available funds and the applicable programme conditions. Membership alone does not guarantee a payment.',
-    },
-    {
-      q: 'How much could I receive, and when?',
-      a: 'That depends on the final allocation rules, eligibility requirements and financial results - to be communicated through the approved programme documentation.',
-    },
-  ],
-
-  ctaTitle: 'Be part of what we build together.',
-  ctaBody: 'Bring your expertise. Build valuable relationships. Explore shared success.',
-  primary: { label: 'Explore TBC Membership', href: '/register' },
-  secondary: { label: 'Speak With Our Team', href: '#faq' },
-
-  disclaimer:
-    'A proposed framework. Implementation, eligibility and any distributions remain subject to final programme terms.',
-};
-
-/* ── Hero ────────────────────────────────────────── */
-
-export const HERO = {
-  eyebrow: 'Membership by application · 12 industries · 80+ countries',
-  titleLead: 'Different businesses.',
-  titleMid: 'Different ideas.',
-  titleAccent: 'One community for all.',
-  desc:
-    'A private community where business owners discover opportunities, find the expertise and capital a project needs, and build things together that none of them could build alone.',
-  primary: { label: 'Apply for membership', href: '/register' },
-  secondary: { label: 'See how it works', href: '#how-it-works' },
-};
+export const getProfit = (t: T) => ({
+  tag: t('landing:profit.tag'),
+  title: t('landing:profit.title'),
+  lead: t('landing:profit.lead'),
+  steps: PROFIT_STEPS.map((s) => ({
+    key: s.key,
+    n: s.n,
+    icon: s.icon,
+    title: t(`landing:profit.steps.${s.key}.title`),
+    line: t(`landing:profit.steps.${s.key}.line`),
+    body: t(`landing:profit.steps.${s.key}.body`),
+  })),
+  tracks: PROFIT_TRACKS.map((tr) => ({
+    key: tr.key,
+    icon: tr.icon,
+    title: t(`landing:profit.tracks.${tr.key}.title`),
+    line: t(`landing:profit.tracks.${tr.key}.line`),
+  })),
+  waysTitle: t('landing:profit.waysTitle'),
+  waysLead: t('landing:profit.waysLead'),
+  ways: PROFIT_WAYS.map((w) => ({
+    key: w.key,
+    icon: w.icon,
+    label: t(`landing:profit.ways.${w.key}`),
+  })),
+  waysNote: t('landing:profit.waysNote'),
+  faqs: PROFIT_FAQ_KEYS.map((k) => ({
+    key: k,
+    q: t(`landing:profit.faqs.${k}.q`),
+    a: t(`landing:profit.faqs.${k}.a`),
+  })),
+  ctaTitle: t('landing:profit.ctaTitle'),
+  ctaBody: t('landing:profit.ctaBody'),
+  primary: { label: t('landing:profit.primary'), href: '/register' },
+  secondary: { label: t('landing:profit.secondary'), href: '#faq' },
+  disclaimer: t('landing:profit.disclaimer'),
+});

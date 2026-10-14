@@ -15,6 +15,11 @@
   --text-secondary: #8c9ab5;
   --text-muted:     #596480;
   --border:         rgba(255,255,255,0.07);
+  /* Height of the fixed chrome above a community page: the 68px topbar plus
+   * the 46px community sub-nav. A page that has to fill the rest of the
+   * viewport (the chat, which scrolls internally) subtracts this rather than
+   * hardcoding a number that drifts when the chrome changes. */
+  --app-chrome-h:   114px;
   --radius-sm:      8px;
   --radius-md:      14px;
   --radius-lg:      20px;
@@ -1003,12 +1008,14 @@ width: 65px;
   margin: 0 auto;
   padding: 24px 28px 80px;
   display: grid;
-  grid-template-columns: 210px 1fr 270px;
+  /* Two columns. The in-page left column is gone: the app sidebar
+     (components/layout/Sidebar) is present on every community page now and was
+     duplicating its navigation. */
+  grid-template-columns: minmax(0, 1fr) 270px;
   gap: 20px;
 }
 
-/* ── Sidebar Left ─────────────────────────── */
-.comm-sidebar-left  { display: flex; flex-direction: column; gap: 10px; }
+/* ── Sidebar Right ────────────────────────── */
 .comm-sidebar-right { display: flex; flex-direction: column; gap: 10px; }
 
 .comm-scard {
@@ -1026,34 +1033,6 @@ width: 65px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   margin-bottom: 12px;
-}
-
-.comm-side-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
-  border-radius: var(--radius-sm);
-  font-size: 12px;
-  font-weight: 400;
-  color: var(--text-secondary);
-  cursor: pointer;
-  margin-bottom: 2px;
-  transition: all 0.2s;
-  text-decoration: none;
-}
-
-.comm-side-item:hover,
-.comm-side-item.active {
-  background: var(--blue-dim);
-  color: var(--text-primary);
-}
-
-.comm-side-icon {
-  width: 16px;
-  height: 16px;
-  flex-shrink: 0;
-  opacity: 0.65;
 }
 
 .comm-tier-row {
@@ -2022,12 +2001,12 @@ width: 65px;
 
 /* ── Responsive ───────────────────────────── */
 @media (max-width: 1100px) {
-  .comm-main { grid-template-columns: 180px 1fr 240px; gap: 16px; }
+  .comm-main { grid-template-columns: minmax(0, 1fr) 240px; gap: 16px; }
 }
 
 @media (max-width: 900px) {
   .comm-main { grid-template-columns: 1fr; }
-  .comm-sidebar-left, .comm-sidebar-right { display: none; }
+  .comm-sidebar-right { display: none; }
   .comm-nav-links { display: none; }
 }
 
@@ -2213,4 +2192,264 @@ width: 65px;
 
 @media (prefers-reduced-motion: reduce) {
   .notif-badge { animation: none; }
+}
+
+/* =============================================
+   i18n — language selector and direction support
+   =============================================
+
+   Everything below uses CSS *logical* properties (inline-start / inline-end,
+   margin-inline, padding-inline, text-align: start) rather than left/right,
+   so the single `dir` attribute that I18nProvider sets on <html> flips the
+   whole thing for Persian and Arabic with no RTL-specific component and no
+   duplicated rules. See src/i18n/I18nProvider.tsx.
+   ============================================= */
+
+.lang-select {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.lang-select-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  line-height: 1.2;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+}
+
+.lang-select-trigger:hover {
+  color: var(--text-primary);
+  border-color: rgba(255, 255, 255, 0.18);
+  background: var(--bg-card-hover);
+}
+
+/* Visible keyboard focus is required: the listbox pattern is unusable without
+   it, and the trigger is the entry point for keyboard and screen-reader users. */
+.lang-select-trigger:focus-visible,
+.lang-select-option:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
+}
+
+.lang-select-trigger[aria-busy='true'] { opacity: 0.7; }
+
+.lang-select-value {
+  /* The Persian and Arabic names need a font with those scripts; the system
+     stack resolves them, but the fallback order matters on Windows. */
+  font-family: inherit;
+}
+
+/* Landing / community nav: lighter chrome to sit on a dark translucent bar. */
+.lang-select--bar .lang-select-trigger {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+/* Auth cards: matches .form-input so it reads as part of the form. */
+.lang-select--panel .lang-select-trigger {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: var(--border);
+  padding: 8px 12px;
+}
+
+/* Narrow topbar: icon + "EN". */
+.lang-select--compact .lang-select-trigger {
+  padding: 6px 9px;
+  gap: 5px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+
+.lang-select-list {
+  position: absolute;
+  top: calc(100% + 6px);
+  z-index: 300;
+  min-width: 164px;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  background: #0e1529;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.55);
+}
+
+/* Logical alignment: `end` is the right edge in LTR and the left edge in RTL,
+   which is what keeps the menu inside the viewport in both directions. */
+.lang-select-list--end   { inset-inline-end: 0; }
+.lang-select-list--start { inset-inline-start: 0; }
+
+.lang-select-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  /* `start` resolves to left in LTR and right in RTL. */
+  text-align: start;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.lang-select-option:hover,
+.lang-select-option:focus-visible {
+  background: var(--bg-card-hover);
+  color: var(--text-primary);
+}
+
+.lang-select-option.is-selected {
+  color: var(--accent-gold);
+  background: rgba(200, 168, 75, 0.08);
+}
+
+.lang-select-option-name { font-weight: 500; }
+
+@media (max-width: 560px) {
+  /* On a phone the trigger loses its label and keeps the globe + code, so it
+     never pushes the brand or the primary CTA off the bar. */
+  .lang-select--bar .lang-select-value { display: none; }
+  .lang-select-list { min-width: 150px; }
+}
+
+/* ── Right-to-left adjustments ───────────────────────────────────────────────
+   Only things that logical properties cannot express belong here: glyph
+   mirroring for genuinely directional icons, and numeric runs that must stay
+   left-to-right inside Arabic or Persian text. Layout, spacing and alignment
+   are handled by the logical properties above and must NOT be duplicated. */
+
+/* Arrows in buttons and links point "forward", so they mirror with the text. */
+[dir='rtl'] .rtl-mirror { transform: scaleX(-1); }
+
+/*
+  Logos, charts, maps, media controls and brand marks are not directional and
+  must never be mirrored (§10). Opt out explicitly so a future blanket rule
+  cannot catch them.
+*/
+[dir='rtl'] .no-mirror,
+[dir='rtl'] .lp-brand-mark img,
+[dir='rtl'] .topbar-logo-icon img,
+[dir='rtl'] .comm-nav-logo-img,
+[dir='rtl'] canvas {
+  transform: none;
+}
+
+/*
+  Latin-script runs inside RTL text: emails, IBANs, phone numbers, URLs, money
+  and reference codes. `direction: ltr` + `unicode-bidi: embed` keeps the
+  characters in their own order while the surrounding paragraph stays RTL,
+  which is what stops "+39 02 1234" from rendering as "1234 02 39+".
+*/
+.ltr-embed,
+[dir='rtl'] .ltr-embed {
+  direction: ltr;
+  unicode-bidi: embed;
+  text-align: start;
+}
+
+/* Persian and Arabic benefit from slightly more line height at the same size:
+   their ascenders and descenders are taller than Latin at equal font-size. */
+:root[dir='rtl'] body { line-height: 1.75; }
+
+/* Tabular data stays visually aligned on the number column in both
+   directions; only the header/row text alignment follows the script. */
+[dir='rtl'] th,
+[dir='rtl'] td { text-align: start; }
+
+/* ── Community inside the app shell ──────────────────────────────────────────
+ * The community pages used to render their own full-page chrome. They now sit
+ * inside `.app-layout` alongside the sidebar, so they need the column +
+ * scroll-container arrangement that `.content-left` gives the dashboard:
+ * `.content-wrap` above is `overflow: hidden`, and whatever it holds has to do
+ * its own scrolling.
+ */
+.comm-shell {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.comm-shell-scroll {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+/* `.comm-layout` was written to be a whole page: a full viewport height and
+ * its own background gradient. Inside the shell both are wrong — the height
+ * forces a second scrollbar, and the gradient paints over the one
+ * `.app-layout` already draws. */
+.comm-shell .comm-layout {
+  min-height: 0;
+  background: none;
+}
+
+/* The community's own five sections, as a secondary strip under the topbar.
+ * Sticky, so it stays reachable while the feed scrolls. */
+.comm-subnav {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 20px;
+  height: 46px;
+  flex-shrink: 0;
+  background: rgba(7, 11, 26, 0.92);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
+.comm-subnav::-webkit-scrollbar { display: none; }
+
+.comm-subnav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 13px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.comm-subnav-link:hover { background: var(--bg-card); color: var(--text-primary); }
+
+.comm-subnav-link.active {
+  background: var(--bg-active);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.comm-subnav-count {
+  background: var(--red);
+  color: #fff;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 5px;
+  line-height: 1.4;
+}
+
+@media (max-width: 720px) {
+  .comm-subnav { padding: 0 12px; height: 44px; }
+  .comm-subnav-link { padding: 6px 10px; font-size: 12px; }
 }

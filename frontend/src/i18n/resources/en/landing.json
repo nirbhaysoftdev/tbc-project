@@ -1,0 +1,730 @@
+{
+  "hero": {
+    "eyebrow": "Membership by application · 12 industries · 80+ countries",
+    "titleLead": "Different businesses.",
+    "titleMid": "Different ideas.",
+    "titleAccent": "One community for all.",
+    "desc": "A private community where business owners discover opportunities, find the expertise and capital a project needs, and build things together that none of them could build alone.",
+    "primary": "Apply for membership",
+    "secondary": "See how it works"
+  },
+  "whatItIs": {
+    "tag": "What it is",
+    "title": "A private community for business owners.",
+    "lead": "Trillion Business Community brings together owners, operators and investors from a dozen different industries - and puts them in one room.",
+    "body": "Every member arrives with something another member needs: a project, a service, a skill, capital, a market, an idea. On your own, those matches are almost impossible to find. Inside the community, they are the point.",
+    "marks": {
+      "members": {
+        "k": "Members",
+        "v": "Business owners, operators, investors"
+      },
+      "industries": {
+        "k": "Industries",
+        "v": "12 sectors, from construction to fashion"
+      },
+      "reach": {
+        "k": "Reach",
+        "v": "80+ countries"
+      },
+      "entry": {
+        "k": "Entry",
+        "v": "By application, reviewed on merit"
+      }
+    }
+  },
+  "advantages": {
+    "tag": "Institutional advantages & global vetting",
+    "title": "Global footprint.",
+    "titleAccent": "Unrivaled institutional access.",
+    "sub": "Direct sovereignty for community members. Instant priority allocation across tier-1 international banks, Zurich insurance structures, private aviation fleets, luxury hospitality and sovereign fiscal law.",
+    "moreRegions": "+{{count}} more regions",
+    "hubs": {
+      "dubai": "Dubai / UAE",
+      "dubaiTag": "HQ",
+      "eu": "All EU countries",
+      "italy": "Italy",
+      "singapore": "Singapore",
+      "china": "China",
+      "indonesia": "Indonesia",
+      "russia": "Russia",
+      "kenya": "Kenya"
+    },
+    "categories": {
+      "banking": "Capital & Banking",
+      "insurance-law": "Insurance & Fiscal Law",
+      "mobility-lifestyle": "Mobility & Living",
+      "media-medical": "Health & Media"
+    },
+    "cards": {
+      "banking": {
+        "title": "We Trust these Banks",
+        "subtitle": "Institutional onboarding & escrow",
+        "badge": "5 institutions",
+        "footLeft": "",
+        "footRight": "Privileges included"
+      },
+      "zurich": {
+        "title": "Wealth & Risk Underwriting",
+        "subtitle": "Institutional global cover",
+        "badge": "A+ rated",
+        "desc": "Enterprise risk mitigation, cross-border key-person policies, and generational wealth succession umbrella.",
+        "footLeft": "Priority risk desk",
+        "footRight": "Underwriting terms"
+      },
+      "legal-fiscal": {
+        "title": "Fiscal Advisory & Law Firms",
+        "subtitle": "Cross-border tax & legal shield",
+        "badge": "EU · GCC · Asia",
+        "desc": "Elite international legal chambers specialising in holding structures, double-taxation treaties, and residency corridors.",
+        "footLeft": "Retainer consultation",
+        "footRight": "Confidential review"
+      },
+      "tga": {
+        "title": "Private Jet Charters",
+        "subtitle": "Direct runway clearance",
+        "badge": "2hr mobilization",
+        "desc": "Guaranteed charter availability with empty-leg allocations across Dubai, European capitals, and Asia-Pacific.",
+        "footLeft": "Fleet: Global 7500 / Challenger",
+        "footRight": "Request flight"
+      },
+      "barcelo": {
+        "title": "Hospitality & Residences",
+        "subtitle": "VIP upgrade concierge",
+        "badge": "Global keys",
+        "desc": "Permanent reserved suite availability, discreet private check-in, and dining access for members and delegates.",
+        "footLeft": "Complimentary presidential upgrades",
+        "footRight": "View portfolio"
+      },
+      "kalaani": {
+        "title": "Ultra-Prime Real Estate",
+        "subtitle": "Off-market asset acquisitions",
+        "badge": "Trophy deals",
+        "desc": "Confidential acquisition of freehold commercial towers, prime residential compounds, and waterfront sanctuaries.",
+        "footLeft": "Private deal room",
+        "footRight": "Access listings"
+      },
+      "Charity": {
+        "title": "Charity Foundation",
+        "subtitle": "charity for childrens & family",
+        "badge": "Charity Foundation",
+        "desc": "Confidential acquisition of freehold commercial towers, prime residential compounds, and waterfront sanctuaries.",
+        "footLeft": "Private deal room",
+        "footRight": "Access listings"
+      }
+    },
+    "brands": {
+      "enbd": {
+        "sub": "Corporate & private",
+        "hoverDetail": "Corporate and private banking services"
+      },
+      "mashreq": {
+        "sub": "NEO & treasury",
+        "hoverDetail": "NEO banking and treasury services"
+      },
+      "wio": {
+        "sub": "Digital commercial",
+        "hoverDetail": "Digital commercial banking for businesses"
+      },
+      "fab": {
+        "sub": "First Abu Dhabi",
+        "hoverDetail": "First Abu Dhabi banking for businesses"
+      },
+      "sib": {
+        "sub": "Sharia-compliant desk",
+        "hoverDetail": "Sharia-compliant banking and finance solutions"
+      },
+      "zurich": {
+        "sub": "Comprehensive life & corporate policies",
+        "hoverDetail": "Life Insurance & Guaranteed Capital Protection"
+      },
+      "legal": {
+        "sub": "Corporate governance & mergers",
+        "hoverDetail": "Corporate governance and merger advisory"
+      },
+      "fiscal": {
+        "sub": "Zero-friction tax structuring",
+        "hoverDetail": "Tax structuring for cross-border businesses"
+      },
+      "tga": {
+        "sub": "Private jet aviation",
+        "hoverDetail": "Private jet charter and aviation services"
+      },
+      "barcelo": {
+        "sub": "Hotel group",
+        "hoverDetail": "Reserved hotel stays, upgrades and dining"
+      },
+      "radisson": {
+        "sub": "Hotel group",
+        "hoverDetail": "Hotel stays, member upgrades and dining"
+      },
+      "kalaani": {
+        "sub": "Real estate partners",
+        "hoverDetail": "Off-market real estate asset acquisitions"
+      },
+      "Eben-ezer": {
+        "sub": "Non-profit organization",
+        "hoverDetail": "Non-profit support for children and families"
+      }
+    },
+    "stripTitle": "80+ jurisdictions",
+    "stripBadge": "Active corridors",
+    "allPrivileges": "All privileges ({{count}})",
+    "partnerAccess": "Partner access",
+    "brandAria": "{{name}}: {{detail}}"
+  },
+  "whyJoin": {
+    "cards": {
+      "opportunities": {
+        "tag": "Earlier information",
+        "title": "Hear about work before it is public",
+        "body": "Projects, tenders and expansion plans get discussed between members while they are still being shaped - not after they have gone to the open market.",
+        "short": "Discussed while still being shaped."
+      },
+      "intros": {
+        "tag": "Warm access",
+        "title": "Get introduced, not cold-emailed",
+        "body": "A warm introduction from inside the community opens doors that a cold approach to the same company would not.",
+        "short": "Doors a cold approach would not open."
+      },
+      "capital": {
+        "tag": "Direct capital",
+        "title": "Sit across from capital, directly",
+        "body": "Members who invest are in the same community as members who build. Conversations start without an intermediary deciding whether they happen.",
+        "short": "No intermediary deciding if it happens."
+      },
+      "partners": {
+        "tag": "Bigger mandates",
+        "title": "Find the partner a deal is missing",
+        "body": "A project you cannot take alone becomes one you can, once you know the member who covers the half you do not.",
+        "short": "The half of the deal you cannot cover, covered."
+      },
+      "suppliers": {
+        "tag": "Vouched supply",
+        "title": "Source suppliers you can vouch for",
+        "body": "Materials, logistics, legal, technical, creative - sourced from members another member has already worked with and will answer for.",
+        "short": "Vouched for by a member who has used them."
+      },
+      "expertise": {
+        "tag": "Borrowed know-how",
+        "title": "Borrow expertise you do not employ",
+        "body": "Entering a new market, a new regulation, a new category - ask the member who has already done it instead of paying to learn it twice.",
+        "short": "Ask the member who has already done it."
+      },
+      "referrals": {
+        "tag": "Inbound that compounds",
+        "title": "Become the member others send work to",
+        "body": "Referrals move in both directions. The members who contribute most are the ones the community thinks of first - and that compounds.",
+        "short": "The community thinks of you first."
+      },
+      "markets": {
+        "tag": "Faster entry",
+        "title": "Enter a market with someone already in it",
+        "body": "Expanding into a new country or sector is faster alongside a member who operates there than it is alone.",
+        "short": "Faster alongside a member already there."
+      },
+      "ideas": {
+        "tag": "New ventures",
+        "title": "Leave with ideas you have not started",
+        "body": "Seeing what other industries need is where new products, services and ventures come from. Most start as a remark in a conversation.",
+        "short": "New ventures start as a remark."
+      }
+    },
+    "tracks": {
+      "flow": {
+        "label": "Deal flow",
+        "line": "Work, capital and introductions reach you earlier than they reach the market.",
+        "alt": "Members reviewing a deal around a boardroom table"
+      },
+      "capability": {
+        "label": "Capability",
+        "line": "Take on what you could not take alone - partners, supply and expertise on call.",
+        "alt": "Two member businesses working a project together"
+      },
+      "compounding": {
+        "label": "Compounding",
+        "line": "Standing you build once keeps returning work, markets and ideas afterwards.",
+        "alt": "A full room of members at a community session"
+      }
+    },
+    "foot": "Any one of these pays for the membership. Most members use several.",
+    "cta": "Apply for membership →"
+  },
+  "flow": {
+    "discover": {
+      "title": "Discover",
+      "line": "Something surfaces.",
+      "body": "A member brings an opportunity, a requirement, a challenge or an idea into the community - a project starting, a gap in a supply chain, a market opening up.",
+      "chips": [
+        "A new project",
+        "A requirement",
+        "An idea",
+        "A challenge"
+      ]
+    },
+    "connect": {
+      "title": "Connect",
+      "line": "The right members step forward.",
+      "body": "Instead of searching the open market, the member finds the people inside the community whose business, expertise or capital is relevant to it.",
+      "chips": [
+        "Relevant industries",
+        "Proven members",
+        "Warm introductions"
+      ]
+    },
+    "collaborate": {
+      "title": "Collaborate",
+      "line": "Each brings a different piece.",
+      "body": "One member has the expertise. One has the service. One has the capital. One has the market. One has done it before. Separately, none of them is enough.",
+      "chips": [
+        "Expertise",
+        "Services",
+        "Capital",
+        "Resources",
+        "Experience"
+      ]
+    },
+    "create": {
+      "title": "Create",
+      "line": "Something real takes shape.",
+      "body": "A partnership, a joint project, a new service, a new product, a new company - built out of parts that already existed in the room.",
+      "chips": [
+        "A partnership",
+        "A project",
+        "A new venture",
+        "A new product"
+      ]
+    },
+    "grow": {
+      "title": "Grow",
+      "line": "Every business involved is bigger.",
+      "body": "The result is not one winner. Each member who contributed carries revenue, a reference and a relationship back into their own business.",
+      "chips": [
+        "Revenue",
+        "References",
+        "Relationships",
+        "New capability"
+      ]
+    },
+    "heading": "One opportunity, five moves."
+  },
+  "scenario": {
+    "tag": "A worked example",
+    "title": "One opportunity. Six businesses.",
+    "sub": "A single construction project enters the community. Every member who sees it adds the part they already have.",
+    "opportunity": "A construction project",
+    "outcome": "Funded, built, and launched",
+    "closing": "One member brought it in. Six businesses got paid.",
+    "layers": {
+      "investor": {
+        "layer": "Capital",
+        "role": "Investor",
+        "brings": "Provides the capital",
+        "gains": "Takes a position early"
+      },
+      "consultant": {
+        "layer": "Expertise",
+        "role": "Consultant",
+        "brings": "Specialist expertise",
+        "gains": "Builds a long engagement"
+      },
+      "supplier": {
+        "layer": "Materials",
+        "role": "Supplier",
+        "brings": "Materials and logistics",
+        "gains": "Secures a long order book"
+      },
+      "builder": {
+        "layer": "Structure",
+        "role": "Construction company",
+        "brings": "Executes the build",
+        "gains": "Wins the contract"
+      },
+      "tech": {
+        "layer": "Systems",
+        "role": "Technology company",
+        "brings": "Software and systems",
+        "gains": "Lands a reference client"
+      },
+      "marketing": {
+        "layer": "Brand",
+        "role": "Marketing company",
+        "brings": "Branding and launch",
+        "gains": "Adds a flagship account"
+      }
+    },
+    "stackAria": "{{opportunity}}, assembled from six member contributions"
+  },
+  "industries": {
+    "oil-gas": {
+      "name": "Petrol, Oil & Gas",
+      "short": "Oil & Gas",
+      "brings": "Supply contracts, trading routes, heavy infrastructure experience",
+      "seeks": "Capital partners, logistics, regulatory expertise"
+    },
+    "consulting": {
+      "name": "International Consulting",
+      "short": "Consulting",
+      "brings": "Market entry expertise, structuring, cross-border know-how",
+      "seeks": "Clients entering new markets, local partners"
+    },
+    "healthcare": {
+      "name": "Healthcare, Science & Research",
+      "short": "Healthcare",
+      "brings": "Clinical and research capability, regulated-sector discipline",
+      "seeks": "Research funding, technology partners, distribution"
+    },
+    "finance": {
+      "name": "Trade & Finance",
+      "short": "Finance",
+      "brings": "Capital, trade instruments, deal structuring",
+      "seeks": "Fundable projects, operators worth backing"
+    },
+    "real-estate": {
+      "name": "Real Estate",
+      "short": "Real Estate",
+      "brings": "Assets, development pipelines, local market access",
+      "seeks": "Co-investors, contractors, tenants and operators"
+    },
+    "building": {
+      "name": "Building, Interior & Architecture",
+      "short": "Building",
+      "brings": "Design and delivery capability, trusted trades",
+      "seeks": "Projects, suppliers, developer relationships"
+    },
+    "film": {
+      "name": "Media & Movie Production",
+      "short": "Media & Movie",
+      "brings": "Production capacity, creative and distribution reach",
+      "seeks": "Production finance, brand partners, locations"
+    },
+    "fashion": {
+      "name": "Italian Fashion Consulting",
+      "short": "Fashion",
+      "brings": "Manufacturing access, brand and buyer relationships",
+      "seeks": "Retail partners, new markets, investment"
+    },
+    "sports": {
+      "name": "Sports Academy",
+      "short": "Sports",
+      "brings": "Talent pipelines, facilities, audience and sponsorship reach",
+      "seeks": "Sponsors, facility investment, international partners"
+    },
+    "energy": {
+      "name": "Energy Division",
+      "short": "Energy",
+      "brings": "Generation and efficiency projects, long-term offtake",
+      "seeks": "Project finance, land, technical partners"
+    },
+    "technology": {
+      "name": "Innovation & Technology",
+      "short": "Technology",
+      "brings": "Software, automation, data capability for other sectors",
+      "seeks": "Reference clients, industry expertise, capital"
+    },
+    "academy": {
+      "name": "Academy & Training Courses",
+      "short": "Academy",
+      "brings": "Training, certification and workforce development",
+      "seeks": "Corporate clients, accreditation partners"
+    },
+    "food": {
+      "name": "Food & Beverage Division",
+      "short": "F&B Division",
+      "brings": "Hospitality brands, culinary concepts, supply networks, customer experience expertise",
+      "seeks": "Investment, expansion partners, premium suppliers, franchise opportunities, technology & real-estate partners"
+    }
+  },
+  "partnerIndustry": {
+    "Hotel group": "Hotel group",
+    "Media House": "Media House",
+    "Hotel & Restaurant": "Hotel & Restaurant",
+    "Medical & Hospital": "Medical & Hospital",
+    "Restaurant & cafe": "Restaurant & cafe",
+    "Petrol Oil & Gas": "Petrol Oil & Gas",
+    "Fashion": "Fashion",
+    "Real Estate": "Real Estate",
+    "Capital & Finance": "Capital & Finance",
+    "Interior & construction": "Interior & construction",
+    "Energy & solar": "Energy & solar",
+    "Law firm": "Law firm",
+    "Media Channel": "Media Channel"
+  },
+  "stats": {
+    "members": {
+      "label": "Vetted members",
+      "sub": "reviewed on merit"
+    },
+    "industries": {
+      "label": "Industries represented",
+      "sub": "from construction to fashion"
+    },
+    "countries": {
+      "label": "Countries reached",
+      "sub": "members operating globally"
+    }
+  },
+  "faq": {
+    "whatIsIt": {
+      "q": "What is Trillion Business Community?",
+      "a": "A private business community for owners, operators and investors across twelve industries - construction, finance, real estate, technology, energy, healthcare, fashion and more. Members join to discover opportunities, find the partners and expertise a project needs, and build ventures with people they can vouch for."
+    },
+    "whoFor": {
+      "q": "Who is it for?",
+      "a": "Business owners, senior operators and investors who are actively building something and are prepared to contribute, not only receive. Membership is by application and reviewed on merit - what matters is whether you bring something other members need."
+    },
+    "whatYouGet": {
+      "q": "What do I actually get as a member?",
+      "a": "Access to the members and businesses inside the community, to opportunities as they are being shaped rather than after they reach the open market, to introductions that would be cold approaches otherwise, and to the community's Deal Room, events and working sessions where members bring live projects to the table."
+    },
+    "commercial": {
+      "q": "How does membership help my business commercially?",
+      "a": "Three routes, in practice. You find work - projects and requirements that other members bring in. You find what a deal is missing - the supplier, partner, specialist or capital that makes it viable. And you become someone the community refers work to, which compounds the longer you contribute."
+    },
+    "events": {
+      "q": "What happens at community events?",
+      "a": "Members meet in person and online to put real projects in front of each other - what is being built, what it needs, who can help. Alongside that, sessions and workshops where members with direct experience in a sector walk others through it."
+    },
+    "howToJoin": {
+      "q": "How do I join?",
+      "a": "Apply through the site. You complete a profile covering your business and what you bring, verify your identity, and the application is reviewed. Approved members get full access to the community and its Deal Room."
+    },
+    "heading": "Answers, before you ask."
+  },
+  "profit": {
+    "tag": "Universal Profit",
+    "title": "Share the community's profit together",
+    "lead": "A portion of participating projects' profits, shared with eligible active members.",
+    "steps": {
+      "activity": {
+        "title": "Business activity",
+        "line": "Participating projects create value.",
+        "body": "Participating projects pursue commercial opportunities through products, services and partnerships. Their financial results form the basis for any potential profit allocation."
+      },
+      "fund": {
+        "title": "Universal Profit Fund",
+        "line": "A defined portion is allocated.",
+        "body": "Under the proposed framework, a defined portion of participating projects' net profits would be allocated to the Universal Profit Fund, according to the applicable programme and project terms."
+      },
+      "share": {
+        "title": "Eligible members",
+        "line": "The outcome is shared.",
+        "body": "The fund is intended to support distributions to eligible active members, including those who have not invested directly in the contributing project. Eligibility, allocation methods and distribution schedules would be set out in the final programme terms."
+      }
+    },
+    "tracks": {
+      "community": {
+        "title": "Community participation",
+        "line": "A connection to the community's success - no direct investment required."
+      },
+      "direct": {
+        "title": "Direct project participation",
+        "line": "Invest in a project directly, under that project's own terms."
+      }
+    },
+    "waysTitle": "Meaningful participation matters",
+    "waysLead": "A strong community depends on members who bring ideas, expertise and commitment.",
+    "ways": {
+      "intros": "Warm introductions",
+      "expertise": "Professional expertise",
+      "opportunities": "New opportunities",
+      "activities": "Community activities",
+      "conduct": "Responsible conduct"
+    },
+    "waysNote": "The final programme terms will define the requirements for active-member eligibility.",
+    "faqs": {
+      "invest": {
+        "q": "Do I need to invest in every project to benefit?",
+        "a": "No - eligible active members are intended to be included without requiring direct investment in each contributing project. Separate project participation has its own terms."
+      },
+      "guaranteed": {
+        "q": "Is Universal Profit a guaranteed income?",
+        "a": "No. Any distribution would depend on actual profits, available funds and the applicable programme conditions. Membership alone does not guarantee a payment."
+      },
+      "howMuch": {
+        "q": "How much could I receive, and when?",
+        "a": "That depends on the final allocation rules, eligibility requirements and financial results - to be communicated through the approved programme documentation."
+      }
+    },
+    "ctaTitle": "Be part of what we build together.",
+    "ctaBody": "Bring your expertise. Build valuable relationships. Explore shared success.",
+    "primary": "Explore TBC Membership",
+    "secondary": "Speak With Our Team",
+    "disclaimer": "A proposed framework. Implementation, eligibility and any distributions remain subject to final programme terms."
+  },
+  "heroStage": {
+    "openSector": "Open {{name}} in the industries showcase",
+    "openSectorShort": "{{name}} - open in the industries showcase",
+    "ringAria": "Twelve industry sectors around the community core. Choose a sector to open it in the industries showcase.",
+    "phases": {
+      "discover": "Discover",
+      "connect": "Connect",
+      "collaborate": "Collaborate",
+      "create": "Create",
+      "grow": "Grow"
+    },
+    "scenarios": {
+      "real-estate": {
+        "opportunity": "A development site comes up",
+        "outcome": "A funded development",
+        "contributors": {
+          "finance": "funds it",
+          "building": "builds it",
+          "energy": "powers it"
+        }
+      },
+      "energy": {
+        "opportunity": "A solar project needs backing",
+        "outcome": "A financed energy build",
+        "contributors": {
+          "finance": "structures the capital",
+          "technology": "runs the systems",
+          "consulting": "clears the regulation"
+        }
+      },
+      "fashion": {
+        "opportunity": "A new collection needs a market",
+        "outcome": "A brand in a new market",
+        "contributors": {
+          "film": "shoots the campaign",
+          "technology": "builds the storefront",
+          "finance": "funds the run"
+        }
+      },
+      "healthcare": {
+        "opportunity": "A research programme needs partners",
+        "outcome": "A funded programme",
+        "contributors": {
+          "finance": "funds the trial",
+          "technology": "handles the data",
+          "academy": "trains the staff"
+        }
+      }
+    }
+  },
+  "community": {
+    "heading": "Multiple industries in one room.",
+    "brings": "Brings",
+    "seeks": "Looking for",
+    "closing": "One community for all.",
+    "inThisSector": "In this sector"
+  },
+  "inside": {
+    "tag": "Inside the community",
+    "heading": "What membership opens.",
+    "sub": "Approved members get the room, and the tools that keep it working between meetings.",
+    "surfaces": {
+      "deal-room": {
+        "title": "The Deal Room",
+        "body": "Live projects members have brought in - what is being built, what it needs, who is already on it."
+      },
+      "directory": {
+        "title": "The member directory",
+        "body": "Who is in the community, what they do, and what they are looking for - searchable by industry."
+      },
+      "events": {
+        "title": "Events and sessions",
+        "body": "Members meet in person and online to put real opportunities in front of each other."
+      },
+      "wallet": {
+        "title": "Your member account",
+        "body": "Track what your participation in the community has returned, in one place."
+      }
+    }
+  },
+  "finalCta": {
+    "heading": "Step inside the community.",
+    "apply": "Apply for membership",
+    "steps": {
+      "apply": {
+        "title": "Apply",
+        "sub": "Tell us about your business and what you bring."
+      },
+      "verify": {
+        "title": "Verify",
+        "sub": "Complete your profile and identity check."
+      },
+      "join": {
+        "title": "Join the room",
+        "sub": "Approved members get full access to the community."
+      }
+    },
+    "tag": "Membership by application",
+    "sub": "Bring a business, an idea or capital. Leave with the people who can turn it into something.",
+    "alreadyMember": "I’m already a member"
+  },
+  "footer": {
+    "brand": "TRILLION BUSINESS COMMUNITY",
+    "tag": "Members · Opportunities · Growth",
+    "desc": "A private business community where owners, operators and investors from twelve industries discover opportunities and build them together.",
+    "instagram": "Instagram",
+    "communityHeading": "The community",
+    "membershipHeading": "Membership",
+    "contactHeading": "Contact",
+    "whatItIs": "What it is",
+    "whyJoin": "Why join",
+    "howItWorks": "How it works",
+    "whyWeExist": "Why we exist",
+    "apply": "Apply for membership",
+    "logIn": "Member log in",
+    "industries": "Industries",
+    "partners": "Partners",
+    "faq": "FAQ",
+    "rights": "© {{year}} All rights reserved · Trillion Business Community",
+    "poweredBy": "Powered by"
+  },
+  "heroOverlay": {
+    "pairs": {
+      "realEstateFinance": {
+        "a": "Real Estate",
+        "b": "Finance",
+        "note": "a site meets its funding"
+      },
+      "energyTechnology": {
+        "a": "Energy",
+        "b": "Technology",
+        "note": "a project meets its systems"
+      },
+      "fashionProduction": {
+        "a": "Fashion",
+        "b": "Production",
+        "note": "a collection meets its campaign"
+      },
+      "healthcareAcademy": {
+        "a": "Healthcare",
+        "b": "Academy",
+        "note": "a programme meets its people"
+      },
+      "constructionConsulting": {
+        "a": "Construction",
+        "b": "Consulting",
+        "note": "a build meets its expertise"
+      }
+    }
+  },
+  "partners": {
+    "tag": "Our Community",
+    "heading": "Members already inside the community.",
+    "sub": "Community members collaborating with each other across the community.",
+    "all": "All",
+    "categoriesAria": "Partner categories",
+    "prev": "Previous partner",
+    "next": "Next partner",
+    "fallbackName": "Community partner"
+  },
+  "scrollCue": {
+    "aria": "Scroll to the next section",
+    "label": "Scroll"
+  },
+  "tag": {
+    "whyJoin": "Why join",
+    "howItWorks": "How it works",
+    "community": "Our community"
+  },
+  "aria": {
+    "steps": "Steps",
+    "sectors": "Industry sectors",
+    "partnerSlides": "Partner slides",
+    "profitFlow": "Business activity leads to the Universal Profit Fund, which leads to eligible members",
+    "linkedin": "LinkedIn"
+  }
+}

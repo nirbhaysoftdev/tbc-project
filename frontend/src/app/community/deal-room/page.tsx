@@ -2,8 +2,14 @@
 // src/app/community/deal-room/page.tsx
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { projectsAPI, investmentRequestAPI, formatEur } from '@/lib/api';
+import { useTranslation } from 'react-i18next';
+import { projectsAPI, investmentRequestAPI, formatEur, formatNumber } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+
+// The stored category values, shared by the create form and the filter so the
+// two can never drift. These are DATA, not display text — see
+// dealRoom.categoryOption for the labels.
+const CATEGORIES = ['Real Estate', 'Technology', 'Hospitality', 'Private Equity', 'Energy', 'Agriculture', 'Healthcare'] as const;
 
 const RISK_COLORS: Record<string, string> = {
   LOW:    'comm-risk-low',
@@ -13,6 +19,7 @@ const RISK_COLORS: Record<string, string> = {
 
 // ── Create Project Modal ───────────────────────
 function CreateProjectModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+  const { t } = useTranslation(['community', 'common']);
   const [form, setForm] = useState({
     title: '', description: '', category: '', targetAmount: '',
     minInvestmentPct: '5', shareType: 'LIMITED', riskLevel: 'MEDIUM',
@@ -53,7 +60,7 @@ function CreateProjectModal({ onClose, onCreated }: { onClose: () => void; onCre
         } catch (uploadErr: any) {
           onCreated();
           setError(
-            (uploadErr.response?.data?.error || 'The media upload failed')
+            (uploadErr.response?.data?.error || t('community:dealRoom.mediaUploadFailed'))
             + '. The deal was created - open it to upload again.',
           );
           setLoading(false);
@@ -64,7 +71,7 @@ function CreateProjectModal({ onClose, onCreated }: { onClose: () => void; onCre
       onCreated();
       onClose();
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to create project');
+      setError(err.response?.data?.error || t('community:dealRoom.createFailed'));
     } finally {
       setLoading(false);
     }
@@ -76,70 +83,68 @@ function CreateProjectModal({ onClose, onCreated }: { onClose: () => void; onCre
   return (
     <div className="comm-modal-overlay" onClick={onClose}>
       <div className="comm-modal" style={{ width: 580, maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
-        <div className="comm-modal-title">Submit a Deal</div>
+        <div className="comm-modal-title">{t('community:dealRoom.submitDeal')}</div>
         <form onSubmit={submit}>
           <div className="comm-form-group">
-            <label className="comm-form-label">Project Title *</label>
-            <input className="comm-form-input" placeholder="e.g. Monaco Riviera Fund" value={form.title} onChange={set('title')} required />
+            <label className="comm-form-label">{t('community:dealRoom.titleLabel')}</label>
+            <input className="comm-form-input" placeholder={t('community:dealRoom.titlePlaceholder')} value={form.title} onChange={set('title')} required />
           </div>
           <div className="comm-form-group">
-            <label className="comm-form-label">Description *</label>
-            <textarea className="comm-form-textarea" placeholder="Describe the opportunity…" value={form.description} onChange={set('description')} required />
+            <label className="comm-form-label">{t('community:dealRoom.descriptionLabel')}</label>
+            <textarea className="comm-form-textarea" placeholder={t('community:dealRoom.descriptionPlaceholder')} value={form.description} onChange={set('description')} required />
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div className="comm-form-group">
-              <label className="comm-form-label">Category *</label>
+              <label className="comm-form-label">{t('community:dealRoom.categoryLabel')}</label>
+              {/* `value` is the stored category string (the API filters on it and
+                  the admin views group by it), so it stays English while the
+                  option TEXT is translated. */}
               <select className="comm-form-select" value={form.category} onChange={set('category')} required>
-                <option value="">Select category</option>
-                <option value="Real Estate">Real Estate</option>
-                <option value="Technology">Technology</option>
-                <option value="Hospitality">Hospitality</option>
-                <option value="Private Equity">Private Equity</option>
-                <option value="Energy">Energy</option>
-                <option value="Agriculture">Agriculture</option>
-                <option value="Healthcare">Healthcare</option>
-                <option value="Other">Other</option>
+                <option value="">{t('community:dealRoom.categoryPlaceholder')}</option>
+                {[...CATEGORIES, 'Other'].map(c => (
+                  <option key={c} value={c}>{t(`community:dealRoom.categoryOption.${c}`, { defaultValue: c })}</option>
+                ))}
               </select>
             </div>
             <div className="comm-form-group">
-              <label className="comm-form-label">Target Amount (€) *</label>
+              <label className="comm-form-label">{t('community:dealRoom.targetAmountLabel')}</label>
               <input className="comm-form-input" type="number" placeholder="5000000" value={form.targetAmount} onChange={set('targetAmount')} required />
             </div>
             <div className="comm-form-group">
-              <label className="comm-form-label">Min. Investment %</label>
+              <label className="comm-form-label">{t('community:dealRoom.minInvestmentLabel')}</label>
               <input className="comm-form-input" type="number" min="5" max="100" value={form.minInvestmentPct} onChange={set('minInvestmentPct')} />
             </div>
             <div className="comm-form-group">
-              <label className="comm-form-label">Target IRR %</label>
+              <label className="comm-form-label">{t('community:dealRoom.targetIrrLabel')}</label>
               <input className="comm-form-input" type="number" placeholder="28" value={form.targetIRR} onChange={set('targetIRR')} />
             </div>
             <div className="comm-form-group">
-              <label className="comm-form-label">Share Type</label>
+              <label className="comm-form-label">{t('community:dealRoom.shareTypeLabel')}</label>
               <select className="comm-form-select" value={form.shareType} onChange={set('shareType')}>
-                <option value="LIMITED">Limited Share</option>
-                <option value="TOTAL">Total Share</option>
+                <option value="LIMITED">{t('community:dealRoom.shareTypeOption.LIMITED')}</option>
+                <option value="TOTAL">{t('community:dealRoom.shareTypeOption.TOTAL')}</option>
               </select>
             </div>
             <div className="comm-form-group">
-              <label className="comm-form-label">Risk Level</label>
+              <label className="comm-form-label">{t('community:dealRoom.riskLevelLabel')}</label>
               <select className="comm-form-select" value={form.riskLevel} onChange={set('riskLevel')}>
-                <option value="LOW">Low</option>
-                <option value="MEDIUM">Medium</option>
-                <option value="HIGH">High</option>
+                <option value="LOW">{t('community:dealRoom.riskShort.LOW')}</option>
+                <option value="MEDIUM">{t('community:dealRoom.riskShort.MEDIUM')}</option>
+                <option value="HIGH">{t('community:dealRoom.riskShort.HIGH')}</option>
               </select>
             </div>
             <div className="comm-form-group">
-              <label className="comm-form-label">Funding Deadline *</label>
+              <label className="comm-form-label">{t('community:dealRoom.deadlineLabel')}</label>
               <input className="comm-form-input" type="date" value={form.fundingDeadline} onChange={set('fundingDeadline')} required />
             </div>
             <div className="comm-form-group">
-              <label className="comm-form-label">Location</label>
-              <input className="comm-form-input" placeholder="e.g. Dubai, UAE" value={form.location} onChange={set('location')} />
+              <label className="comm-form-label">{t('community:dealRoom.locationLabel')}</label>
+              <input className="comm-form-input" placeholder={t('community:dealRoom.locationPlaceholder')} value={form.location} onChange={set('location')} />
             </div>
           </div>
           {/* ── Media ── */}
           <div className="comm-form-group">
-            <label className="comm-form-label">Images, PDFs &amp; Video</label>
+            <label className="comm-form-label">{t('community:dealRoom.mediaLabel')}</label>
             <input
               className="comm-form-input"
               type="file"
@@ -148,7 +153,7 @@ function CreateProjectModal({ onClose, onCreated }: { onClose: () => void; onCre
               onChange={e => setFiles(Array.from(e.target.files || []))}
             />
             <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6, lineHeight: 1.5 }}>
-              Up to 10 files, 300 MB each. Members view these inside the deal and cannot download them.
+              {t('community:dealRoom.mediaHint')}
             </p>
             {files.length > 0 && (
               <div style={{ display:'flex', flexDirection:'column', gap: 4, marginTop: 8 }}>
@@ -163,7 +168,7 @@ function CreateProjectModal({ onClose, onCreated }: { onClose: () => void; onCre
                       onClick={() => setFiles(prev => prev.filter((_, idx) => idx !== i))}
                       style={{ border:'none', background:'none', padding:0, fontSize: 11,
                                color:'var(--red)', cursor:'pointer', flexShrink: 0 }}>
-                      Remove
+                      {t('community:dealRoom.removeFile')}
                     </button>
                   </div>
                 ))}
@@ -172,14 +177,15 @@ function CreateProjectModal({ onClose, onCreated }: { onClose: () => void; onCre
           </div>
 
           <p style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 12, lineHeight: 1.5 }}>
-            This submits a request only. Our team will contact you with transfer details, and your
-            investment is recorded once the funds have been received and confirmed.
+            {t('community:dealRoom.requestOnlyNote')}
           </p>
           {error && <p className="form-error" style={{ marginBottom: 10 }}>{error}</p>}
           <div className="comm-modal-actions">
-            <button type="button" className="comm-btn comm-btn-secondary" onClick={onClose}>Cancel</button>
+            <button type="button" className="comm-btn comm-btn-secondary" onClick={onClose}>{t('common:action.cancel')}</button>
             <button type="submit" className="comm-btn comm-btn-gold" disabled={loading}>
-              {loading ? (files.length > 0 ? 'Uploading…' : 'Submitting…') : 'Submit Deal'}
+              {loading
+                ? (files.length > 0 ? t('community:dealRoom.uploading') : t('community:dealRoom.submitting'))
+                : t('community:dealRoom.submitDeal')}
             </button>
           </div>
         </form>
@@ -190,6 +196,7 @@ function CreateProjectModal({ onClose, onCreated }: { onClose: () => void; onCre
 
 // ── Invest Modal ───────────────────────────────
 function InvestModal({ project, onClose, onInvested }: { project: any; onClose: () => void; onInvested: () => void }) {
+  const { t } = useTranslation(['community', 'common']);
   const [amount,  setAmount]  = useState('');
   const [notes,   setNotes]   = useState('');
   const [loading, setLoading] = useState(false);
@@ -207,7 +214,7 @@ function InvestModal({ project, onClose, onInvested }: { project: any; onClose: 
       onInvested();
       onClose();
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Could not submit your request');
+      setError(err.response?.data?.error || t('community:dealRoom.requestFailed'));
     } finally {
       setLoading(false);
     }
@@ -216,40 +223,40 @@ function InvestModal({ project, onClose, onInvested }: { project: any; onClose: 
   return (
     <div className="comm-modal-overlay" onClick={onClose}>
       <div className="comm-modal" onClick={e => e.stopPropagation()}>
-        <div className="comm-modal-title">Request to invest in {project.title}</div>
+        <div className="comm-modal-title">{t('community:dealRoom.requestTitle', { title: project.title })}</div>
 
         <div style={{ background: 'rgba(200,168,75,0.06)', border: '1px solid rgba(200,168,75,0.15)', borderRadius: 10, padding: '12px 14px', marginBottom: 16, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
           <div>
-            <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>Target</div>
-            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--gold)' }}>{formatEur(project.targetAmount)}</div>
+            <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{t('community:dealRoom.target')}</div>
+            <div className="ltr-embed" style={{ fontSize: 14, fontWeight: 600, color: 'var(--gold)' }}>{formatEur(project.targetAmount)}</div>
           </div>
           <div>
-            <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>Remaining</div>
-            <div style={{ fontSize: 14, fontWeight: 600 }}>{formatEur(remaining)}</div>
+            <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{t('community:dealRoom.remaining')}</div>
+            <div className="ltr-embed" style={{ fontSize: 14, fontWeight: 600 }}>{formatEur(remaining)}</div>
           </div>
           <div>
-            <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>Min. Investment</div>
-            <div style={{ fontSize: 14, fontWeight: 600 }}>{formatEur(minAmount)} ({project.minInvestmentPct}%)</div>
+            <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{t('community:dealRoom.minInvestmentShort')}</div>
+            <div className="ltr-embed" style={{ fontSize: 14, fontWeight: 600 }}>{formatEur(minAmount)} ({formatNumber(project.minInvestmentPct)}%)</div>
           </div>
         </div>
 
         <form onSubmit={submit}>
           <div className="comm-form-group">
-            <label className="comm-form-label">Requested Amount (€) *</label>
+            <label className="comm-form-label">{t('community:dealRoom.requestedAmountLabel')}</label>
             <input className="comm-form-input" type="number" min={minAmount}
-              placeholder={`Min €${minAmount.toLocaleString()}`}
+              placeholder={t('community:dealRoom.minPlaceholder', { amount: formatEur(minAmount) })}
               value={amount} onChange={e => setAmount(e.target.value)} required />
           </div>
           <div className="comm-form-group">
-            <label className="comm-form-label">Message (optional)</label>
-            <textarea className="comm-form-textarea" style={{ minHeight: 70 }} placeholder="Any notes or conditions…"
+            <label className="comm-form-label">{t('community:dealRoom.messageLabel')}</label>
+            <textarea className="comm-form-textarea" style={{ minHeight: 70 }} placeholder={t('community:dealRoom.messagePlaceholder')}
               value={notes} onChange={e => setNotes(e.target.value)} />
           </div>
           {error && <p className="form-error" style={{ marginBottom: 10 }}>{error}</p>}
           <div className="comm-modal-actions">
-            <button type="button" className="comm-btn comm-btn-secondary" onClick={onClose}>Cancel</button>
+            <button type="button" className="comm-btn comm-btn-secondary" onClick={onClose}>{t('common:action.cancel')}</button>
             <button type="submit" className="comm-btn comm-btn-gold" disabled={loading}>
-              {loading ? 'Submitting…' : 'Submit Request'}
+              {loading ? t('community:dealRoom.submitting') : t('community:dealRoom.submitRequest')}
             </button>
           </div>
         </form>
@@ -260,6 +267,7 @@ function InvestModal({ project, onClose, onInvested }: { project: any; onClose: 
 
 // ── Project Card ───────────────────────────────
 function ProjectCard({ project, onInvest, onDelete, isAdmin }: { project: any; onInvest: (p: any) => void; onDelete: (id: string) => void; isAdmin: boolean }) {
+  const { t } = useTranslation(['community', 'common']);
   const daysLeft = Math.ceil((new Date(project.fundingDeadline).getTime() - Date.now()) / 86400000);
 
   return (
@@ -268,7 +276,7 @@ function ProjectCard({ project, onInvest, onDelete, isAdmin }: { project: any; o
         <div>
           <div className="comm-project-title">{project.title}</div>
           <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
-            by {project.owner?.name}
+            {t('community:dealRoom.by', { name: project.owner?.name })}
             {project.location ? ` · ${project.location}` : ''}
           </div>
         </div>
@@ -281,16 +289,18 @@ function ProjectCard({ project, onInvest, onDelete, isAdmin }: { project: any; o
 
       <div className="comm-project-stats">
         <div>
-          <div className="comm-project-stat-val">{formatEur(project.targetAmount)}</div>
-          <div className="comm-project-stat-label">Target</div>
+          <div className="comm-project-stat-val ltr-embed">{formatEur(project.targetAmount)}</div>
+          <div className="comm-project-stat-label">{t('community:dealRoom.target')}</div>
         </div>
         <div>
-          <div className={`comm-project-stat-val ${RISK_COLORS[project.riskLevel]}`}>{project.riskLevel}</div>
-          <div className="comm-project-stat-label">Risk</div>
+          <div className={`comm-project-stat-val ${RISK_COLORS[project.riskLevel]}`}>
+            {t(`community:dealRoom.riskShort.${project.riskLevel}`, { defaultValue: project.riskLevel })}
+          </div>
+          <div className="comm-project-stat-label">{t('community:dealRoom.riskLabel')}</div>
         </div>
         <div>
-          <div className="comm-project-stat-val">{project.targetIRR ? `${project.targetIRR}%` : '-'}</div>
-          <div className="comm-project-stat-label">Target IRR</div>
+          <div className="comm-project-stat-val ltr-embed">{project.targetIRR ? `${formatNumber(project.targetIRR)}%` : '-'}</div>
+          <div className="comm-project-stat-label">{t('community:dealRoom.targetIrr')}</div>
         </div>
       </div>
 
@@ -299,29 +309,31 @@ function ProjectCard({ project, onInvest, onDelete, isAdmin }: { project: any; o
         <div className="comm-progress-fill gold" style={{ width: `${Math.min(project.fundingPct, 100)}%` }} />
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text-muted)', marginBottom: 12 }}>
-        <span>{formatEur(project.raisedAmount)} raised · {project.fundingPct}% funded</span>
+        <span>{t('community:dealRoom.raisedFunded', { amount: formatEur(project.raisedAmount), percent: formatNumber(project.fundingPct) })}</span>
         <span className={daysLeft <= 3 ? 'comm-risk-high' : ''}>
-          {daysLeft > 0 ? `${daysLeft}d left` : 'Expired'}
+          {daysLeft > 0 ? t('community:dealRoom.daysLeft', { count: daysLeft }) : t('community:dealRoom.expired')}
         </span>
       </div>
 
       <div style={{ display: 'flex', gap: 8 }}>
         <Link href={`/community/deal-room/detail?id=${project.id}`} style={{ flex: 1 }}>
-          <button className="comm-deal-btn" style={{ width: '100%' }}>View Details</button>
+          <button className="comm-deal-btn" style={{ width: '100%' }}>{t('common:action.viewDetails')}</button>
         </Link>
         {project.status === 'ACTIVE' && !project.myPendingRequest && !isAdmin && (
           <button className="comm-deal-btn gold-btn" style={{ flex: 1 }} onClick={() => onInvest(project)}>
-            Invest Now
+            {t('community:dealRoom.investNow')}
           </button>
         )}
         {project.myPendingRequest && (
           <div style={{ flex: 1, textAlign: 'center', fontSize: 11, color: 'var(--gold)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600 }}>
-            {project.myPendingRequest.status === 'APPROVED' ? 'Payment confirmed' : 'Request pending'}
+            {project.myPendingRequest.status === 'APPROVED'
+              ? t('community:dealRoom.paymentConfirmed')
+              : t('community:dealRoom.requestPending')}
           </div>
         )}
         {!project.myPendingRequest && project.myCapital > 0 && (
           <div style={{ flex: 1, textAlign: 'center', fontSize: 11, color: 'var(--green)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600 }}>
-            Invested {formatEur(project.myCapital)}
+            {t('community:dealRoom.investedAmount', { amount: formatEur(project.myCapital) })}
           </div>
         )}
         {isAdmin && (
@@ -329,11 +341,11 @@ function ProjectCard({ project, onInvest, onDelete, isAdmin }: { project: any; o
             className="comm-deal-btn"
             style={{ flex: 0, padding: '7px 14px', color: 'var(--red)', borderColor: 'rgba(224,82,82,0.3)', background: 'rgba(224,82,82,0.08)' }}
             onClick={() => {
-              if (!confirm('Delete this deal?')) return;
+              if (!confirm(t('community:dealRoom.confirmDelete'))) return;
               onDelete(project.id);
             }}
           >
-            Delete
+            {t('common:action.delete')}
           </button>
         )}
       </div>
@@ -343,6 +355,7 @@ function ProjectCard({ project, onInvest, onDelete, isAdmin }: { project: any; o
 
 // ── Main Page ──────────────────────────────────
 export default function DealRoomPage() {
+  const { t } = useTranslation(['community', 'common']);
   const { user } = useAuth();
   const [projects,  setProjects]  = useState<any[]>([]);
   const [loading,   setLoading]   = useState(true);
@@ -374,15 +387,15 @@ export default function DealRoomPage() {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
         <div>
           <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 600, marginBottom: 4 }}>
-            Deal Room
+            {t('community:dealRoom.title')}
           </h1>
           <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-            Exclusive co-investment opportunities for circle members.
+            {t('community:dealRoom.subtitle')}
           </p>
         </div>
         {user?.role === 'ADMIN' && (
           <button className="comm-btn comm-btn-gold" onClick={() => setCreateOpen(true)}>
-            + Submit Deal
+            {t('community:dealRoom.submitCta')}
           </button>
         )}
       </div>
@@ -391,21 +404,17 @@ export default function DealRoomPage() {
       <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
         <select className="comm-form-select" style={{ width: 'auto', padding: '8px 12px', fontSize: 12 }}
           value={category} onChange={e => setCategory(e.target.value)}>
-          <option value="">All Categories</option>
-          <option value="Real Estate">Real Estate</option>
-          <option value="Technology">Technology</option>
-          <option value="Hospitality">Hospitality</option>
-          <option value="Private Equity">Private Equity</option>
-          <option value="Energy">Energy</option>
-          <option value="Agriculture">Agriculture</option>
-          <option value="Healthcare">Healthcare</option>
+          <option value="">{t('community:dealRoom.allCategories')}</option>
+          {CATEGORIES.map(c => (
+            <option key={c} value={c}>{t(`community:dealRoom.categoryOption.${c}`, { defaultValue: c })}</option>
+          ))}
         </select>
         <select className="comm-form-select" style={{ width: 'auto', padding: '8px 12px', fontSize: 12 }}
           value={riskLevel} onChange={e => setRiskLevel(e.target.value)}>
-          <option value="">All Risk Levels</option>
-          <option value="LOW">Low Risk</option>
-          <option value="MEDIUM">Medium Risk</option>
-          <option value="HIGH">High Risk</option>
+          <option value="">{t('community:dealRoom.allRiskLevels')}</option>
+          <option value="LOW">{t('community:dealRoom.riskFilter.LOW')}</option>
+          <option value="MEDIUM">{t('community:dealRoom.riskFilter.MEDIUM')}</option>
+          <option value="HIGH">{t('community:dealRoom.riskFilter.HIGH')}</option>
         </select>
       </div>
 
@@ -414,10 +423,10 @@ export default function DealRoomPage() {
         <div className="comm-empty"><div className="spinner" style={{ width: 32, height: 32, borderWidth: 2, margin: 0 }} /></div>
       ) : projects.length === 0 ? (
         <div className="comm-empty">
-          <div className="comm-empty-text">No active deals right now</div>
-          <div className="comm-empty-sub">No opportunities have been listed yet.</div>
+          <div className="comm-empty-text">{t('community:dealRoom.emptyActive')}</div>
+          <div className="comm-empty-sub">{t('community:dealRoom.emptyActiveSub')}</div>
           {user?.role === 'ADMIN' && (
-            <button className="comm-btn comm-btn-gold" onClick={() => setCreateOpen(true)}>Submit a Deal</button>
+            <button className="comm-btn comm-btn-gold" onClick={() => setCreateOpen(true)}>{t('community:dealRoom.submitDeal')}</button>
           )}
         </div>
       ) : (

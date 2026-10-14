@@ -3,12 +3,18 @@
 // Count-ups driven by Motion's animate(), so they inherit the same easing as
 // everything else and land on the exact target. Static under reduced motion.
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo} from 'react';
 import { animate, useInView } from 'motion/react';
-import { STATS } from '@/lib/landing-data';
+import { getStats } from '@/lib/landing-data';
+
+/** One stat, as getStats() returns it. */
+type StatItem = ReturnType<typeof getStats>[number];
 import { EASE, useCalm } from './motion';
+import { useTranslation } from 'react-i18next';
 
 export default function Stats() {
+  const { t } = useTranslation('landing');
+  const STATS = useMemo(() => getStats(t), [t]);
   const ref = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, { once: true, amount: 0.4 });
 
@@ -16,7 +22,7 @@ export default function Stats() {
     <section className="lp-stats-section" ref={ref}>
       <div className="lp-stats">
         {STATS.map((s, i) => (
-          <Stat key={s.label} stat={s} active={inView} delay={i * 0.12} />
+          <Stat key={s.key} stat={s} active={inView} delay={i * 0.12} />
         ))}
       </div>
     </section>
@@ -28,7 +34,7 @@ function Stat({
   active,
   delay,
 }: {
-  stat: (typeof STATS)[number];
+  stat: StatItem;
   active: boolean;
   delay: number;
 }) {

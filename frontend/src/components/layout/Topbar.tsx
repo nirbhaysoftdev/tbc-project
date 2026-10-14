@@ -3,18 +3,23 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSidebar } from '../../lib/sidebar';
 import { useAuth } from '@/lib/auth';
+import { useTranslation } from 'react-i18next';
 import { useAdminAlerts } from '@/lib/adminAlerts';
 import NotifBadge from './NotifBadge';
+import LanguageSelector from '@/components/i18n/LanguageSelector';
 
+// `href` is the shared route and never changes with language; `key` is what
+// gets translated. Switching language must not change the URL (§16).
 const NAV_ITEMS = [
-  { label: 'Dashboard',    href: '/dashboard' },
-  { label: 'Portfolio',    href: '/portfolio' },
-  { label: 'Transactions', href: '/transactions' },
-  { label: 'Cards',        href: '/cards' },
-  { label: 'Settings',     href: '/settings' },
+  { key: 'dashboard',    href: '/dashboard' },
+  { key: 'portfolio',    href: '/portfolio' },
+  { key: 'transactions', href: '/transactions' },
+  { key: 'cards',        href: '/cards' },
+  { key: 'settings',     href: '/settings' },
 ];
 
 export default function Topbar() {
+  const { t } = useTranslation(['nav', 'common']);
   const pathname = usePathname();
   const { setOpen } = useSidebar();
   const { alerts } = useAdminAlerts();
@@ -24,7 +29,7 @@ export default function Topbar() {
   return (
     <header className="topbar">
       {/* Mobile hamburger - only visible on mobile */}
-      <button className="topbar-hamburger" onClick={() => setOpen(true)} aria-label="Open menu">
+      <button className="topbar-hamburger" onClick={() => setOpen(true)} aria-label={t('common:a11y.openNavigation')}>
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
           <line x1="3" y1="6"  x2="21" y2="6"/>
           <line x1="3" y1="12" x2="21" y2="12"/>
@@ -35,26 +40,29 @@ export default function Topbar() {
       {/* Logo */}
       <div className="topbar-logo">
         <div className="topbar-logo-icon">
-          <img src="/images/tbc-logo-1.png" alt="TBC Logo" />
+          <img src="/images/tbc-logo-1.png" alt={t('common:brand.full')} />
         </div>
         <div>
-          <span className="topbar-brand">TRILLION</span>
-          <span className="topbar-sub">BUSINESS COMMUNITY</span>
+          <span className="topbar-brand">{t('common:brand.name')}</span>
+          <span className="topbar-sub">{t('common:brand.sub')}</span>
         </div>
       </div>
 
       {/* Nav */}
       <nav className="topbar-nav">
-        {NAV_ITEMS.map(({ label, href }) => (
+        {NAV_ITEMS.map(({ key, href }) => (
           <Link key={href} href={href}
             className={`topbar-nav-item ${pathname === href ? 'active' : ''}`}>
-            {label}
+            {t(`nav:main.${key}`)}
           </Link>
         ))}
       </nav>
 
       {/* Actions */}
       <div className="topbar-actions">
+        {/* Authenticated header selector (§4). Compact variant so it fits the
+            narrow bar beside the icon buttons. */}
+        <LanguageSelector variant="compact" />
 {(() => {
           const bell = (
             <>
@@ -66,8 +74,12 @@ export default function Topbar() {
             </>
           );
           const title = alerts.total > 0
-            ? `${alerts.newMembers} new member(s), ${alerts.investmentRequests} investment request(s), ${alerts.withdrawRequests} withdrawal request(s)`
-            : 'No pending updates';
+            ? t('nav:alerts.summary', {
+                members:     alerts.newMembers,
+                investments: alerts.investmentRequests,
+                withdrawals: alerts.withdrawRequests,
+              })
+            : t('nav:alerts.none');
           // Only admins have a queue to jump to, so only they get a link.
           return isAdmin
             ? <Link href="/admin" className="topbar-icon-btn" style={{ position: 'relative' }} title={title}>{bell}</Link>

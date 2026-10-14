@@ -1,0 +1,730 @@
+{
+  "hero": {
+    "eyebrow": "Adesione su candidatura · 12 settori · 80+ paesi",
+    "titleLead": "Imprese diverse.",
+    "titleMid": "Idee diverse.",
+    "titleAccent": "Una community per tutti.",
+    "desc": "Una community privata dove gli imprenditori scoprono opportunità, trovano le competenze e il capitale che un progetto richiede e costruiscono insieme ciò che nessuno di loro potrebbe realizzare da solo.",
+    "primary": "Richiedi l'adesione",
+    "secondary": "Scopri come funziona"
+  },
+  "whatItIs": {
+    "tag": "Che cos'è",
+    "title": "Una community privata per imprenditori.",
+    "lead": "Trillion Business Community riunisce titolari, operatori e investitori di una dozzina di settori diversi - e li mette nella stessa stanza.",
+    "body": "Ogni membro arriva con qualcosa di cui un altro membro ha bisogno: un progetto, un servizio, una competenza, capitale, un mercato, un'idea. Da soli, quegli incontri sono quasi impossibili da trovare. Dentro la community, sono il punto.",
+    "marks": {
+      "members": {
+        "k": "Membri",
+        "v": "Imprenditori, operatori, investitori"
+      },
+      "industries": {
+        "k": "Settori",
+        "v": "12 settori, dall'edilizia alla moda"
+      },
+      "reach": {
+        "k": "Presenza",
+        "v": "80+ paesi"
+      },
+      "entry": {
+        "k": "Accesso",
+        "v": "Su candidatura, valutata nel merito"
+      }
+    }
+  },
+  "advantages": {
+    "tag": "Vantaggi istituzionali e verifica globale",
+    "title": "Presenza globale.",
+    "titleAccent": "Accesso istituzionale senza paragoni.",
+    "sub": "Autonomia diretta per i membri della community. Allocazione prioritaria immediata presso banche internazionali di primo livello, strutture assicurative svizzere, flotte di aviazione privata, ospitalità di lusso e diritto fiscale internazionale.",
+    "moreRegions": "+{{count}} altre regioni",
+    "stripTitle": "80+ giurisdizioni",
+    "stripBadge": "Corridoi attivi",
+    "allPrivileges": "Tutti i privilegi ({{count}})",
+    "partnerAccess": "Accesso partner",
+    "brandAria": "{{name}}: {{detail}}",
+    "hubs": {
+      "dubai": "Dubai / EAU",
+      "dubaiTag": "Sede",
+      "eu": "Tutti i paesi UE",
+      "italy": "Italia",
+      "singapore": "Singapore",
+      "china": "Cina",
+      "indonesia": "Indonesia",
+      "russia": "Russia",
+      "kenya": "Kenya"
+    },
+    "categories": {
+      "banking": "Capitale e banche",
+      "insurance-law": "Assicurazioni e diritto fiscale",
+      "mobility-lifestyle": "Mobilità e stile di vita",
+      "media-medical": "Salute e media"
+    },
+    "cards": {
+      "banking": {
+        "title": "Le banche di cui ci fidiamo",
+        "subtitle": "Onboarding istituzionale ed escrow",
+        "badge": "5 istituti",
+        "footLeft": "",
+        "footRight": "Privilegi inclusi"
+      },
+      "zurich": {
+        "title": "Gestione del patrimonio e del rischio",
+        "subtitle": "Copertura globale istituzionale",
+        "badge": "Rating A+",
+        "desc": "Mitigazione del rischio d'impresa, polizze key-person trasfrontaliere e protezione della successione patrimoniale generazionale.",
+        "footLeft": "Desk rischi prioritario",
+        "footRight": "Condizioni di sottoscrizione"
+      },
+      "legal-fiscal": {
+        "title": "Consulenza fiscale e studi legali",
+        "subtitle": "Scudo fiscale e legale trasfrontaliero",
+        "badge": "UE · CCG · Asia",
+        "desc": "Studi legali internazionali di eccellenza specializzati in strutture di holding, trattati contro la doppia imposizione e percorsi di residenza.",
+        "footLeft": "Consulenza su retainer",
+        "footRight": "Analisi riservata"
+      },
+      "tga": {
+        "title": "Charter di jet privati",
+        "subtitle": "Accesso diretto alla pista",
+        "badge": "Mobilitazione in 2 ore",
+        "desc": "Disponibilità garantita di charter con assegnazione di voli empty-leg tra Dubai, le capitali europee e l'Asia-Pacifico.",
+        "footLeft": "Flotta: Global 7500 / Challenger",
+        "footRight": "Richiedi un volo"
+      },
+      "barcelo": {
+        "title": "Ospitalità e residenze",
+        "subtitle": "Concierge per upgrade VIP",
+        "badge": "Chiavi globali",
+        "desc": "Disponibilità permanente di suite riservate, check-in privato discreto e accesso alla ristorazione per membri e delegati.",
+        "footLeft": "Upgrade presidenziali gratuiti",
+        "footRight": "Vedi il portfolio"
+      },
+      "kalaani": {
+        "title": "Immobiliare ultra-prime",
+        "subtitle": "Acquisizioni di asset fuori mercato",
+        "badge": "Operazioni trophy",
+        "desc": "Acquisizione riservata di torri commerciali in piena proprietà, complessi residenziali di prestigio e proprietà sul mare.",
+        "footLeft": "Deal room privata",
+        "footRight": "Accedi agli annunci"
+      },
+      "Charity": {
+        "title": "Fondazione benefica",
+        "subtitle": "beneficenza per bambini e famiglie",
+        "badge": "Fondazione benefica",
+        "desc": "Acquisizione riservata di torri commerciali in piena proprietà, complessi residenziali di prestigio e proprietà sul mare.",
+        "footLeft": "Deal room privata",
+        "footRight": "Accedi agli annunci"
+      }
+    },
+    "brands": {
+      "enbd": {
+        "sub": "Corporate e privata",
+        "hoverDetail": "Servizi di banca corporate e private banking"
+      },
+      "mashreq": {
+        "sub": "NEO e tesoreria",
+        "hoverDetail": "Servizi di NEO banking e tesoreria"
+      },
+      "wio": {
+        "sub": "Commerciale digitale",
+        "hoverDetail": "Banca commerciale digitale per le imprese"
+      },
+      "fab": {
+        "sub": "First Abu Dhabi",
+        "hoverDetail": "Servizi bancari First Abu Dhabi per le imprese"
+      },
+      "sib": {
+        "sub": "Desk conforme alla Sharia",
+        "hoverDetail": "Soluzioni bancarie e finanziarie conformi alla Sharia"
+      },
+      "zurich": {
+        "sub": "Polizze vita e corporate complete",
+        "hoverDetail": "Assicurazione vita e protezione garantita del capitale"
+      },
+      "legal": {
+        "sub": "Governance societaria e fusioni",
+        "hoverDetail": "Consulenza su governance societaria e fusioni"
+      },
+      "fiscal": {
+        "sub": "Strutturazione fiscale senza attriti",
+        "hoverDetail": "Strutturazione fiscale per imprese trasfrontaliere"
+      },
+      "tga": {
+        "sub": "Aviazione con jet privati",
+        "hoverDetail": "Charter di jet privati e servizi di aviazione"
+      },
+      "barcelo": {
+        "sub": "Gruppo alberghiero",
+        "hoverDetail": "Soggiorni riservati, upgrade e ristorazione"
+      },
+      "radisson": {
+        "sub": "Gruppo alberghiero",
+        "hoverDetail": "Soggiorni, upgrade per i membri e ristorazione"
+      },
+      "kalaani": {
+        "sub": "Partner immobiliari",
+        "hoverDetail": "Acquisizioni immobiliari fuori mercato"
+      },
+      "Eben-ezer": {
+        "sub": "Organizzazione non profit",
+        "hoverDetail": "Sostegno non profit a bambini e famiglie"
+      }
+    }
+  },
+  "whyJoin": {
+    "foot": "Uno solo di questi ripaga l'adesione. La maggior parte dei membri ne usa diversi.",
+    "cta": "Richiedi l'adesione →",
+    "cards": {
+      "opportunities": {
+        "tag": "Informazioni in anticipo",
+        "title": "Senti parlare dei lavori prima che diventino pubblici",
+        "body": "Progetti, gare e piani di espansione vengono discussi tra i membri mentre sono ancora in fase di definizione - non dopo essere arrivati sul mercato aperto.",
+        "short": "Discussi mentre sono ancora in definizione."
+      },
+      "intros": {
+        "tag": "Accesso presentato",
+        "title": "Farsi presentare, non mandare email a freddo",
+        "body": "Una presentazione dall'interno della community apre porte che un approccio a freddo alla stessa azienda non aprirebbe.",
+        "short": "Porte che un approccio a freddo non apre."
+      },
+      "capital": {
+        "tag": "Capitale diretto",
+        "title": "Siediti di fronte al capitale, direttamente",
+        "body": "I membri che investono stanno nella stessa community dei membri che costruiscono. Le conversazioni iniziano senza un intermediario che decida se avvengano.",
+        "short": "Nessun intermediario che decide se avviene."
+      },
+      "partners": {
+        "tag": "Mandati più grandi",
+        "title": "Trova il partner che manca a un'operazione",
+        "body": "Un progetto che non puoi affrontare da solo diventa affrontabile quando conosci il membro che copre la metà che a te manca.",
+        "short": "La metà che non puoi coprire, coperta."
+      },
+      "suppliers": {
+        "tag": "Fornitura garantita",
+        "title": "Trova fornitori per cui puoi metterci la faccia",
+        "body": "Materiali, logistica, legale, tecnico, creativo - da membri con cui un altro membro ha già lavorato e di cui risponde.",
+        "short": "Garantiti da un membro che li ha già usati."
+      },
+      "expertise": {
+        "tag": "Competenze in prestito",
+        "title": "Prendi in prestito competenze che non hai in azienda",
+        "body": "Un nuovo mercato, una nuova normativa, una nuova categoria - chiedi al membro che l'ha già fatto, invece di pagare per impararlo due volte.",
+        "short": "Chiedi al membro che l'ha già fatto."
+      },
+      "referrals": {
+        "tag": "Lavoro in entrata che cresce",
+        "title": "Diventa il membro a cui gli altri mandano lavoro",
+        "body": "Le segnalazioni viaggiano in entrambe le direzioni. I membri che contribuiscono di più sono quelli a cui la community pensa per prima - e l'effetto si accumula.",
+        "short": "La community pensa prima a te."
+      },
+      "markets": {
+        "tag": "Ingresso più rapido",
+        "title": "Entra in un mercato con chi già c'è",
+        "body": "Espandersi in un nuovo paese o settore è più rapido accanto a un membro che già vi opera che da soli.",
+        "short": "Più rapido accanto a chi è già là."
+      },
+      "ideas": {
+        "tag": "Nuove iniziative",
+        "title": "Esci con idee che non avevi ancora avviato",
+        "body": "Vedere di cosa hanno bisogno gli altri settori è da dove nascono nuovi prodotti, servizi e imprese. Quasi tutti iniziano come un'osservazione in una conversazione.",
+        "short": "Le nuove imprese nascono da un'osservazione."
+      }
+    },
+    "tracks": {
+      "flow": {
+        "label": "Flusso di opportunità",
+        "line": "Lavoro, capitale e presentazioni ti raggiungono prima che raggiungano il mercato.",
+        "alt": "Membri che esaminano un'operazione attorno a un tavolo riunioni"
+      },
+      "capability": {
+        "label": "Capacità",
+        "line": "Affronta ciò che non potresti affrontare da solo - partner, forniture e competenze a disposizione.",
+        "alt": "Due imprese membri che lavorano insieme a un progetto"
+      },
+      "compounding": {
+        "label": "Effetto cumulativo",
+        "line": "La reputazione che costruisci una volta continua a riportare lavoro, mercati e idee.",
+        "alt": "Una sala piena di membri a una sessione della community"
+      }
+    }
+  },
+  "flow": {
+    "heading": "Un'opportunità, cinque mosse.",
+    "discover": {
+      "title": "Scoprire",
+      "line": "Qualcosa emerge.",
+      "body": "Un membro porta nella community un'opportunità, un'esigenza, una sfida o un'idea - un progetto che parte, un vuoto in una catena di fornitura, un mercato che si apre.",
+      "chips": [
+        "Un nuovo progetto",
+        "Un'esigenza",
+        "Un'idea",
+        "Una sfida"
+      ]
+    },
+    "connect": {
+      "title": "Connettere",
+      "line": "I membri giusti si fanno avanti.",
+      "body": "Invece di cercare sul mercato aperto, il membro trova dentro la community le persone la cui attività, competenza o capitale è rilevante.",
+      "chips": [
+        "Settori rilevanti",
+        "Membri verificati",
+        "Presentazioni dirette"
+      ]
+    },
+    "collaborate": {
+      "title": "Collaborare",
+      "line": "Ognuno porta un pezzo diverso.",
+      "body": "Un membro ha la competenza. Uno il servizio. Uno il capitale. Uno il mercato. Uno l'ha già fatto. Separatamente, nessuno di loro basta.",
+      "chips": [
+        "Competenze",
+        "Servizi",
+        "Capitale",
+        "Risorse",
+        "Esperienza"
+      ]
+    },
+    "create": {
+      "title": "Creare",
+      "line": "Qualcosa di concreto prende forma.",
+      "body": "Una partnership, un progetto congiunto, un nuovo servizio, un nuovo prodotto, una nuova azienda - costruiti con parti che erano già nella stanza.",
+      "chips": [
+        "Una partnership",
+        "Un progetto",
+        "Una nuova impresa",
+        "Un nuovo prodotto"
+      ]
+    },
+    "grow": {
+      "title": "Crescere",
+      "line": "Ogni impresa coinvolta è più grande.",
+      "body": "Il risultato non è un unico vincitore. Ogni membro che ha contribuito riporta nella propria azienda ricavi, una referenza e una relazione.",
+      "chips": [
+        "Ricavi",
+        "Referenze",
+        "Relazioni",
+        "Nuove capacità"
+      ]
+    }
+  },
+  "scenario": {
+    "tag": "Un esempio concreto",
+    "title": "Un'opportunità. Sei imprese.",
+    "sub": "Un singolo progetto edilizio entra nella community. Ogni membro che lo vede aggiunge la parte che già possiede.",
+    "opportunity": "Un progetto edilizio",
+    "outcome": "Finanziato, costruito e lanciato",
+    "closing": "Un membro l'ha portato dentro. Sei imprese sono state pagate.",
+    "stackAria": "{{opportunity}}, assemblato da sei contributi di membri",
+    "layers": {
+      "investor": {
+        "layer": "Capitale",
+        "role": "Investitore",
+        "brings": "Fornisce il capitale",
+        "gains": "Entra in posizione per primo"
+      },
+      "consultant": {
+        "layer": "Competenze",
+        "role": "Consulente",
+        "brings": "Competenze specialistiche",
+        "gains": "Costruisce un incarico duraturo"
+      },
+      "supplier": {
+        "layer": "Materiali",
+        "role": "Fornitore",
+        "brings": "Materiali e logistica",
+        "gains": "Si assicura un portafoglio ordini lungo"
+      },
+      "builder": {
+        "layer": "Struttura",
+        "role": "Impresa di costruzioni",
+        "brings": "Esegue la costruzione",
+        "gains": "Vince l'appalto"
+      },
+      "tech": {
+        "layer": "Sistemi",
+        "role": "Azienda tecnologica",
+        "brings": "Software e sistemi",
+        "gains": "Acquisisce un cliente di riferimento"
+      },
+      "marketing": {
+        "layer": "Brand",
+        "role": "Azienda di marketing",
+        "brings": "Branding e lancio",
+        "gains": "Aggiunge un cliente di punta"
+      }
+    }
+  },
+  "community": {
+    "heading": "Più settori nella stessa stanza.",
+    "brings": "Porta",
+    "seeks": "Cerca",
+    "closing": "Una community per tutti.",
+    "inThisSector": "In questo settore"
+  },
+  "industries": {
+    "oil-gas": {
+      "name": "Petrolio, oil & gas",
+      "short": "Oil & Gas",
+      "brings": "Contratti di fornitura, rotte commerciali, esperienza in infrastrutture pesanti",
+      "seeks": "Partner di capitale, logistica, competenze normative"
+    },
+    "consulting": {
+      "name": "Consulenza internazionale",
+      "short": "Consulenza",
+      "brings": "Competenze di ingresso sul mercato, strutturazione, know-how trasfrontaliero",
+      "seeks": "Clienti che entrano in nuovi mercati, partner locali"
+    },
+    "healthcare": {
+      "name": "Sanità, scienza e ricerca",
+      "short": "Sanità",
+      "brings": "Capacità clinica e di ricerca, disciplina da settore regolamentato",
+      "seeks": "Finanziamenti per la ricerca, partner tecnologici, distribuzione"
+    },
+    "finance": {
+      "name": "Commercio e finanza",
+      "short": "Finanza",
+      "brings": "Capitale, strumenti commerciali, strutturazione di operazioni",
+      "seeks": "Progetti finanziabili, operatori su cui puntare"
+    },
+    "real-estate": {
+      "name": "Immobiliare",
+      "short": "Immobiliare",
+      "brings": "Asset, pipeline di sviluppo, accesso al mercato locale",
+      "seeks": "Co-investitori, imprese esecutrici, inquilini e gestori"
+    },
+    "building": {
+      "name": "Edilizia, interni e architettura",
+      "short": "Edilizia",
+      "brings": "Capacità di progettazione e realizzazione, maestranze affidabili",
+      "seeks": "Progetti, fornitori, rapporti con sviluppatori"
+    },
+    "film": {
+      "name": "Media e produzione cinematografica",
+      "short": "Media e cinema",
+      "brings": "Capacità produttiva, portata creativa e distributiva",
+      "seeks": "Finanza di produzione, partner di brand, location"
+    },
+    "fashion": {
+      "name": "Consulenza moda italiana",
+      "short": "Moda",
+      "brings": "Accesso alla manifattura, rapporti con brand e buyer",
+      "seeks": "Partner retail, nuovi mercati, investimenti"
+    },
+    "sports": {
+      "name": "Accademia sportiva",
+      "short": "Sport",
+      "brings": "Vivai di talenti, strutture, pubblico e visibilità per sponsor",
+      "seeks": "Sponsor, investimenti in strutture, partner internazionali"
+    },
+    "energy": {
+      "name": "Divisione energia",
+      "short": "Energia",
+      "brings": "Progetti di generazione ed efficienza, contratti di acquisto a lungo termine",
+      "seeks": "Finanza di progetto, terreni, partner tecnici"
+    },
+    "technology": {
+      "name": "Innovazione e tecnologia",
+      "short": "Tecnologia",
+      "brings": "Software, automazione, capacità sui dati per altri settori",
+      "seeks": "Clienti di riferimento, competenze di settore, capitale"
+    },
+    "academy": {
+      "name": "Accademia e corsi di formazione",
+      "short": "Accademia",
+      "brings": "Formazione, certificazione e sviluppo delle competenze",
+      "seeks": "Clienti corporate, partner per l'accreditamento"
+    },
+    "food": {
+      "name": "Divisione food & beverage",
+      "short": "Divisione F&B",
+      "brings": "Brand dell'ospitalità, concept culinari, reti di fornitura, competenze sull'esperienza del cliente",
+      "seeks": "Investimenti, partner per l'espansione, fornitori premium, opportunità di franchising, partner tecnologici e immobiliari"
+    }
+  },
+  "partnerIndustry": {
+    "Hotel group": "Gruppo alberghiero",
+    "Media House": "Casa di produzione media",
+    "Hotel & Restaurant": "Hotel e ristorazione",
+    "Medical & Hospital": "Medicina e ospedali",
+    "Restaurant & cafe": "Ristorazione e caffetteria",
+    "Petrol Oil & Gas": "Petrolio, oil & gas",
+    "Fashion": "Moda",
+    "Real Estate": "Immobiliare",
+    "Capital & Finance": "Capitale e finanza",
+    "Interior & construction": "Interni ed edilizia",
+    "Energy & solar": "Energia e solare",
+    "Law firm": "Studio legale",
+    "Media Channel": "Canale media"
+  },
+  "partners": {
+    "tag": "La nostra community",
+    "heading": "Membri già dentro la community.",
+    "sub": "Membri della community che collaborano tra loro in tutta la community.",
+    "all": "Tutti",
+    "categoriesAria": "Categorie di partner",
+    "prev": "Partner precedente",
+    "next": "Partner successivo",
+    "fallbackName": "Partner della community"
+  },
+  "stats": {
+    "members": {
+      "label": "Membri verificati",
+      "sub": "valutati nel merito"
+    },
+    "industries": {
+      "label": "Settori rappresentati",
+      "sub": "dall'edilizia alla moda"
+    },
+    "countries": {
+      "label": "Paesi raggiunti",
+      "sub": "membri che operano a livello globale"
+    }
+  },
+  "inside": {
+    "tag": "Dentro la community",
+    "heading": "Cosa apre l'adesione.",
+    "sub": "I membri approvati ottengono la stanza e gli strumenti che la tengono viva tra un incontro e l'altro.",
+    "surfaces": {
+      "deal-room": {
+        "title": "La Deal Room",
+        "body": "Progetti attivi che i membri hanno portato - cosa si sta costruendo, cosa serve, chi è già coinvolto."
+      },
+      "directory": {
+        "title": "L'elenco dei membri",
+        "body": "Chi fa parte della community, cosa fa e cosa cerca - ricercabile per settore."
+      },
+      "events": {
+        "title": "Eventi e sessioni",
+        "body": "I membri si incontrano dal vivo e online per mettere opportunità concrete uno di fronte all'altro."
+      },
+      "wallet": {
+        "title": "Il tuo account membro",
+        "body": "Tieni traccia, in un unico posto, di ciò che la tua partecipazione alla community ha prodotto."
+      }
+    }
+  },
+  "faq": {
+    "heading": "Risposte, prima che tu lo chieda.",
+    "whatIsIt": {
+      "q": "Che cos'è Trillion Business Community?",
+      "a": "Una community d'affari privata per titolari, operatori e investitori di dodici settori - edilizia, finanza, immobiliare, tecnologia, energia, sanità, moda e altri. I membri entrano per scoprire opportunità, trovare i partner e le competenze che un progetto richiede e costruire imprese con persone per cui possono metterci la faccia."
+    },
+    "whoFor": {
+      "q": "A chi è rivolta?",
+      "a": "A imprenditori, dirigenti e investitori che stanno costruendo qualcosa attivamente e sono disposti a contribuire, non solo a ricevere. L'adesione è su candidatura e valutata nel merito - ciò che conta è se porti qualcosa di cui gli altri membri hanno bisogno."
+    },
+    "whatYouGet": {
+      "q": "Cosa ottengo concretamente come membro?",
+      "a": "Accesso ai membri e alle imprese della community, alle opportunità mentre vengono definite e non dopo che hanno raggiunto il mercato aperto, a presentazioni che altrimenti sarebbero approcci a freddo, e alla Deal Room della community, agli eventi e alle sessioni di lavoro in cui i membri portano progetti reali al tavolo."
+    },
+    "commercial": {
+      "q": "In che modo l'adesione aiuta la mia impresa sul piano commerciale?",
+      "a": "In pratica, tre strade. Trovi lavoro - progetti ed esigenze che altri membri portano. Trovi ciò che manca a un'operazione - il fornitore, il partner, lo specialista o il capitale che la rendono realizzabile. E diventi qualcuno a cui la community segnala lavoro, con un effetto che si accumula quanto più contribuisci."
+    },
+    "events": {
+      "q": "Cosa succede agli eventi della community?",
+      "a": "I membri si incontrano dal vivo e online per mettere progetti reali uno di fronte all'altro - cosa si sta costruendo, cosa serve, chi può aiutare. Accanto a questo, sessioni e workshop in cui membri con esperienza diretta in un settore guidano gli altri."
+    },
+    "howToJoin": {
+      "q": "Come faccio ad aderire?",
+      "a": "Candidati dal sito. Compili un profilo sulla tua impresa e su ciò che porti, verifichi la tua identità e la candidatura viene valutata. I membri approvati ottengono accesso completo alla community e alla sua Deal Room."
+    }
+  },
+  "finalCta": {
+    "tag": "Adesione su candidatura",
+    "heading": "Entra nella community.",
+    "sub": "Porta un'impresa, un'idea o capitale. Esci con le persone che possono trasformarli in qualcosa.",
+    "apply": "Richiedi l'adesione",
+    "alreadyMember": "Sono già un membro",
+    "steps": {
+      "apply": {
+        "title": "Candidati",
+        "sub": "Raccontaci della tua impresa e di ciò che porti."
+      },
+      "verify": {
+        "title": "Verifica",
+        "sub": "Completa il profilo e la verifica dell'identità."
+      },
+      "join": {
+        "title": "Entra nella stanza",
+        "sub": "I membri approvati ottengono accesso completo alla community."
+      }
+    }
+  },
+  "footer": {
+    "brand": "TRILLION BUSINESS COMMUNITY",
+    "tag": "Membri · Opportunità · Crescita",
+    "desc": "Una community d'affari privata dove titolari, operatori e investitori di dodici settori scoprono opportunità e le costruiscono insieme.",
+    "instagram": "Instagram",
+    "communityHeading": "La community",
+    "membershipHeading": "Adesione",
+    "contactHeading": "Contatti",
+    "whatItIs": "Che cos'è",
+    "whyJoin": "Perché aderire",
+    "howItWorks": "Come funziona",
+    "whyWeExist": "Perché esistiamo",
+    "apply": "Richiedi l'adesione",
+    "logIn": "Accesso membri",
+    "industries": "Settori",
+    "partners": "Partner",
+    "faq": "FAQ",
+    "rights": "© {{year}} Tutti i diritti riservati · Trillion Business Community",
+    "poweredBy": "Powered by"
+  },
+  "heroOverlay": {
+    "pairs": {
+      "realEstateFinance": {
+        "a": "Immobiliare",
+        "b": "Finanza",
+        "note": "un cantiere incontra il suo finanziamento"
+      },
+      "energyTechnology": {
+        "a": "Energia",
+        "b": "Tecnologia",
+        "note": "un progetto incontra i suoi sistemi"
+      },
+      "fashionProduction": {
+        "a": "Moda",
+        "b": "Produzione",
+        "note": "una collezione incontra la sua campagna"
+      },
+      "healthcareAcademy": {
+        "a": "Sanità",
+        "b": "Accademia",
+        "note": "un programma incontra le sue persone"
+      },
+      "constructionConsulting": {
+        "a": "Edilizia",
+        "b": "Consulenza",
+        "note": "una costruzione incontra le sue competenze"
+      }
+    }
+  },
+  "heroStage": {
+    "openSector": "Apri {{name}} nella vitrina dei settori",
+    "openSectorShort": "{{name}} - apri nella vitrina dei settori",
+    "ringAria": "Dodici settori industriali attorno al nucleo della community. Scegli un settore per aprirlo nella vitrina dei settori.",
+    "phases": {
+      "discover": "Scoprire",
+      "connect": "Connettere",
+      "collaborate": "Collaborare",
+      "create": "Creare",
+      "grow": "Crescere"
+    },
+    "scenarios": {
+      "real-estate": {
+        "opportunity": "Si libera un'area edificabile",
+        "outcome": "Uno sviluppo finanziato",
+        "contributors": {
+          "finance": "lo finanzia",
+          "building": "lo costruisce",
+          "energy": "lo alimenta"
+        }
+      },
+      "energy": {
+        "opportunity": "Un progetto solare cerca sostegno",
+        "outcome": "Un impianto energetico finanziato",
+        "contributors": {
+          "finance": "struttura il capitale",
+          "technology": "gestisce i sistemi",
+          "consulting": "risolve la normativa"
+        }
+      },
+      "fashion": {
+        "opportunity": "Una nuova collezione cerca un mercato",
+        "outcome": "Un brand in un nuovo mercato",
+        "contributors": {
+          "film": "gira la campagna",
+          "technology": "costruisce lo store online",
+          "finance": "finanzia la produzione"
+        }
+      },
+      "healthcare": {
+        "opportunity": "Un programma di ricerca cerca partner",
+        "outcome": "Un programma finanziato",
+        "contributors": {
+          "finance": "finanzia la sperimentazione",
+          "technology": "gestisce i dati",
+          "academy": "forma il personale"
+        }
+      }
+    }
+  },
+  "scrollCue": {
+    "aria": "Scorri alla sezione successiva",
+    "label": "Scorri"
+  },
+  "profit": {
+    "tag": "Universal Profit",
+    "title": "Condividere insieme il profitto della community",
+    "lead": "Una parte dei profitti dei progetti partecipanti, condivisa con i membri attivi ammissibili.",
+    "steps": {
+      "activity": {
+        "title": "Attività d'impresa",
+        "line": "I progetti partecipanti creano valore.",
+        "body": "I progetti partecipanti perseguono opportunità commerciali attraverso prodotti, servizi e partnership. I loro risultati finanziari costituiscono la base di qualsiasi potenziale assegnazione di profitto."
+      },
+      "fund": {
+        "title": "Universal Profit Fund",
+        "line": "Una quota definita viene assegnata.",
+        "body": "Secondo il quadro proposto, una quota definita dei profitti netti dei progetti partecipanti sarebbe assegnata all'Universal Profit Fund, secondo i termini applicabili del programma e del progetto."
+      },
+      "share": {
+        "title": "Membri ammissibili",
+        "line": "Il risultato viene condiviso.",
+        "body": "Il fondo è destinato a sostenere distribuzioni ai membri attivi ammissibili, compresi quelli che non hanno investito direttamente nel progetto contribuente. Ammissibilità, metodi di assegnazione e tempistiche di distribuzione sarebbero definiti nei termini definitivi del programma."
+      }
+    },
+    "tracks": {
+      "community": {
+        "title": "Partecipazione alla community",
+        "line": "Un legame con il successo della community - senza investimento diretto richiesto."
+      },
+      "direct": {
+        "title": "Partecipazione diretta al progetto",
+        "line": "Investi direttamente in un progetto, secondo i termini propri di quel progetto."
+      }
+    },
+    "waysTitle": "La partecipazione autentica conta",
+    "waysLead": "Una community solida dipende da membri che portano idee, competenze e impegno.",
+    "ways": {
+      "intros": "Presentazioni dirette",
+      "expertise": "Competenze professionali",
+      "opportunities": "Nuove opportunità",
+      "activities": "Attività della community",
+      "conduct": "Condotta responsabile"
+    },
+    "waysNote": "I termini definitivi del programma definiranno i requisiti di ammissibilità come membro attivo.",
+    "faqs": {
+      "invest": {
+        "q": "Devo investire in ogni progetto per trarne beneficio?",
+        "a": "No - i membri attivi ammissibili dovrebbero essere inclusi senza che sia richiesto un investimento diretto in ciascun progetto contribuente. La partecipazione a singoli progetti ha termini propri."
+      },
+      "guaranteed": {
+        "q": "Universal Profit è un reddito garantito?",
+        "a": "No. Qualsiasi distribuzione dipenderebbe dai profitti effettivi, dai fondi disponibili e dalle condizioni applicabili del programma. La sola adesione non garantisce alcun pagamento."
+      },
+      "howMuch": {
+        "q": "Quanto potrei ricevere, e quando?",
+        "a": "Dipende dalle regole definitive di assegnazione, dai requisiti di ammissibilità e dai risultati finanziari - che saranno comunicati attraverso la documentazione approvata del programma."
+      }
+    },
+    "ctaTitle": "Fai parte di ciò che costruiamo insieme.",
+    "ctaBody": "Porta le tue competenze. Costruisci relazioni di valore. Esplora il successo condiviso.",
+    "primary": "Scopri l'adesione TBC",
+    "secondary": "Parla con il nostro team",
+    "disclaimer": "Un quadro proposto. Attuazione, ammissibilità ed eventuali distribuzioni restano soggetti ai termini definitivi del programma."
+  },
+  "tag": {
+    "whyJoin": "Perché aderire",
+    "howItWorks": "Come funziona",
+    "community": "La nostra community"
+  },
+  "aria": {
+    "steps": "Passaggi",
+    "sectors": "Settori industriali",
+    "partnerSlides": "Slide dei partner",
+    "profitFlow": "L'attività d'impresa alimenta l'Universal Profit Fund, che a sua volta raggiunge i membri ammissibili",
+    "linkedin": "LinkedIn"
+  }
+}

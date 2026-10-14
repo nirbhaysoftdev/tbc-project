@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import { useSidebar } from '@/lib/sidebar';
+import { useTranslation } from 'react-i18next';
 import { useAdminAlerts } from '@/lib/adminAlerts';
 import NotifBadge from './NotifBadge';
 
@@ -11,15 +12,18 @@ const API_URL = process.env.NODE_ENV === 'production'
   : '';
 
 const NAV_ITEMS = [
-  { label: 'Community',    href: '/community',    icon: CommIcon },
-  { label: 'Dashboard',    href: '/dashboard',    icon: DashIcon },
-  { label: 'Portfolio',    href: '/portfolio',    icon: PortfolioIcon },
-  { label: 'Transactions', href: '/transactions', icon: TxIcon },
-  { label: 'Cards',        href: '/cards',        icon: CardIcon },
-  { label: 'Settings',     href: '/settings',     icon: SettingsIcon },
+  { key: 'community',    href: '/community',    icon: CommIcon },
+  { key: 'dashboard',    href: '/dashboard',    icon: DashIcon },
+  { key: 'projects',     href: '/projects',     icon: ProjectsIcon },
+  { key: 'companies',    href: '/companies',    icon: CompaniesIcon },
+  { key: 'portfolio',    href: '/portfolio',    icon: PortfolioIcon },
+  { key: 'transactions', href: '/transactions', icon: TxIcon },
+  { key: 'cards',        href: '/cards',        icon: CardIcon },
+  { key: 'settings',     href: '/settings',     icon: SettingsIcon },
 ];
 
 export default function Sidebar() {
+  const { t } = useTranslation(['nav', 'common']);
   const { user, logout } = useAuth();
   const pathname = usePathname();
   const { open, setOpen } = useSidebar();
@@ -50,11 +54,11 @@ export default function Sidebar() {
     }
     return true;
   })
-  .map(({ label, href, icon: Icon }) => (
+  .map(({ key, href, icon: Icon }) => (
     <Link key={href} href={href} onClick={onNav}
-      className={`nav-item ${pathname === href ? 'active' : ''}`}>
+      className={`nav-item ${pathname === href || pathname.startsWith(`${href}/`) ? 'active' : ''}`}>
       <Icon />
-      <span>{label}</span>
+      <span>{t(`nav:main.${key}`)}</span>
     </Link>
 ))}
         {user?.role === 'ADMIN' && (
@@ -63,26 +67,31 @@ export default function Sidebar() {
     <Link href="/admin" onClick={onNav}
       className={`nav-item ${pathname.startsWith('/admin') && !pathname.includes('withdrawal') && !pathname.startsWith('/admin/logs') ? 'active' : ''}`}>
       <AdminIcon />
-      <span>Admin Panel</span>
+      <span>{t('nav:main.adminPanel')}</span>
       <NotifBadge
         count={alerts.newMembers + alerts.investmentRequests}
-        title={`${alerts.newMembers} new member(s), ${alerts.investmentRequests} investment request(s)`}
-        style={{ marginLeft: 'auto' }}
+        title={t('nav:alerts.adminQueue', {
+          members:     alerts.newMembers,
+          investments: alerts.investmentRequests,
+        })}
+        // marginInlineStart, not marginLeft: the badge must sit at the end of
+        // the row in both directions (§10).
+        style={{ marginInlineStart: 'auto' }}
       />
     </Link>
     <Link href="/admin/logs" onClick={onNav}
       className={`nav-item ${pathname.startsWith('/admin/logs') ? 'active' : ''}`}>
       <LogsIcon />
-      <span>Activity Logs</span>
+      <span>{t('nav:main.activityLogs')}</span>
     </Link>
     <Link href="/admin/withdrawals" onClick={onNav}
       className={`nav-item ${pathname.includes('withdrawal') ? 'active' : ''}`}>
       <WithdrawIcon />
-      <span>Withdrawal Req.</span>
+      <span>{t('nav:main.withdrawalRequests')}</span>
       <NotifBadge
         count={alerts.withdrawRequests}
-        title={`${alerts.withdrawRequests} withdrawal request(s) awaiting approval`}
-        style={{ marginLeft: 'auto' }}
+        title={t('nav:alerts.withdrawalQueue', { count: alerts.withdrawRequests })}
+        style={{ marginInlineStart: 'auto' }}
       />
     </Link>
   </>
@@ -101,7 +110,7 @@ export default function Sidebar() {
         <p className="sidebar-logout" onClick={() => { logout(); onNav?.(); }}>
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none"
             stroke="#e05252" strokeWidth="1.5"><circle cx="12" cy="12" r="9"/></svg>
-          Log Out
+          {t('common:action.logOut')}
         </p>
       </div>
     </>
@@ -153,6 +162,25 @@ function SettingsIcon() {
 }
 function AdminIcon() {
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>;
+}
+
+function CompaniesIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <path d="M3 21h18"/>
+      <rect x="4" y="8" width="7" height="13" rx="1"/>
+      <rect x="13" y="3" width="7" height="18" rx="1"/>
+      <path d="M7 12h1M7 16h1M16 7h1M16 11h1M16 15h1" strokeLinecap="round"/>
+    </svg>
+  );
+}
+function ProjectsIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <rect x="3" y="4" width="18" height="6" rx="1"/>
+      <rect x="3" y="14" width="12" height="6" rx="1"/>
+    </svg>
+  );
 }
 
 function LogsIcon() {

@@ -9,7 +9,7 @@
 // Everything is transform/opacity only, and it holds a single static frame
 // under prefers-reduced-motion.
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo, useCallback} from 'react';
 import {
   motion,
   AnimatePresence,
@@ -20,9 +20,10 @@ import {
   useTransform,
   type MotionValue,
 } from 'motion/react';
-import { INDUSTRIES } from '@/lib/landing-data';
+import { INDUSTRY_SHAPE, getIndustries } from '@/lib/landing-data';
 import { openSector } from '@/lib/sector-bus';
 import { EASE, useCalm, useMediaQuery } from './motion';
+import { useTranslation } from 'react-i18next';
 
 /* ── Geometry ─────────────────────────────────────── */
 
@@ -52,13 +53,20 @@ type Node = {
   y: number;
 };
 
-const NODES: Node[] = INDUSTRIES.map((ind, i) => {
-  const angle = -90 + i * (360 / INDUSTRIES.length);
+/*
+ * The ring geometry is computed from INDUSTRY_SHAPE, not from the translated
+ * list: position depends only on the COUNT and ORDER of sectors, which never
+ * change with language. Keeping it at module scope also preserves the
+ * rounding guarantee above — the coordinates are computed once, identically,
+ * for every language, so switching language cannot introduce a hydration
+ * mismatch. Only `name` and `short` are language-dependent, and those are
+ * merged in by useNodes() below.
+ */
+const NODE_GEOMETRY = INDUSTRY_SHAPE.map((ind, i) => {
+  const angle = -90 + i * (360 / INDUSTRY_SHAPE.length);
   const rad = (angle * Math.PI) / 180;
   return {
     key: ind.key,
-    name: ind.name,
-    short: ind.short,
     icon: ind.icon,
     image: ind.thumb,
     angle,
@@ -67,7 +75,17 @@ const NODES: Node[] = INDUSTRIES.map((ind, i) => {
   };
 });
 
-const nodeOf = (key: string) => NODES.find((n) => n.key === key)!;
+/** Geometry plus the sector's name in the active language. */
+function useNodes(): Node[] {
+  const { t } = useTranslation('landing');
+  return useMemo(() => {
+    const industries = getIndustries(t);
+    return NODE_GEOMETRY.map((g) => {
+      const ind = industries.find((x) => x.key === g.key);
+      return { ...g, name: ind?.name ?? g.key, short: ind?.short ?? g.key };
+    });
+  }, [t]);
+}
 
 /**
  * Chips are a fixed 108px wide because the ring only leaves 114px between
@@ -128,62 +146,21 @@ const TICKS = Array.from({ length: 72 }, (_, i) => {
 /* Each scenario is an illustrative combination of the twelve
    sectors the community actually represents. */
 
-type Scenario = {
-  origin: string;
-  opportunity: string;
-  contributors: { key: string; brings: string }[];
-  outcome: string;
-};
-
-const SCENARIOS: Scenario[] = [
-  {
-    origin: 'real-estate',
-    opportunity: 'A development site comes up',
-    contributors: [
-      { key: 'finance', brings: 'funds it' },
-      { key: 'building', brings: 'builds it' },
-      { key: 'energy', brings: 'powers it' },
-    ],
-    outcome: 'A funded development',
-  },
-  {
-    origin: 'energy',
-    opportunity: 'A solar project needs backing',
-    contributors: [
-      { key: 'finance', brings: 'structures the capital' },
-      { key: 'technology', brings: 'runs the systems' },
-      { key: 'consulting', brings: 'clears the regulation' },
-    ],
-    outcome: 'A financed energy build',
-  },
-  {
-    origin: 'fashion',
-    opportunity: 'A new collection needs a market',
-    contributors: [
-      { key: 'film', brings: 'shoots the campaign' },
-      { key: 'technology', brings: 'builds the storefront' },
-      { key: 'finance', brings: 'funds the run' },
-    ],
-    outcome: 'A brand in a new market',
-  },
-  {
-    origin: 'healthcare',
-    opportunity: 'A research programme needs partners',
-    contributors: [
-      { key: 'finance', brings: 'funds the trial' },
-      { key: 'technology', brings: 'handles the data' },
-      { key: 'academy', brings: 'trains the staff' },
-    ],
-    outcome: 'A funded programme',
-  },
-];
+// Only the sector wiring — which sector originates each story and which
+// sectors contribute. The copy lives in landing:heroStage.scenarios.<origin>.
+const SCENARIO_SHAPE = [
+  { origin: 'real-estate', contributors: ['finance', 'building', 'energy'] },
+  { origin: 'energy',      contributors: ['finance', 'technology', 'consulting'] },
+  { origin: 'fashion',     contributors: ['film', 'technology', 'finance'] },
+  { origin: 'healthcare',  contributors: ['finance', 'technology', 'academy'] },
+] as const;
 
 const PHASES = [
-  { key: 'discover', n: '01', label: 'Discover' },
-  { key: 'connect', n: '02', label: 'Connect' },
-  { key: 'collaborate', n: '03', label: 'Collaborate' },
-  { key: 'create', n: '04', label: 'Create' },
-  { key: 'grow', n: '05', label: 'Grow' },
+  { key: 'discover', n: '01' },
+  { key: 'connect', n: '02' },
+  { key: 'collaborate', n: '03' },
+  { key: 'create', n: '04' },
+  { key: 'grow', n: '05' },
 ] as const;
 
 const PHASE_MS = 2100;
@@ -220,6 +197,13 @@ function OrbitAt({
 /* ── Component ────────────────────────────────────── */
 
 export default function HeroStage() {
+  const { t } = useTranslation('landing');
+  // Geometry is static; only the sector names follow the language.
+  const NODES = useNodes();
+  const nodeOf = useCallback(
+    (key: string) => NODES.find((n) => n.key === key)!,
+    [NODES],
+  );
   const calm = useCalm();
   const compact = useMediaQuery('(max-width: 720px)');
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -290,7 +274,17 @@ export default function HeroStage() {
     return () => clearInterval(id);
   }, [calm, inView]);
 
-  const scenario = SCENARIOS[Math.floor(tick / PHASES.length) % SCENARIOS.length];
+  const shape = SCENARIO_SHAPE[Math.floor(tick / PHASES.length) % SCENARIO_SHAPE.length];
+  // Copy for the active story, resolved in the current language.
+  const scenario = {
+    origin: shape.origin,
+    opportunity: t(`heroStage.scenarios.${shape.origin}.opportunity`),
+    outcome: t(`heroStage.scenarios.${shape.origin}.outcome`),
+    contributors: shape.contributors.map((key) => ({
+      key,
+      brings: t(`heroStage.scenarios.${shape.origin}.contributors.${key}`),
+    })),
+  };
   const phaseIdx = calm ? 2 : tick % PHASES.length;
   const phase = PHASES[phaseIdx].key;
 
@@ -319,7 +313,7 @@ export default function HeroStage() {
         /* `group`, not `img`: the sector chips are real controls now, and
            role="img" would hide them from assistive technology. */
         role="group"
-        aria-label="Twelve industry sectors around the community core. Choose a sector to open it in the industries showcase."
+        aria-label={t('heroStage.ringAria')}
       >
         <defs>
           <linearGradient id="lp-chip-grad" x1="0" y1="0" x2="0" y2="1">
@@ -388,7 +382,7 @@ export default function HeroStage() {
             className={previewNode ? 'lp-core-live' : undefined}
             role={previewNode ? 'button' : undefined}
             tabIndex={previewNode ? 0 : undefined}
-            aria-label={previewNode ? `Open ${previewNode.name} in the industries showcase` : undefined}
+            aria-label={previewNode ? t('heroStage.openSector', { name: previewNode.name }) : undefined}
             onClick={previewNode ? () => openSector(previewNode.key) : undefined}
             onKeyDown={
               previewNode
@@ -508,7 +502,7 @@ export default function HeroStage() {
                 }`}
                 role="button"
                 tabIndex={0}
-                aria-label={`${n.short} - open in the industries showcase`}
+                aria-label={t('heroStage.openSectorShort', { name: n.short })}
                 onClick={() => openSector(n.key)}
                 onKeyDown={(e: React.KeyboardEvent) => {
                   if (e.key === 'Enter' || e.key === ' ') {
@@ -690,7 +684,7 @@ export default function HeroStage() {
             >
               <span className="lp-stage-phase">
                 <span className="lp-stage-phase-n">{PHASES[phaseIdx].n}</span>
-                {PHASES[phaseIdx].label}
+                {t(`heroStage.phases.${PHASES[phaseIdx].key}`)}
               </span>
               <span className="lp-stage-beat">
                 {phaseIdx === 0 && scenario.opportunity}

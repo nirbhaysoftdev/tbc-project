@@ -8,16 +8,19 @@
 // actual amount received are tracked separately, and everything downstream uses
 // the actual amount.
 import { useEffect, useState } from 'react';
-import { investmentRequestAPI, formatEur } from '@/lib/api';
+import { investmentRequestAPI, formatEur, formatDate, formatNumber } from '@/lib/api';
+import { useTranslation } from 'react-i18next';
 
 type Status = 'PENDING' | 'APPROVED' | 'COMPLETED' | 'REJECTED' | 'CANCELLED';
 
 const STATUS_LABEL: Record<Status, string> = {
-  PENDING: 'Pending review',
-  APPROVED: 'Payment received',
-  COMPLETED: 'Completed',
-  REJECTED: 'Rejected',
-  CANCELLED: 'Cancelled',
+  // Keys into admin:requests.statusLabel.<STATUS>; the enum itself is the
+  // value the API filters on and is never translated.
+  PENDING: 'PENDING',
+  APPROVED: 'APPROVED',
+  COMPLETED: 'COMPLETED',
+  REJECTED: 'REJECTED',
+  CANCELLED: 'CANCELLED',
 };
 
 const statusBadgeClass = (status: Status) =>
@@ -28,6 +31,7 @@ const statusBadgeClass = (status: Status) =>
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
 export default function InvestmentRequestsTab({ onCompleted }: { onCompleted?: () => void }) {
+  const { t } = useTranslation(['admin', 'common']);
   const [requests, setRequests] = useState<any[]>([]);
   const [statusFilter, setStatusFilter] = useState<Status | ''>('');
   const [loading, setLoading] = useState(true);
@@ -59,7 +63,7 @@ export default function InvestmentRequestsTab({ onCompleted }: { onCompleted?: (
       const res = await investmentRequestAPI.getOne(request.id);
       setDetail(res.data);
     } catch {
-      setError('Could not load the full request details.');
+      setError(t('admin:requests.detailFailed'));
     }
   };
 
@@ -78,7 +82,7 @@ export default function InvestmentRequestsTab({ onCompleted }: { onCompleted?: (
         setActive(res.data.request);
       }
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Action failed.');
+      setError(err.response?.data?.error || t('admin:requests.actionFailed'));
     } finally {
       setBusy(false);
     }
@@ -96,7 +100,7 @@ export default function InvestmentRequestsTab({ onCompleted }: { onCompleted?: (
         </p>
         <select className="filter-select" value={statusFilter}
           onChange={e => setStatusFilter(e.target.value as Status | '')}>
-          <option value="">All statuses</option>
+          <option value="">{t('admin:requests.allStatuses')}</option>
           {(Object.keys(STATUS_LABEL) as Status[]).map(s => (
             <option key={s} value={s}>{STATUS_LABEL[s]}</option>
           ))}
@@ -107,30 +111,41 @@ export default function InvestmentRequestsTab({ onCompleted }: { onCompleted?: (
         <table className="tx-table">
           <thead>
             <tr>
-              <th>Member</th><th>Project</th><th>Requested</th><th>Actual</th>
-              <th>Request Date</th><th>Status</th><th>Action</th>
+              <th>{t('admin:requests.cols.member')}</th>
+              <th>{t('admin:requests.cols.project')}</th>
+              <th>{t('admin:requests.cols.requested')}</th>
+              <th>{t('admin:requests.cols.actual')}</th>
+              <th>{t('admin:requests.cols.requestDate')}</th>
+              <th>{t('admin:requests.cols.status')}</th>
+              <th>{t('admin:requests.cols.action')}</th>
             </tr>
           </thead>
           <tbody>
             {requests.length === 0 ? (
               <tr><td colSpan={7} style={{ textAlign:'center', padding:32, color:'var(--text-muted)' }}>
-                {loading ? 'Loading…' : 'No investment requests yet.'}
+                {loading ? t('common:state.loading') : t('admin:requests.none')}
               </td></tr>
             ) : requests.map(r => (
               <tr key={r.id}>
                 <td style={{ fontWeight:600, color:'var(--text-primary)' }}>
                   {r.user?.name}
-                  <span style={{ display:'block', fontSize:11, color:'var(--text-muted)', fontWeight:400 }}>{r.user?.email}</span>
+                  <span className="ltr-embed" style={{ display:'block', fontSize:11, color:'var(--text-muted)', fontWeight:400 }}>{r.user?.email}</span>
                 </td>
                 <td>{r.project?.title}</td>
-                <td>{formatEur(r.requestedAmount)}</td>
-                <td>{r.actualAmount != null ? formatEur(r.actualAmount) : <span style={{ color:'var(--text-muted)' }}>—</span>}</td>
-                <td style={{ color:'var(--text-muted)', fontSize:12 }}>{new Date(r.createdAt).toLocaleDateString()}</td>
-                <td><span className={`badge ${statusBadgeClass(r.status)}`}>{STATUS_LABEL[r.status as Status]}</span></td>
+                <td className="ltr-embed">{formatEur(r.requestedAmount)}</td>
+                <td className="ltr-embed">{r.actualAmount != null ? formatEur(r.actualAmount) : <span style={{ color:'var(--text-muted)' }}>—</span>}</td>
+                <td style={{ color:'var(--text-muted)', fontSize:12 }}>{formatDate(r.createdAt)}</td>
+                <td>
+                  <span className={`badge ${statusBadgeClass(r.status)}`}>
+                    {t(`admin:requests.statusLabel.${STATUS_LABEL[r.status as Status]}`, { defaultValue: r.status })}
+                  </span>
+                </td>
                 <td>
                   <button className="btn-secondary" style={{ width:'auto', padding:'5px 12px', fontSize:12 }}
                     onClick={() => openRequest(r)}>
-                    {r.status === 'COMPLETED' || r.status === 'REJECTED' || r.status === 'CANCELLED' ? 'View' : 'Review'}
+                    {r.status === 'COMPLETED' || r.status === 'REJECTED' || r.status === 'CANCELLED'
+                      ? t('admin:requests.view')
+                      : t('admin:requests.review')}
                   </button>
                 </td>
               </tr>
@@ -142,19 +157,19 @@ export default function InvestmentRequestsTab({ onCompleted }: { onCompleted?: (
       {active && (
         <div className="modal-overlay" onClick={close}>
           <div className="modal-box" onClick={e => e.stopPropagation()} style={{ maxWidth: 560 }}>
-            <p className="modal-title">Investment Request</p>
+            <p className="modal-title">{t('admin:requests.modalTitle')}</p>
 
             <div style={{
               background:'rgba(255,255,255,0.03)', border:'1px solid var(--border)',
               borderRadius:'var(--radius-sm)', padding:'14px 16px', fontSize:13,
               color:'var(--text-secondary)', display:'flex', flexDirection:'column', gap:8,
             }}>
-              <div><strong style={{ color:'var(--text-primary)' }}>Member:</strong> {active.user?.name} ({active.user?.email})</div>
-              <div><strong style={{ color:'var(--text-primary)' }}>Project:</strong> {active.project?.title}</div>
-              <div><strong style={{ color:'var(--text-primary)' }}>Requested Amount:</strong> {formatEur(active.requestedAmount)}</div>
-              <div><strong style={{ color:'var(--text-primary)' }}>Request Date:</strong> {new Date(active.createdAt).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' })}</div>
-              <div><strong style={{ color:'var(--text-primary)' }}>Status:</strong> {STATUS_LABEL[active.status as Status]}</div>
-              {active.message && <div><strong style={{ color:'var(--text-primary)' }}>Note:</strong> {active.message}</div>}
+              <div><strong style={{ color:'var(--text-primary)' }}>{t('admin:requests.memberLabel')}</strong> {active.user?.name} (<span className="ltr-embed">{active.user?.email}</span>)</div>
+              <div><strong style={{ color:'var(--text-primary)' }}>{t('admin:requests.projectLabel')}</strong> {active.project?.title}</div>
+              <div><strong style={{ color:'var(--text-primary)' }}>{t('admin:requests.requestedAmountLabel')}</strong> <span className="ltr-embed">{formatEur(active.requestedAmount)}</span></div>
+              <div><strong style={{ color:'var(--text-primary)' }}>{t('admin:requests.requestDateLabel')}</strong> {formatDate(active.createdAt, { day:'numeric', month:'short', year:'numeric' })}</div>
+              <div><strong style={{ color:'var(--text-primary)' }}>{t('admin:requests.statusLabelText')}</strong> {t(`admin:requests.statusLabel.${STATUS_LABEL[active.status as Status]}`, { defaultValue: active.status })}</div>
+              {active.message && <div><strong style={{ color:'var(--text-primary)' }}>{t('admin:requests.noteLabel')}</strong> {active.message}</div>}
             </div>
 
             {detail && (
@@ -163,17 +178,22 @@ export default function InvestmentRequestsTab({ onCompleted }: { onCompleted?: (
                 borderRadius:'var(--radius-sm)', padding:'12px 14px', fontSize:12,
                 color:'var(--text-secondary)', marginTop:12,
               }}>
-                <div><strong style={{ color:'var(--text-primary)' }}>Current capital in this project:</strong> {formatEur(detail.projectCapital)}</div>
-                <div><strong style={{ color:'var(--text-primary)' }}>Wallet invested capital:</strong> {formatEur(detail.wallet?.investedCapital)}</div>
-                <div><strong style={{ color:'var(--text-primary)' }}>Wallet available profit:</strong> {formatEur(detail.wallet?.availableProfit)}</div>
+                <div><strong style={{ color:'var(--text-primary)' }}>{t('admin:requests.currentCapital')}</strong> <span className="ltr-embed">{formatEur(detail.projectCapital)}</span></div>
+                <div><strong style={{ color:'var(--text-primary)' }}>{t('admin:requests.walletInvested')}</strong> <span className="ltr-embed">{formatEur(detail.wallet?.investedCapital)}</span></div>
+                <div><strong style={{ color:'var(--text-primary)' }}>{t('admin:requests.walletProfit')}</strong> <span className="ltr-embed">{formatEur(detail.wallet?.availableProfit)}</span></div>
                 <div>
-                  <strong style={{ color:'var(--text-primary)' }}>Profit configuration:</strong>{' '}
-                  {detail.monthlyConfig ? `${detail.monthlyConfig.rate}% monthly` : 'none set yet'}
+                  <strong style={{ color:'var(--text-primary)' }}>{t('admin:requests.profitConfig')}</strong>{' '}
+                  {detail.monthlyConfig
+                    ? t('admin:requests.monthlyRate', { rate: formatNumber(detail.monthlyConfig.rate) })
+                    : t('admin:requests.noneSet')}
                 </div>
                 {active.status !== 'COMPLETED' && amountNum > 0 && (
                   <div style={{ marginTop:6, paddingTop:6, borderTop:'1px solid rgba(200,168,75,0.25)' }}>
-                    <strong style={{ color:'var(--text-primary)' }}>Wallet impact:</strong>{' '}
-                    capital {formatEur(detail.wallet?.investedCapital)} → {formatEur((detail.wallet?.investedCapital || 0) + amountNum)}
+                    <strong style={{ color:'var(--text-primary)' }}>{t('admin:requests.walletImpact')}</strong>{' '}
+                    {t('admin:requests.capitalArrow', {
+                      from: formatEur(detail.wallet?.investedCapital),
+                      to: formatEur((detail.wallet?.investedCapital || 0) + amountNum),
+                    })}
                   </div>
                 )}
               </div>
@@ -182,18 +202,20 @@ export default function InvestmentRequestsTab({ onCompleted }: { onCompleted?: (
             {(active.status === 'PENDING' || active.status === 'APPROVED') && (
               <>
                 <div className="form-group" style={{ marginTop:14 }}>
-                  <label className="form-label">ACTUAL AMOUNT RECEIVED (€) *</label>
+                  <label className="form-label">{t('admin:requests.actualAmountLabel')}</label>
                   <input className="form-input" type="number" min="0.01" step="0.01"
                     value={actualAmount} onChange={e => setActualAmount(e.target.value)} />
                   {shortfall > 0 && amountNum > 0 && (
                     <p style={{ fontSize:11, color:'var(--text-muted)', marginTop:6 }}>
-                      {formatEur(shortfall)} less than requested. All future capital and profit
-                      calculations will use {formatEur(amountNum)}.
+                      {t('admin:requests.shortfall', {
+                        amount: formatEur(shortfall),
+                        actual: formatEur(amountNum),
+                      })}
                     </p>
                   )}
                 </div>
                 <div className="form-group">
-                  <label className="form-label">INVESTMENT DATE *</label>
+                  <label className="form-label">{t('admin:requests.investmentDateLabel')}</label>
                   <input className="form-input" type="date"
                     value={investedAt} onChange={e => setInvestedAt(e.target.value)} />
                 </div>
@@ -203,17 +225,17 @@ export default function InvestmentRequestsTab({ onCompleted }: { onCompleted?: (
             {error && <p className="form-error" style={{ marginTop:10 }}>{error}</p>}
 
             <div className="modal-actions">
-              <button type="button" className="btn-secondary" onClick={close} disabled={busy}>Close</button>
+              <button type="button" className="btn-secondary" onClick={close} disabled={busy}>{t('common:action.close')}</button>
 
               {active.status === 'PENDING' && (
                 <>
                   <button type="button" className="btn-secondary" disabled={busy}
                     onClick={() => run(() => investmentRequestAPI.reject(active.id), 'close')}>
-                    Reject
+                    {t('admin:requests.reject')}
                   </button>
                   <button type="button" className="btn-secondary" disabled={busy}
                     onClick={() => run(() => investmentRequestAPI.paymentReceived(active.id), 'refresh')}>
-                    Confirm Payment Received
+                    {t('admin:requests.confirmPayment')}
                   </button>
                 </>
               )}
@@ -225,7 +247,7 @@ export default function InvestmentRequestsTab({ onCompleted }: { onCompleted?: (
                     () => investmentRequestAPI.complete(active.id, { actualAmount, investedAt }),
                     'close',
                   )}>
-                  {busy ? 'Working…' : 'Complete Investment'}
+                  {busy ? t('admin:requests.working') : t('admin:requests.completeInvestment')}
                 </button>
               )}
             </div>

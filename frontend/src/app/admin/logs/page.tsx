@@ -4,9 +4,9 @@
 // and by individual activity type. The filter catalogue comes from the backend
 // (services/activityLog.js) so a new activity type shows up here on its own.
 import { Fragment, useEffect, useState } from 'react';
-import { AuthProvider } from '@/lib/auth';
 import ProtectedLayout from '@/components/layout/ProtectedLayout';
-import { adminAPI } from '@/lib/api';
+import { adminAPI, formatEur, formatDateTime } from '@/lib/api';
+import { useTranslation } from 'react-i18next';
 
 type LogType = { type: string; label: string; category: string; count: number };
 type Category = { category: string; count: number };
@@ -40,6 +40,7 @@ const CATEGORY_STYLE: Record<string, { color: string; bg: string; label: string 
 const PAGE_SIZE = 50;
 
 function LogsContent() {
+  const { t } = useTranslation(['admin', 'common']);
   const [logs,       setLogs]       = useState<Log[]>([]);
   const [types,      setTypes]      = useState<LogType[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -103,15 +104,17 @@ function LogsContent() {
   return (
     <div className="content-left">
       <div className="page-header">
-        <h1 className="page-title">Activity Logs</h1>
+        <h1 className="page-title">{t('admin:logs.title')}</h1>
+        {/* One interpolated plural key rather than an English ternary: Italian
+            inflects the noun with the number. */}
         <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-          {total.toLocaleString()} {total === 1 ? 'entry' : 'entries'}
+          {t('admin:logs.entries', { count: total })}
         </span>
       </div>
 
       {/* ── Category filter ── */}
       <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginBottom: 10 }}>
-        {chip('All activity', !category, () => resetTo(() => { setCategory(''); setType(''); }))}
+        {chip(t('admin:logs.allActivity'), !category, () => resetTo(() => { setCategory(''); setType(''); }))}
         {categories.map(c => chip(
           CATEGORY_STYLE[c.category]?.label || c.category,
           category === c.category,
@@ -125,7 +128,7 @@ function LogsContent() {
         <select className="filter-select" value={type}
           onChange={e => resetTo(() => setType(e.target.value))}
           style={{ minWidth: 210 }}>
-          <option value="">All types</option>
+          <option value="">{t('admin:logs.allTypes')}</option>
           {visibleTypes.map(t => (
             <option key={t.type} value={t.type}>{t.label} ({t.count})</option>
           ))}
@@ -133,28 +136,29 @@ function LogsContent() {
 
         <select className="filter-select" value={status}
           onChange={e => resetTo(() => setStatus(e.target.value))}>
-          <option value="">Any result</option>
-          <option value="SUCCESS">Success</option>
-          <option value="FAILED">Failed</option>
+          {/* `value` is the API's status filter and stays the raw enum. */}
+          <option value="">{t('admin:logs.anyResult')}</option>
+          <option value="SUCCESS">{t('admin:logs.success')}</option>
+          <option value="FAILED">{t('admin:logs.failedResult')}</option>
         </select>
 
         <form onSubmit={e => { e.preventDefault(); resetTo(() => setQuery(search)); }}
           style={{ display: 'flex', gap: 6 }}>
-          <input className="filter-select" placeholder="Search title, member…"
+          <input className="filter-select" placeholder={t('admin:logs.searchTitleMember')}
             value={search} onChange={e => setSearch(e.target.value)}
             style={{ minWidth: 200 }} />
           <button type="submit" className="btn-primary" style={{ padding: '7px 16px', fontSize: 12 }}>
-            Search
+            {t('common:action.search')}
           </button>
         </form>
 
         <label style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 5 }}>
-          From
+          {t('admin:logs.from')}
           <input type="date" className="filter-select" value={from}
             onChange={e => resetTo(() => setFrom(e.target.value))} />
         </label>
         <label style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 5 }}>
-          To
+          {t('admin:logs.to')}
           <input type="date" className="filter-select" value={to}
             onChange={e => resetTo(() => setTo(e.target.value))} />
         </label>
@@ -169,7 +173,7 @@ function LogsContent() {
               background: 'none', border: '1px solid var(--border)',
               borderRadius: 'var(--radius-sm)', color: 'var(--text-muted)',
             }}>
-            Clear filters
+            {t('common:action.clearFilters')}
           </button>
         )}
       </div>
@@ -179,19 +183,20 @@ function LogsContent() {
         <div className="spinner" />
       ) : logs.length === 0 ? (
         <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-muted)' }}>
-          No activity matches these filters
+          {t('admin:logs.emptyFiltered')}
         </div>
       ) : (
         <div className="tx-table-wrap">
           <table className="tx-table">
             <thead>
               <tr>
-                <th>When</th>
-                <th>Activity</th>
-                <th>Details</th>
-                <th>Member</th>
-                <th>By</th>
-                <th style={{ textAlign: 'right' }}>Amount</th>
+                <th>{t('admin:logs.when')}</th>
+                <th>{t('admin:logs.activity')}</th>
+                <th>{t('admin:logs.details')}</th>
+                <th>{t('admin:logs.member')}</th>
+                <th>{t('admin:logs.by')}</th>
+                {/* `end`, not `right`: the amount column hugs the reading edge. */}
+                <th style={{ textAlign: 'end' }}>{t('common:label.amount')}</th>
               </tr>
             </thead>
             <tbody>
@@ -205,7 +210,7 @@ function LogsContent() {
                     <tr onClick={() => setExpanded(isOpen ? null : log.id)}
                       style={{ cursor: 'pointer' }}>
                       <td style={{ whiteSpace: 'nowrap', fontSize: 12, color: 'var(--text-muted)' }}>
-                        {new Date(log.createdAt).toLocaleString()}
+                        {formatDateTime(log.createdAt)}
                       </td>
                       <td>
                         <span style={{
@@ -214,7 +219,7 @@ function LogsContent() {
                           background: failed ? 'rgba(224,82,82,0.12)' : cat.bg,
                           color: failed ? 'var(--red)' : cat.color,
                         }}>
-                          {typeLabel}{failed ? ' · FAILED' : ''}
+                          {typeLabel}{failed ? t('admin:logs.failedSuffix') : ''}
                         </span>
                       </td>
                       <td style={{ maxWidth: 380 }}>
@@ -229,12 +234,12 @@ function LogsContent() {
                           </div>
                         )}
                       </td>
-                      <td style={{ fontSize: 12 }}>{log.target?.name || log.targetName || '—'}</td>
+                      <td style={{ fontSize: 12 }}>{log.target?.name || log.targetName || t('admin:logs.noneDash')}</td>
                       <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                        {log.actor?.name || log.actorName || 'System'}
+                        {log.actor?.name || log.actorName || t('admin:logs.system')}
                       </td>
-                      <td style={{ textAlign: 'right', fontSize: 12, whiteSpace: 'nowrap' }}>
-                        {log.amount != null ? `€${log.amount.toLocaleString()}` : '—'}
+                      <td className="ltr-embed" style={{ textAlign: 'end', fontSize: 12, whiteSpace: 'nowrap' }}>
+                        {log.amount != null ? formatEur(log.amount) : t('admin:logs.noneDash')}
                       </td>
                     </tr>
                     {isOpen && log.metadata && (
@@ -287,10 +292,8 @@ function LogsContent() {
 
 export default function LogsPage() {
   return (
-    <AuthProvider>
-      <ProtectedLayout requireAdmin>
-        <LogsContent />
-      </ProtectedLayout>
-    </AuthProvider>
+    <ProtectedLayout requireAdmin>
+      <LogsContent />
+    </ProtectedLayout>
   );
 }

@@ -3,22 +3,37 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/lib/auth';
 import { messagesAPI } from '@/lib/api';
+import LanguageSelector from '@/components/i18n/LanguageSelector';
 
 const API_URL = process.env.NODE_ENV === 'production'
   ? (process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || '')
   : '';
 
 const NAV_LINKS = [
-  { href: '/community',          label: 'Feed' },
-  { href: '/community/deal-room', label: 'Deal Room' },
-  { href: '/community/network',   label: 'Community' },
-  { href: '/community/events',    label: 'Events' },
-  { href: '/community/messages',  label: 'Messages', countKey: 'msg' },
+  { href: '/community',           key: 'feed' },
+  { href: '/community/deal-room', key: 'dealRoom' },
+  { href: '/community/network',   key: 'directory' },
+  { href: '/community/events',    key: 'events' },
+  { href: '/community/messages',  key: 'messages', countKey: 'msg' },
 ];
 
-export default function CommunityNav() {
+export default function CommunityNav({
+  variant = 'full',
+}: {
+  /**
+   * 'full'   — the standalone bar, with branding, language, wallet and the
+   *            account menu. Kept for any page that renders outside the app
+   *            shell.
+   * 'subnav' — just the five community sections, as a secondary strip beneath
+   *            the topbar. Used inside the app shell, where the sidebar and
+   *            topbar already carry identity and log-out.
+   */
+  variant?: 'full' | 'subnav';
+} = {}) {
+  const { t } = useTranslation(['nav', 'common']);
   const pathname = usePathname();
   const router   = useRouter();
   const { user, logout } = useAuth();
@@ -40,26 +55,46 @@ export default function CommunityNav() {
     return () => clearInterval(id);
   }, []);
 
+  if (variant === 'subnav') {
+    return (
+      <nav className="comm-subnav" aria-label={t('nav:community.feed')}>
+        {NAV_LINKS.map(({ href, key, countKey }) => {
+          const isActive = href === '/community'
+            ? pathname === '/community'
+            : pathname.startsWith(href);
+          return (
+            <Link key={href} href={href} className={`comm-subnav-link${isActive ? ' active' : ''}`}>
+              {t(`nav:community.${key}`)}
+              {countKey === 'msg' && unreadMsg > 0 && (
+                <span className="comm-subnav-count">{unreadMsg}</span>
+              )}
+            </Link>
+          );
+        })}
+      </nav>
+    );
+  }
+
   return (
     <nav className="comm-nav">
       {/* Logo */}
       <Link href="/community" className="comm-nav-logo">
-        <img src="/images/tbc-logo-1.png" alt="TBC" className="comm-nav-logo-img" />
+        <img src="/images/tbc-logo-1.png" alt={t('common:brand.full')} className="comm-nav-logo-img" />
         <div>
-          <div className="comm-nav-brand-name">TRILLION</div>
-          <div className="comm-nav-brand-sub">Business Community</div>
+          <div className="comm-nav-brand-name">{t('common:brand.name')}</div>
+          <div className="comm-nav-brand-sub">{t('common:brand.subTitle')}</div>
         </div>
       </Link>
 
       {/* Center nav links */}
       <div className="comm-nav-links">
-        {NAV_LINKS.map(({ href, label, countKey }) => {
+        {NAV_LINKS.map(({ href, key, countKey }) => {
           const isActive = href === '/community'
             ? pathname === '/community'
             : pathname.startsWith(href);
           return (
             <Link key={href} href={href} className={`comm-nav-link${isActive ? ' active' : ''}`}>
-              {label}
+              {t(`nav:community.${key}`)}
               {countKey === 'msg' && unreadMsg > 0 && (
                 <span style={{
                   background: 'var(--red)', color: '#fff', borderRadius: '50%',
@@ -75,6 +110,8 @@ export default function CommunityNav() {
 
       {/* Right side */}
       <div className="comm-nav-right">
+        {/* Shared community navigation entry point (§4). */}
+        <LanguageSelector variant="bar" />
         {/* Wallet shortcut (only if user has wallet) */}
         {user?.wallet && (
           <Link href="/dashboard" style={{
@@ -82,7 +119,7 @@ export default function CommunityNav() {
             padding: '5px 10px', border: '1px solid rgba(200,168,75,0.3)',
             borderRadius: 'var(--radius-sm)', whiteSpace: 'nowrap',
           }}>
-            SalBank
+            {t('common:brand.wallet')}
           </Link>
         )}
 
@@ -94,7 +131,9 @@ export default function CommunityNav() {
 
           {menuOpen && (
             <div style={{
-              position: 'absolute', right: 0, top: 44, width: 200,
+              // insetInlineEnd rather than right: the menu hangs off the end of
+              // the avatar in both directions (§10).
+              position: 'absolute', insetInlineEnd: 0, top: 44, width: 200,
               background: '#0e1529', border: '1px solid var(--border)',
               borderRadius: 12, padding: '8px 0', boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
               zIndex: 200,
@@ -102,16 +141,18 @@ export default function CommunityNav() {
               <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)' }}>
                 <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{user?.name}</div>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
-                  Member
+                  {user?.role === 'ADMIN' ? t('common:role.admin') : t('common:role.member')}
                 </div>
               </div>
               {[
-                { label: 'My Profile',  href: '/settings' },
-                { label: 'Settings',    href: '/settings' },
-                ...(user?.wallet ? [{ label: 'Wallet (SalBank)', href: '/dashboard' }] : []),
-                ...(user?.role === 'ADMIN' ? [{ label: 'Admin Panel', href: '/admin' }] : []),
+                { label: t('nav:main.myProfile'),  href: '/settings', id: 'profile' },
+                { label: t('nav:main.settings'),   href: '/settings', id: 'settings' },
+                ...(user?.wallet ? [{ label: t('nav:main.walletShort'), href: '/dashboard', id: 'wallet' }] : []),
+                ...(user?.role === 'ADMIN' ? [{ label: t('nav:main.adminPanel'), href: '/admin', id: 'admin' }] : []),
               ].map(item => (
-                <div key={item.href}
+                // Keyed by `id`, not href: two entries share /settings, and a
+                // translated label is not a stable React key.
+                <div key={item.id}
                   style={{ padding: '9px 16px', fontSize: 13, color: 'var(--text-secondary)',
                            cursor: 'pointer', transition: 'color 0.2s' }}
                   onClick={() => { router.push(item.href); setMenuOpen(false); }}
@@ -126,7 +167,7 @@ export default function CommunityNav() {
                 style={{ padding: '9px 16px', fontSize: 13, color: 'var(--red)', cursor: 'pointer' }}
                 onClick={() => { logout(); setMenuOpen(false); }}
               >
-                Log Out
+                {t('common:action.logOut')}
               </div>
             </div>
           )}

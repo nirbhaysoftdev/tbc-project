@@ -7,12 +7,14 @@
 // jump straight to a card, and clicking a side card brings it to centre.
 
 import { useCallback, useEffect, useState, type CSSProperties } from 'react';
-import { PARTNERS, type PartnerCategory } from '@/lib/landing-data';
+import { PARTNERS, partnerIndustryLabel, type PartnerCategory } from '@/lib/landing-data';
 import { Reveal, SplitWordsInView, useCalm, useMediaQuery } from './motion';
+import { useTranslation } from 'react-i18next';
 
-const CATEGORY_TABS: { key: PartnerCategory | 'all'; label: string }[] = [
-  { key: 'all', label: 'All' },
-
+// Keys only; labels come from landing:partners.* so the tab strip is
+// translatable if more categories are enabled later.
+const CATEGORY_TABS: { key: PartnerCategory | 'all'; labelKey: string }[] = [
+  { key: 'all', labelKey: 'partners.all' },
 ];
 
 const AUTOPLAY_MS = 3400;
@@ -42,6 +44,7 @@ function dotSlots(active: number, total: number) {
 }
 
 export default function Partners() {
+  const { t } = useTranslation('landing');
   const calm = useCalm();
   const compact = useMediaQuery('(max-width: 720px)');
   const [cat, setCat] = useState<PartnerCategory | 'all'>('all');
@@ -49,7 +52,7 @@ export default function Partners() {
   const [paused, setPaused] = useState(false);
 
   const shown = cat === 'all' ? PARTNERS : PARTNERS.filter((p) => p.category === cat);
-  const activeLabel = CATEGORY_TABS.find((c) => c.key === cat)!.label;
+  const activeLabel = t(CATEGORY_TABS.find((c) => c.key === cat)!.labelKey);
   const total = shown.length;
   const active = total > 0 ? ((Math.round(pos) % total) + total) % total : 0;
 
@@ -88,16 +91,16 @@ export default function Partners() {
   return (
     <section id="partners" className="lp-section lp-partners-section lp-partners-light">
       <div className="lp-section-head">
-        <Reveal className="lp-tag">Our Community</Reveal>
+        <Reveal className="lp-tag">{t('partners.tag')}</Reveal>
         <h2 className="lp-section-title">
-          <SplitWordsInView text="Members already inside the community." />
+          <SplitWordsInView text={t('partners.heading')} />
         </h2>
         <Reveal className="lp-section-sub" delay={0.1}>
-          Community members collaborating with each other across the community.
+          {t('partners.sub')}
         </Reveal>
       </div>
 
-      {/* <div className="lp-partner-tabs" role="tablist" aria-label="Partner categories">
+      {/* <div className="lp-partner-tabs" role="tablist" aria-label={t('partners.categoriesAria')}>
         {CATEGORY_TABS.map((c) => (
           <button
             key={c.key}
@@ -129,7 +132,7 @@ export default function Partners() {
               <button
                 type="button"
                 className="lp-cf-arrow lp-cf-arrow-prev"
-                aria-label="Previous partner"
+                aria-label={t('partners.prev')}
                 onClick={() => go(active - 1)}
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -159,12 +162,16 @@ export default function Partners() {
                     className={`lp-cf-card ${isOn ? 'is-on' : ''}`}
                     style={style}
                     onClick={() => go(i)}
-                    aria-label={p.name ?? 'Community partner'}
+                    aria-label={p.name ?? t('partners.fallbackName')}
                     aria-current={isOn}
                     tabIndex={dist > 1 ? -1 : 0}
                   >
-                    <img src={p.src} alt={p.name ?? 'Community partner'} loading="lazy" />
-                    {p.industry && <span className="lp-cf-card-industry">{p.industry}</span>}
+                    <img src={p.src} alt={p.name ?? t('partners.fallbackName')} loading="lazy" />
+                    {/* The partner's NAME is a proper noun and stays as stored;
+                        the industry LABEL is translated. */}
+                    {p.industry && (
+                      <span className="lp-cf-card-industry">{partnerIndustryLabel(t, p.industry)}</span>
+                    )}
                   </button>
                 );
               })}
@@ -174,7 +181,7 @@ export default function Partners() {
               <button
                 type="button"
                 className="lp-cf-arrow lp-cf-arrow-next"
-                aria-label="Next partner"
+                aria-label={t('partners.next')}
                 onClick={() => go(active + 1)}
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -185,7 +192,7 @@ export default function Partners() {
           </div>
 
           {total > 1 && (
-            <div className="lp-cf-dots" role="tablist" aria-label="Partner slides">
+            <div className="lp-cf-dots" role="tablist" aria-label={t('aria.partnerSlides')}>
               {dotSlots(active, total).map((s, idx) => (
                 <button
                   key={idx}

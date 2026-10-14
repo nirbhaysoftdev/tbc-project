@@ -5,12 +5,14 @@
 // ledger of investments (capital) and profit records, and the entry point
 // into the new Investment/Profit wizard.
 import { useEffect, useState } from 'react';
-import { investmentAPI, formatEur } from '@/lib/api';
+import { investmentAPI, formatEur, formatDate, formatNumber } from '@/lib/api';
 import InvestmentWizard from './InvestmentWizard';
+import { useTranslation } from 'react-i18next';
 
 interface Member { id: string; name: string; email: string; }
 
 export default function InvestmentsTab({ members }: { members: Member[] }) {
+  const { t } = useTranslation(['admin', 'common']);
   const [projects, setProjects] = useState<any[]>([]);
   const [investments, setInvestments] = useState<any[]>([]);
   const [profitRecords, setProfitRecords] = useState<any[]>([]);
@@ -68,7 +70,9 @@ export default function InvestmentsTab({ members }: { members: Member[] }) {
             }}>
             <p className="admin-stat-label">{p.name}</p>
             <p className="admin-stat-value">{formatEur(p.totalCapital || 0)}</p>
-            <p style={{ fontSize:11, color:'var(--text-muted)', marginTop:4 }}>{p.investorCount || 0} investor{p.investorCount === 1 ? '' : 's'}</p>
+            <p style={{ fontSize:11, color:'var(--text-muted)', marginTop:4 }}>
+              {t('admin:investments.investorsCount', { count: p.investorCount || 0 })}
+            </p>
           </button>
         ))}
       </div>
@@ -77,7 +81,7 @@ export default function InvestmentsTab({ members }: { members: Member[] }) {
         <div style={{ marginBottom:12 }}>
           <button className="btn-secondary" style={{ width:'auto', padding:'6px 14px', fontSize:12 }}
             onClick={() => setProjectFilter('')}>
-            × Clear project filter
+            {t('admin:investments.clearProjectFilter')}
           </button>
         </div>
       )}
@@ -92,7 +96,7 @@ export default function InvestmentsTab({ members }: { members: Member[] }) {
               background: view === v ? 'rgba(58,111,255,0.1)' : 'transparent',
               color: view === v ? 'var(--accent-blue)' : 'var(--text-secondary)',
             }}>
-            {v === 'investments' ? 'Investments (Capital)' : 'Profit Records'}
+            {v === 'investments' ? t('admin:investments.viewInvestments') : t('admin:investments.viewProfit')}
           </button>
         ))}
       </div>
@@ -102,28 +106,37 @@ export default function InvestmentsTab({ members }: { members: Member[] }) {
           <table className="tx-table">
             <thead>
               <tr>
-                <th>User</th><th>Project</th><th>Amount</th><th>Invested Date</th><th>Status</th>
+                <th>{t('admin:investments.cols.user')}</th>
+                <th>{t('admin:investments.cols.project')}</th>
+                <th>{t('admin:investments.cols.amount')}</th>
+                <th>{t('admin:investments.cols.investedDate')}</th>
+                <th>{t('admin:investments.cols.status')}</th>
               </tr>
             </thead>
             <tbody>
               {investments.length === 0 ? (
                 <tr><td colSpan={5} style={{ textAlign:'center', padding:32, color:'var(--text-muted)' }}>
-                  {loading ? 'Loading…' : 'No investments recorded yet.'}
+                  {loading ? t('common:state.loading') : t('admin:investments.noneRecorded')}
                 </td></tr>
               ) : investments.map((inv: any) => (
                 <tr key={inv.id}>
                   <td style={{ fontWeight:600, color:'var(--text-primary)' }}>{inv.user?.name}</td>
-                  <td>{inv.project?.title || <span style={{ color:'var(--text-muted)' }}>No project</span>}</td>
-                  <td>
+                  {/* The project TITLE arrives already localised from the API. */}
+                  <td>{inv.project?.title || <span style={{ color:'var(--text-muted)' }}>{t('admin:investments.noProject')}</span>}</td>
+                  <td className="ltr-embed">
                     {formatEur(inv.amount)}
                     {inv.returnedAmount > 0 && (
                       <span style={{ fontSize:11, color:'var(--text-muted)', display:'block' }}>
-                        {formatEur(inv.returnedAmount)} returned
+                        {t('admin:investments.returnedAmount', { amount: formatEur(inv.returnedAmount) })}
                       </span>
                     )}
                   </td>
-                  <td style={{ color:'var(--text-muted)', fontSize:12 }}>{new Date(inv.investedAt).toLocaleDateString()}</td>
-                  <td><span className={`badge ${statusBadgeClass(inv.status)}`}>{inv.status}</span></td>
+                  <td style={{ color:'var(--text-muted)', fontSize:12 }}>{formatDate(inv.investedAt)}</td>
+                  <td>
+                    <span className={`badge ${statusBadgeClass(inv.status)}`}>
+                      {t(`common:status.${inv.status.toLowerCase()}`, { defaultValue: inv.status })}
+                    </span>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -136,28 +149,35 @@ export default function InvestmentsTab({ members }: { members: Member[] }) {
           <table className="tx-table">
             <thead>
               <tr>
-                <th>User</th><th>Project</th><th>Type</th><th>Period</th><th>Rate</th><th>Capital Used</th><th>Amount</th><th>Generated</th>
+                <th>{t('admin:investments.cols.user')}</th>
+                <th>{t('admin:investments.cols.project')}</th>
+                <th>{t('admin:investments.cols.type')}</th>
+                <th>{t('admin:investments.cols.period')}</th>
+                <th>{t('admin:investments.cols.rate')}</th>
+                <th>{t('admin:investments.cols.capitalUsed')}</th>
+                <th>{t('admin:investments.cols.amount')}</th>
+                <th>{t('admin:investments.cols.generated')}</th>
               </tr>
             </thead>
             <tbody>
               {profitRecords.length === 0 ? (
                 <tr><td colSpan={8} style={{ textAlign:'center', padding:32, color:'var(--text-muted)' }}>
-                  {loading ? 'Loading…' : 'No profit records yet.'}
+                  {loading ? t('common:state.loading') : t('admin:investments.noProfitRecords')}
                 </td></tr>
               ) : profitRecords.map((rec: any) => (
                 <tr key={rec.id}>
                   <td style={{ fontWeight:600, color:'var(--text-primary)' }}>{rec.user?.name}</td>
-                  <td>{rec.project?.title || <span style={{ color:'var(--text-muted)' }}>No project</span>}</td>
+                  <td>{rec.project?.title || <span style={{ color:'var(--text-muted)' }}>{t('admin:investments.noProject')}</span>}</td>
                   <td>
                     <span className={`badge ${rec.type === 'MONTHLY' ? 'badge-pending' : 'badge-completed'}`}>
-                      {rec.type === 'MONTHLY' ? 'Monthly' : 'One-Time'}
+                      {rec.type === 'MONTHLY' ? t('admin:investments.typeMonthly') : t('admin:investments.typeOneTime')}
                     </span>
                   </td>
                   <td style={{ fontSize:12, color:'var(--text-muted)' }}>{rec.period.startsWith('ONE_TIME') ? '-' : rec.period}</td>
-                  <td>{rec.rate != null ? `${rec.rate}%` : '-'}</td>
-                  <td>{formatEur(rec.capitalSnapshot)}</td>
-                  <td className="amount-credit">+{formatEur(rec.amount)}</td>
-                  <td style={{ color:'var(--text-muted)', fontSize:12 }}>{new Date(rec.generatedAt).toLocaleDateString()}</td>
+                  <td className="ltr-embed">{rec.rate != null ? `${formatNumber(rec.rate)}%` : '-'}</td>
+                  <td className="ltr-embed">{formatEur(rec.capitalSnapshot)}</td>
+                  <td className="amount-credit ltr-embed">+{formatEur(rec.amount)}</td>
+                  <td style={{ color:'var(--text-muted)', fontSize:12 }}>{formatDate(rec.generatedAt)}</td>
                 </tr>
               ))}
             </tbody>

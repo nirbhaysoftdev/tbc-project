@@ -92,12 +92,17 @@ function getTransport() {
 
 // Every outbound email funnels through here, so this is also where the
 // activity feed records it - both the sends and the failures.
-async function sendMail({ to, subject, html, text, attachments = [] }) {
+async function sendMail({ to, subject, html, text, replyTo, attachments = [] }) {
   const from = `"${process.env.SMTP_FROM_NAME || 'TBC'}" <${process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER}>`;
   const recipients = Array.isArray(to) ? to.join(', ') : to;
   try {
     const info = await getTransport().sendMail({
       from, to, subject, html, text,
+      // `from` always stays the portal address - sending as a member would be
+      // a spoofed sender and would fail SPF/DMARC at the recipient. `replyTo`
+      // is how a reply reaches the member instead. Omitted entirely when not
+      // given, so every existing caller is unaffected.
+      ...(replyTo ? { replyTo } : {}),
       attachments: [...logoAttachment(), ...attachments],
     });
     logActivity({
@@ -947,8 +952,226 @@ async function sendMemberStatementEmail({ overview, note }) {
   });
 }
 
+
+// ── Connect Now / Enquire Now ──────────────────
+// A member's enquiry about a project or a company, delivered to the recipient
+// configured for that target (or DEFAULT_ENQUIRY_EMAIL).
+//
+// Everything interpolated below comes from a member - their name, their email
+// and their free-text message - and lands in an HTML document, so every value
+// is escaped. The backend already length-caps and strips markup from the
+// message (enquiryController); this is the second half of that, because "it
+// was sanitised upstream" is not something an email template should assume.
+function escapeHtml(value) {
+  return String(value === null || value === undefined ? '' : value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function enquiryEmailHtml({ memberName, memberEmail, subjectName, kindLabel, message, submittedAt }) {
+  const name  = escapeHtml(memberName);
+  const email = escapeHtml(memberEmail);
+  const target = escapeHtml(subjectName);
+
+  const body = `
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
+      ${detailRow('Member', name)}
+      ${detailRow('Email', `<a href="mailto:${email}" style="color:#c8a84b;text-decoration:none;">${email}</a>`)}
+      ${detailRow(kindLabel, target)}
+      ${detailRow('Submitted', escapeHtml(submittedAt))}
+    </table>
+
+    <div style="margin-top:22px;padding:16px 18px;border-radius:12px;background:rgba(58,111,255,0.08);border:1px solid rgba(58,111,255,0.22);">
+      <div style="font-size:11px;letter-spacing:1.5px;color:#7a819a;font-weight:600;margin-bottom:8px;">MESSAGE</div>
+      <div style="font-size:14px;line-height:1.7;color:#e6e8ee;white-space:pre-wrap;">${escapeHtml(message)}</div>
+    </div>`;
+
+  return shell({
+    title: 'New connection enquiry',
+    intro: `<strong style="color:#e6e8ee;">${name}</strong> (${email}) is interested in connecting regarding `
+         + `<strong style="color:#c8a84b;">${target}</strong>.`,
+    bodyHtml: body,
+    footerNote: 'Reply directly to this email to reach the member — their address is set as the reply-to.',
+  });
+}
+
+/**
+ * Deliver one enquiry.
+ *
+ * `replyTo` is the member, so whoever handles the enquiry can simply hit reply.
+ * The `from` stays the portal address: sending as the member would be a
+ * spoofed sender and would fail SPF/DMARC at the recipient.
+ *
+ * Throws on failure. The caller records the outcome on the enquiry row rather
+ * than swallowing it here, so a failed delivery is visible in the database.
+ */
+async function sendEnquiryEmail({ to, member, subjectName, kind, message, submittedAt }) {
+  const kindLabel = kind === 'COMPANY' ? 'Company' : 'Project';
+  const when = submittedAt instanceof Date ? submittedAt : new Date(submittedAt || Date.now());
+  const whenText = when.toUTCString();
+
+  return sendMail({
+    to,
+    subject: `New Connection Enquiry \u2014 ${subjectName}`,
+    replyTo: member.email,
+    html: enquiryEmailHtml({
+      memberName:  member.name,
+      memberEmail: member.email,
+      subjectName,
+      kindLabel,
+      message,
+      submittedAt: whenText,
+    }),
+    // A plain-text alternative, for clients that will not render HTML.
+    text: [
+      `${member.name} (${member.email}) is interested in connecting regarding ${subjectName}.`,
+      '',
+      `${kindLabel}: ${subjectName}`,
+      `Member:  ${member.name}`,
+      `Email:   ${member.email}`,
+      `Sent:    ${whenText}`,
+      '',
+      'Message:',
+      message,
+      '',
+      '— Trillion Business Community',
+    ].join('\n'),
+  });
+}
+
+
+// ── Enquiry recipient hand-over ────────────────
+// When an admin changes the portal-wide enquiry recipients, both ends are told:
+// an address that has been dropped learns it will stop receiving enquiries, and
+// a newly added one learns it has started. Without the first of those, a mailbox
+// simply goes quiet and nobody notices for weeks that enquiries moved.
+//
+// Addresses that appear in both the old and the new list are left alone —
+// nothing changed for them, and a notification would be noise.
+//
+// Each message is sent independently. One failing must not stop the others, and
+// none of them must fail the save: the setting is already stored by the time
+// these go out.
+
+/** "a@x.com, b@x.com", or "none" when the list is empty. */
+const listForDisplay = (emails) =>
+  (emails && emails.length > 0 ? emails.join(', ') : 'none');
+
+function recipientRemovedHtml({ currentEmails, actorName, changedAt }) {
+  const body = `
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
+      ${detailRow('Changed by', escapeHtml(actorName || 'An administrator'))}
+      ${detailRow('Changed on', escapeHtml(changedAt))}
+      ${detailRow('Now delivered to', escapeHtml(listForDisplay(currentEmails)))}
+    </table>
+    <div style="margin-top:20px;font-size:13px;color:#7a819a;line-height:1.7;">
+      No action is needed. Enquiries already sent to this address are unaffected —
+      only new ones are redirected.
+    </div>`;
+
+  return shell({
+    title: 'This address no longer receives enquiries',
+    intro: 'This mailbox has been removed as a recipient for project and company '
+         + 'enquiries from the TBC portal.',
+    bodyHtml: body,
+    footerNote: 'If you did not expect this change, contact your portal administrator.',
+  });
+}
+
+function recipientAddedHtml({ currentEmails, actorName, changedAt }) {
+  // Only worth mentioning the others when there ARE others.
+  const others = (currentEmails || []).length > 1
+    ? detailRow('All recipients', escapeHtml(listForDisplay(currentEmails)))
+    : '';
+
+  const body = `
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
+      ${detailRow('Changed by', escapeHtml(actorName || 'An administrator'))}
+      ${detailRow('Changed on', escapeHtml(changedAt))}
+      ${others}
+    </table>
+    <div style="margin-top:20px;font-size:13px;color:#7a819a;line-height:1.7;">
+      Every "Connect Now" and "Enquire Now" message a member sends about any project or
+      company now arrives here. Each one carries the member's name and email as the
+      reply-to, so you can answer by replying.
+    </div>`;
+
+  return shell({
+    title: 'This address now receives enquiries',
+    intro: 'This mailbox has been set as a recipient for all project and company '
+         + 'enquiries from the TBC portal.',
+    bodyHtml: body,
+    footerNote: 'If you did not expect this change, contact your portal administrator.',
+  });
+}
+
+/**
+ * Notify the addresses affected by a recipient change.
+ *
+ * Never throws: the setting is saved before this runs, and an admin's change
+ * must not appear to fail because a notification could not be delivered. The
+ * counts are returned so the caller can report what actually happened.
+ */
+async function sendEnquiryRecipientChangedEmails({ added = [], removed = [], currentEmails = [], actorName }) {
+  const changedAt = new Date().toUTCString();
+  const results = { notifiedAdded: [], notifiedRemoved: [], failed: [] };
+
+  for (const email of removed) {
+    try {
+      await sendMail({
+        to: email,
+        subject: 'TBC portal \u2014 this address no longer receives enquiries',
+        html: recipientRemovedHtml({ currentEmails, actorName, changedAt }),
+        text: [
+          'This address has been removed as a recipient for project and company',
+          'enquiries from the TBC portal.',
+          '',
+          `Now delivered to: ${listForDisplay(currentEmails)}`,
+          `Changed by:       ${actorName || 'An administrator'}`,
+          `Changed on:       ${changedAt}`,
+          '',
+          'Enquiries already sent here are unaffected; only new ones are redirected.',
+        ].join('\n'),
+      });
+      results.notifiedRemoved.push(email);
+    } catch (err) {
+      console.error('could not notify removed enquiry recipient', email, err.message);
+      results.failed.push(email);
+    }
+  }
+
+  for (const email of added) {
+    try {
+      await sendMail({
+        to: email,
+        subject: 'TBC portal \u2014 this address now receives enquiries',
+        html: recipientAddedHtml({ currentEmails, actorName, changedAt }),
+        text: [
+          'This address is now a recipient for all project and company enquiries',
+          'from the TBC portal.',
+          '',
+          currentEmails.length > 1 ? `All recipients: ${listForDisplay(currentEmails)}` : '',
+          `Changed by: ${actorName || 'An administrator'}`,
+          `Changed on: ${changedAt}`,
+        ].filter(Boolean).join('\n'),
+      });
+      results.notifiedAdded.push(email);
+    } catch (err) {
+      console.error('could not notify new enquiry recipient', email, err.message);
+      results.failed.push(email);
+    }
+  }
+
+  return results;
+}
+
 module.exports = {
   sendMail,
+  sendEnquiryEmail,
+  sendEnquiryRecipientChangedEmails,
   sendOtpEmail,
   sendWelcomePendingEmail,
   sendAccountApprovedEmail,

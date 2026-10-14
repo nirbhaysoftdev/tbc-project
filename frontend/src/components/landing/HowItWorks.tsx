@@ -6,12 +6,15 @@
 // animate in, and the spine fills behind it. The rail is also a control -
 // each marker jumps to its step.
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, useMemo} from 'react';
 import { motion, useInView } from 'motion/react';
-import { FLOW } from '@/lib/landing-data';
+import { getFlow, type FlowStep } from '@/lib/landing-data';
 import { EASE, Reveal, SplitWordsInView, enterInView, useCalm } from './motion';
+import { useTranslation } from 'react-i18next';
 
 export default function HowItWorks() {
+  const { t } = useTranslation('landing');
+  const FLOW = useMemo(() => getFlow(t), [t]);
   const calm = useCalm();
   const [active, setActive] = useState(0);
   const stepRefs = useRef<(HTMLElement | null)[]>([]);
@@ -28,9 +31,9 @@ export default function HowItWorks() {
   return (
     <section id="how-it-works" className="lp-section lp-flow-section">
       <div className="lp-section-head">
-        <Reveal className="lp-tag">How it works</Reveal>
+        <Reveal className="lp-tag">{t('tag.howItWorks')}</Reveal>
         <h2 className="lp-section-title">
-          <SplitWordsInView text="One opportunity, five moves." />
+          <SplitWordsInView text={t('flow.heading')} />
         </h2>
         <Reveal className="lp-section-sub" delay={0.1}>
           This is the loop the community runs on. It starts with one member noticing something.
@@ -39,7 +42,7 @@ export default function HowItWorks() {
 
       <div className="lp-flow">
         {/* Rail */}
-        <nav className="lp-flow-rail" aria-label="Steps">
+        <nav className="lp-flow-rail" aria-label={t('aria.steps')}>
           <span className="lp-flow-rail-line" aria-hidden />
           <motion.span
             className="lp-flow-rail-fill"
@@ -65,7 +68,7 @@ export default function HowItWorks() {
         <div className="lp-flow-steps">
           {FLOW.map((s, i) => (
             <FlowStep
-              key={s.key}
+              total={FLOW.length} key={s.key}
               step={s}
               index={i}
               isActive={i === active}
@@ -85,13 +88,17 @@ export default function HowItWorks() {
 function FlowStep({
   step,
   index,
+  total,
   isActive,
   calm,
   onEnter,
   register,
 }: {
-  step: (typeof FLOW)[number];
+  step: FlowStep;
   index: number;
+  /** Passed in rather than read from a module constant, which no longer
+      exists: the step list is built per-language inside the parent. */
+  total: number;
   isActive: boolean;
   calm: boolean;
   onEnter: (index: number) => void;
@@ -149,7 +156,7 @@ function FlowStep({
         ))}
       </ul>
 
-      {index < FLOW.length - 1 && (
+      {index < total - 1 && (
         <span className="lp-flow-step-arrow" aria-hidden>
           ↓
         </span>

@@ -1,0 +1,47 @@
+{
+  "required": "This field is required",
+  "requiredNamed": "{{field}} is required",
+  "email": "Enter a valid email address",
+  "emailTaken": "An account with this email already exists",
+  "password": {
+    "tooShort": "Password must be at least {{count}} characters",
+    "mismatch": "Passwords do not match",
+    "incorrect": "Current password is incorrect",
+    "min6": "Min 6 characters",
+    "min8": "Min 8 characters"
+  },
+  "number": {
+    "invalid": "Enter a valid number",
+    "positive": "Enter an amount greater than zero",
+    "min": "Minimum is {{min}}",
+    "max": "Maximum is {{max}}",
+    "insufficient": "Amount exceeds the available balance"
+  },
+  "file": {
+    "tooLarge": "File is larger than {{size}}",
+    "wrongType": "That file type is not accepted",
+    "requiredNamed": "Please attach {{field}}",
+    "selected": "{{name}} selected"
+  },
+  "otp": {
+    "required": "Enter the 6-digit code",
+    "invalid": "That code is not valid",
+    "expired": "That code has expired. Request a new one.",
+    "sent": "We sent a code to {{email}}",
+    "resent": "A new code is on its way"
+  },
+  "date": {
+    "invalid": "Enter a valid date",
+    "future": "Choose a date in the future",
+    "past": "Choose a date in the past"
+  },
+  "api": {
+    "generic": "Something went wrong. Please try again.",
+    "network": "Cannot reach the server. Check your connection and try again.",
+    "unauthorized": "Your session has expired. Please sign in again.",
+    "forbidden": "You do not have access to this.",
+    "notFound": "That could not be found.",
+    "rateLimited": "Too many requests. Please wait a moment and try again.",
+    "server": "The server ran into a problem. Please try again shortly."
+  }
+}

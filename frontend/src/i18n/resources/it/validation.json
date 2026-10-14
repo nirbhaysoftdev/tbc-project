@@ -1,0 +1,47 @@
+{
+  "required": "Questo campo è obbligatorio",
+  "requiredNamed": "{{field}} è obbligatorio",
+  "email": "Inserisci un indirizzo email valido",
+  "emailTaken": "Esiste già un account con questa email",
+  "password": {
+    "tooShort": "La password deve contenere almeno {{count}} caratteri",
+    "mismatch": "Le password non corrispondono",
+    "incorrect": "La password attuale non è corretta",
+    "min6": "Almeno 6 caratteri",
+    "min8": "Almeno 8 caratteri"
+  },
+  "number": {
+    "invalid": "Inserisci un numero valido",
+    "positive": "Inserisci un importo maggiore di zero",
+    "min": "Il minimo è {{min}}",
+    "max": "Il massimo è {{max}}",
+    "insufficient": "L'importo supera il saldo disponibile"
+  },
+  "file": {
+    "tooLarge": "Il file supera {{size}}",
+    "wrongType": "Questo tipo di file non è accettato",
+    "requiredNamed": "Allega {{field}}",
+    "selected": "{{name}} selezionato"
+  },
+  "otp": {
+    "required": "Inserisci il codice a 6 cifre",
+    "invalid": "Questo codice non è valido",
+    "expired": "Questo codice è scaduto. Richiedine uno nuovo.",
+    "sent": "Abbiamo inviato un codice a {{email}}",
+    "resent": "Un nuovo codice è in arrivo"
+  },
+  "date": {
+    "invalid": "Inserisci una data valida",
+    "future": "Scegli una data futura",
+    "past": "Scegli una data passata"
+  },
+  "api": {
+    "generic": "Si è verificato un problema. Riprova.",
+    "network": "Server non raggiungibile. Controlla la connessione e riprova.",
+    "unauthorized": "La sessione è scaduta. Accedi di nuovo.",
+    "forbidden": "Non hai accesso a questa risorsa.",
+    "notFound": "Elemento non trovato.",
+    "rateLimited": "Troppe richieste. Attendi un momento e riprova.",
+    "server": "Il server ha riscontrato un problema. Riprova tra poco."
+  }
+}

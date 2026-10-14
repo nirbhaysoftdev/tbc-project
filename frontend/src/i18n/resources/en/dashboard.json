@@ -1,0 +1,141 @@
+{
+  "welcome": "Welcome back, {{name}}!",
+  "memberFallback": "Member",
+  "balance": {
+    "label": "Your Balance",
+    "investedCapital": "Invested Capital",
+    "availableProfit": "Available Profit",
+    "pendingWithdrawal": "Pending Withdrawal",
+    "withdrawnProfit": "Withdrawn Profit",
+    "placeholder": "€ –"
+  },
+  "periods": {
+    "1M": "1M",
+    "3M": "3M",
+    "6M": "6M",
+    "1Y": "1Y",
+    "All": "All"
+  },
+  "byProject": {
+    "title": "Your Investments by Project",
+    "note": "Invested capital is not withdrawable; only profit is.",
+    "project": "Project",
+    "capital": "Capital",
+    "profit": "Profit",
+    "noProject": "Unassigned capital"
+  },
+  "recent": {
+    "title": "Recent Transactions",
+    "viewAll": "View all →"
+  },
+  "withdraw": {
+    "cta": "Withdraw Funds",
+    "title": "Withdraw Profit",
+    "available": "Available profit: {{amount}}",
+    "amountLabel": "AMOUNT (€)",
+    "reasonLabel": "REASON",
+    "submit": "Submit Request",
+    "success": "Your withdrawal request has been submitted for review.",
+    "failed": "Could not submit the withdrawal request.",
+    "exceedsBalance": "Amount exceeds your available profit.",
+    "availableProfit": "Available Profit:",
+    "firstNameLabel": "FIRST NAME",
+    "lastNameLabel": "LAST NAME",
+    "companyNameLabel": "COMPANY NAME",
+    "bankNameLabel": "BANK NAME",
+    "swiftLabel": "SWIFT NUMBER",
+    "ibanLabel": "IBAN",
+    "addressLabel": "ADDRESS",
+    "availableProfitLabel": "AVAILABLE PROFIT",
+    "exceeds": "Exceeds available profit",
+    "amountPositive": "Amount must be greater than 0.",
+    "submissionFailed": "Submission failed."
+  },
+  "transactions": {
+    "title": "Transactions",
+    "allCategories": "All Categories",
+    "allTypes": "All Types",
+    "allStatus": "All Status",
+    "fromDate": "From date",
+    "toDate": "To date",
+    "columns": {
+      "date": "Date",
+      "member": "Member",
+      "type": "Type",
+      "description": "Description",
+      "amount": "Amount",
+      "status": "Status",
+      "balance": "Balance",
+      "reference": "Reference"
+    },
+    "empty": "No transactions yet",
+    "emptyFiltered": "No transactions match these filters.",
+    "category": {
+      "INVESTMENT": "Investment",
+      "WITHDRAWAL": "Withdrawal",
+      "PROFIT": "Profit",
+      "PROFIT_ADJUSTMENT": "Profit adjustment",
+      "CAPITAL_RETURN": "Capital return",
+      "ADMIN_CREDIT": "Admin credit",
+      "ADMIN_DEBIT": "Admin debit"
+    },
+    "type": {
+      "CREDIT": "Credit",
+      "DEBIT": "Debit"
+    },
+    "txStatus": {
+      "COMPLETED": "Completed",
+      "PENDING": "Pending",
+      "FAILED": "Failed"
+    },
+    "pageTitle": "Transaction History",
+    "csv": "CSV",
+    "pdf": "PDF",
+    "none": "No transactions found."
+  },
+  "portfolio": {
+    "title": "Portfolio",
+    "investment": "Investment",
+    "profit": "Profit",
+    "totalBalance": "Total Balance",
+    "analyticsTitle": "Detailed Portfolio Analytics",
+    "analyticsNote": "Donut chart (capital allocation) and monthly profit bar chart coming in Phase 2."
+  },
+  "cards": {
+    "title": "Cards",
+    "cardTitle": "TBC Platinum Debit Card",
+    "cardStatus": "Card Status",
+    "cardType": "Card Type",
+    "cardNumber": "Card Number",
+    "network": "Network",
+    "contactless": "Contactless",
+    "typeValue": "Debit – Mastercard",
+    "networkValue": "Mastercard International",
+    "enabled": "Enabled",
+    "benefitsTitle": "Mastercard Benefits",
+    "benefits": {
+      "priorityPass": "Priority Pass Membership",
+      "concierge": "24/7 Concierge Assistance",
+      "rewards": "Exclusive Rewards and Perks"
+    },
+    "applePay": "Pay",
+    "pageTitle": "My Cards",
+    "statusActive": "Active",
+    "cvv": "CVV",
+    "flipBack": "Click to flip back",
+    "flipHint": "Click to flip • Swipe on mobile"
+  },
+  "settings": {
+    "title": "Settings",
+    "profilePhoto": "PROFILE PHOTO",
+    "displayName": "DISPLAY NAME",
+    "changePassword": "Change Password",
+    "currentPassword": "CURRENT PASSWORD",
+    "newPassword": "NEW PASSWORD",
+    "keepUnchanged": "Leave blank to keep unchanged",
+    "languageSection": "Language",
+    "languageHint": "Choose the language for the interface. Your choice is saved to your profile and follows you to other devices.",
+    "updated": "Profile updated successfully.",
+    "updateFailed": "Update failed."
+  }
+}

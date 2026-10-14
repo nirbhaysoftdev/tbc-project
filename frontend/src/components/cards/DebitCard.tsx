@@ -1,6 +1,7 @@
 'use client';
 // src/components/cards/DebitCard.tsx
 import { useState, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface Props {
   name:    string;
@@ -8,6 +9,7 @@ interface Props {
 }
 
 export default function DebitCard({ name, number = '**** **** **** 3456' }: Props) {
+  const { t } = useTranslation('dashboard');
   const [flipped, setFlipped]   = useState(false);
   const [rotation, setRotation] = useState({ x: 0, y: 0 });
   const cardRef                 = useRef<HTMLDivElement>(null);
@@ -168,7 +170,7 @@ export default function DebitCard({ name, number = '**** **** **** 3456' }: Prop
                   background: '#fff', borderRadius: 4,
                   padding: '4px 10px', textAlign: 'center', minWidth: 48,
                 }}>
-                  <div style={{ fontSize: 7, color: '#aaa', letterSpacing: 1 }}>CVV</div>
+                  <div style={{ fontSize: 7, color: '#aaa', letterSpacing: 1 }}>{t('cards.cvv')}</div>
                   <div style={{ fontSize: 15, fontWeight: 700, color: '#111', fontFamily: 'monospace' }}>
                     ***
                   </div>
@@ -204,7 +206,7 @@ export default function DebitCard({ name, number = '**** **** **** 3456' }: Prop
 
       {/* Hint */}
       <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 12, textAlign: 'center' }}>
-        {flipped ? 'Click to flip back' : 'Click to flip • Swipe on mobile'}
+        {flipped ? t('cards.flipBack') : t('cards.flipHint')}
       </p>
 
       <style>{`

@@ -5,15 +5,18 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { Trans, useTranslation } from 'react-i18next';
 import { authAPI } from '@/lib/api';
 import { COUNTRIES, DEFAULT_COUNTRY } from '@/lib/countries';
 import { useGoogleSignIn } from '@/lib/useGoogleSignIn';
 import { useAuth } from '@/lib/auth';
+import LanguageSelector from '@/components/i18n/LanguageSelector';
 
 type MemberType = 'COMPANY' | 'PERSONAL';
 type Step = 'basics' | 'details' | 'otp' | 'done';
 
 export default function RegisterPage() {
+  const { t } = useTranslation(['auth', 'common']);
   const router = useRouter();
   const { applyToken } = useAuth();
 
@@ -64,7 +67,7 @@ export default function RegisterPage() {
       if (needsAccountType) router.push('/onboarding/profile');
       else router.push('/community');
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Google sign-in failed');
+      setError(err.response?.data?.error || t('auth:google.failed'));
     } finally {
       setLoading(false);
     }
@@ -80,23 +83,26 @@ export default function RegisterPage() {
   }, [resendIn]);
 
   // ── Validation (mirrors admin Add Member rules) ──
+  // Validation messages are translated at the point of display, not stored
+  // translated, so switching language mid-form re-renders the current error in
+  // the new language on the next validation pass.
   const validateBasics = () => {
-    if (!/^\S+@\S+\.\S+$/.test(email)) return 'Enter a valid email';
-    if (!mobile.trim() || mobile.replace(/\D/g, '').length < 6) return 'Enter a valid mobile number';
-    if (password.length < 8) return 'Password must be at least 8 characters';
-    if (password !== confirm) return 'Passwords do not match';
+    if (!/^\S+@\S+\.\S+$/.test(email)) return t('auth:register.errors.email');
+    if (!mobile.trim() || mobile.replace(/\D/g, '').length < 6) return t('auth:register.errors.mobile');
+    if (password.length < 8) return t('auth:register.errors.passwordLength');
+    if (password !== confirm) return t('auth:register.errors.passwordMismatch');
     return null;
   };
 
   const validateDetails = () => {
-    if (!city.trim())    return 'City is required';
-    if (!country.trim()) return 'Country is required';
+    if (!city.trim())    return t('auth:register.errors.city');
+    if (!country.trim()) return t('auth:register.errors.country');
     if (memberType === 'COMPANY') {
-      if (!companyName.trim()) return 'Company name is required';
-      if (!tradeLicenseFile)   return 'Company trade licence / registration certificate is required';
+      if (!companyName.trim()) return t('auth:register.errors.companyName');
+      if (!tradeLicenseFile)   return t('auth:register.errors.tradeLicense');
     } else {
-      if (!fullName.trim())  return 'Full name is required';
-      if (!residentIdFile)   return 'Resident ID card is required';
+      if (!fullName.trim())  return t('auth:register.errors.fullName');
+      if (!residentIdFile)   return t('auth:register.errors.residentId');
     }
     return null;
   };
@@ -124,9 +130,9 @@ export default function RegisterPage() {
       setVerifiedEmail('');
       setResendIn(60);
       setStep('otp');
-      setInfo(`We sent a 6-digit code to ${email}`);
+      setInfo(t('auth:register.codeSent', { email }));
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Could not send verification code');
+      setError(err.response?.data?.error || t('auth:register.couldNotSendCode'));
     } finally {
       setLoading(false);
     }
@@ -168,7 +174,7 @@ export default function RegisterPage() {
     setError('');
     const normEmail = email.trim().toLowerCase();
     const code = otpDigits.join('');
-    if (code.length !== 6) return setError('Enter the 6-digit code');
+    if (code.length !== 6) return setError(t('auth:register.errors.code'));
 
     setLoading(true);
     if (verifiedEmail !== normEmail) {
@@ -177,7 +183,7 @@ export default function RegisterPage() {
         setVerifiedEmail(normEmail);
       } catch (err: any) {
         setLoading(false);
-        return setError(err.response?.data?.error || 'Invalid code');
+        return setError(err.response?.data?.error || t('auth:register.invalidCode'));
       }
     }
 
@@ -205,7 +211,7 @@ export default function RegisterPage() {
       await authAPI.register(fd);
       setStep('done');
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Registration failed');
+      setError(err.response?.data?.error || t('auth:register.failed'));
     } finally {
       setLoading(false);
     }
@@ -222,18 +228,24 @@ export default function RegisterPage() {
   return (
     <div className="comm-register-page">
       <div className="comm-register-card comm-register-card-wide">
+        {/* Registration is a public entry point, so it carries its own
+            selector (§4). */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <LanguageSelector variant="panel" />
+        </div>
+
         <div className="comm-register-logo">
-          <img src="/images/tbc-logo-1.png" alt="TBC" />
-          <div className="comm-register-brand">TRILLION</div>
-          <div className="comm-register-sub">Business Community</div>
+          <img src="/images/tbc-logo-1.png" alt={t('common:brand.full')} />
+          <div className="comm-register-brand">{t('common:brand.name')}</div>
+          <div className="comm-register-sub">{t('common:brand.subTitle')}</div>
         </div>
 
         {step !== 'done' && <StepIndicator step={step} />}
 
         {step === 'basics' && (
           <>
-            <h1 className="comm-register-title">Join the Community</h1>
-            <p className="comm-register-desc">Create your member account to access the community.</p>
+            <h1 className="comm-register-title">{t('auth:register.title')}</h1>
+            <p className="comm-register-desc">{t('auth:register.subtitle')}</p>
 
             {/* Google Sign-in */}
             <div className="comm-google-wrap">
@@ -242,17 +254,15 @@ export default function RegisterPage() {
                   type="button"
                   className="comm-google-fallback"
                   onClick={() =>
-                    setError(
-                      'Google sign-in is not configured yet. Set NEXT_PUBLIC_GOOGLE_CLIENT_ID and try again.',
-                    )
+                    setError(t('auth:google.notConfigured'))
                   }
                 >
-                  <GoogleIcon /> Continue with Google
+                  <GoogleIcon /> {t('auth:google.continue')}
                 </button>
               ) : (
                 <div ref={buttonRef} className="comm-google-btn" aria-busy={!googleReady} />
               )}
-              <div className="comm-divider"><span>or sign up with email</span></div>
+              <div className="comm-divider"><span>{t('auth:google.dividerSignUp')}</span></div>
             </div>
 
             {/* Member type selector */}
@@ -262,26 +272,27 @@ export default function RegisterPage() {
                 className={`comm-type-card ${memberType === 'COMPANY' ? 'is-active' : ''}`}
                 onClick={() => setMemberType('COMPANY')}
               >
-                <div className="comm-type-title">Company</div>
-                <div className="comm-type-sub">Companies, entities, operators</div>
+                <div className="comm-type-title">{t('auth:register.memberType.company')}</div>
+                <div className="comm-type-sub">{t('auth:register.memberType.companyHint')}</div>
               </button>
               <button
                 type="button"
                 className={`comm-type-card ${memberType === 'PERSONAL' ? 'is-active' : ''}`}
                 onClick={() => setMemberType('PERSONAL')}
               >
-                <div className="comm-type-title">Personal</div>
-                <div className="comm-type-sub">Individuals, consultants, executives</div>
+                <div className="comm-type-title">{t('auth:register.memberType.personal')}</div>
+                <div className="comm-type-sub">{t('auth:register.memberType.personalHint')}</div>
               </button>
             </div>
 
             <form onSubmit={onSubmitBasics}>
               <div className="comm-form-group">
-                <label className="comm-form-label">Email Address *</label>
+                <label className="comm-form-label">{t('auth:register.emailLabel')}</label>
                 <input
                   className="comm-form-input"
                   type="email"
-                  placeholder="you@example.com"
+                  dir="ltr"
+                  placeholder={t('auth:register.emailPlaceholder')}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -289,13 +300,13 @@ export default function RegisterPage() {
               </div>
 
               <div className="comm-form-group">
-                <label className="comm-form-label">Mobile Number *</label>
+                <label className="comm-form-label">{t('auth:register.mobileLabel')}</label>
                 <div className="comm-phone-row">
                   <select
                     className="comm-form-select comm-phone-code"
                     value={countryCode}
                     onChange={(e) => setCountryCode(e.target.value)}
-                    aria-label="Country dial code"
+                    aria-label={t('auth:register.dialCodeLabel')}
                   >
                     {COUNTRIES.map((c) => (
                       <option key={c.code} value={c.code}>
@@ -304,10 +315,12 @@ export default function RegisterPage() {
                     ))}
                   </select>
                   <input
-                    className="comm-form-input comm-phone-input"
+                    className="comm-form-input comm-phone-input ltr-embed"
                     type="tel"
                     inputMode="tel"
-                    placeholder="Phone number"
+                    // Phone numbers stay left-to-right inside an RTL page (§10).
+                    dir="ltr"
+                    placeholder={t('auth:register.mobilePlaceholder')}
                     value={mobile}
                     onChange={(e) => setMobile(e.target.value)}
                     required
@@ -317,22 +330,24 @@ export default function RegisterPage() {
 
               <div className="comm-register-row">
                 <div className="comm-form-group">
-                  <label className="comm-form-label">Password *</label>
+                  <label className="comm-form-label">{t('auth:register.passwordLabel')}</label>
                   <input
                     className="comm-form-input"
                     type="password"
-                    placeholder="Min 8 characters"
+                    dir="ltr"
+                    placeholder={t('auth:register.passwordPlaceholder')}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
                   />
                 </div>
                 <div className="comm-form-group">
-                  <label className="comm-form-label">Confirm *</label>
+                  <label className="comm-form-label">{t('auth:register.confirmLabel')}</label>
                   <input
                     className="comm-form-input"
                     type="password"
-                    placeholder="Repeat password"
+                    dir="ltr"
+                    placeholder={t('auth:register.confirmPlaceholder')}
                     value={confirm}
                     onChange={(e) => setConfirm(e.target.value)}
                     required
@@ -348,7 +363,7 @@ export default function RegisterPage() {
                 style={{ width: '100%', padding: '13px', marginTop: 4 }}
                 disabled={loading}
               >
-                Continue →
+                {t('auth:register.continue')}
               </button>
             </form>
           </>
@@ -357,22 +372,24 @@ export default function RegisterPage() {
         {step === 'details' && (
           <>
             <h1 className="comm-register-title">
-              {memberType === 'COMPANY' ? 'Company details' : 'Personal details'}
+              {memberType === 'COMPANY'
+                ? t('auth:register.detailsTitleCompany')
+                : t('auth:register.detailsTitlePersonal')}
             </h1>
             <p className="comm-register-desc">
               {memberType === 'COMPANY'
-                ? 'Provide your company details and documents to complete the application.'
-                : 'Provide your details and documents to complete the application.'}
+                ? t('auth:register.detailsDescCompany')
+                : t('auth:register.detailsDescPersonal')}
             </p>
 
             <form onSubmit={onSubmitDetails}>
               {memberType === 'COMPANY' ? (
                 <div className="comm-form-group">
-                  <label className="comm-form-label">Company Name *</label>
+                  <label className="comm-form-label">{t('auth:register.companyNameLabel')}</label>
                   <input
                     className="comm-form-input"
                     type="text"
-                    placeholder="Registered company name"
+                    placeholder={t('auth:register.companyNamePlaceholder')}
                     value={companyName}
                     onChange={(e) => setCompanyName(e.target.value)}
                     required
@@ -380,11 +397,11 @@ export default function RegisterPage() {
                 </div>
               ) : (
                 <div className="comm-form-group">
-                  <label className="comm-form-label">Full Name *</label>
+                  <label className="comm-form-label">{t('auth:register.fullNameLabel')}</label>
                   <input
                     className="comm-form-input"
                     type="text"
-                    placeholder="Your full name"
+                    placeholder={t('auth:register.fullNamePlaceholder')}
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     required
@@ -394,25 +411,25 @@ export default function RegisterPage() {
 
               <div className="comm-register-row">
                 <div className="comm-form-group">
-                  <label className="comm-form-label">City *</label>
+                  <label className="comm-form-label">{t('auth:register.cityLabel')}</label>
                   <input
                     className="comm-form-input"
                     type="text"
-                    placeholder="City"
+                    placeholder={t('auth:register.cityPlaceholder')}
                     value={city}
                     onChange={(e) => setCity(e.target.value)}
                     required
                   />
                 </div>
                 <div className="comm-form-group">
-                  <label className="comm-form-label">Country *</label>
+                  <label className="comm-form-label">{t('auth:register.countryLabel')}</label>
                   <select
                     className="comm-form-select"
                     value={country}
                     onChange={(e) => setCountry(e.target.value)}
                     required
                   >
-                    <option value="">Select country…</option>
+                    <option value="">{t('auth:register.countryPlaceholder')}</option>
                     {COUNTRIES.map((c) => (
                       <option key={c.code} value={c.name}>{c.flag} {c.name}</option>
                     ))}
@@ -421,20 +438,20 @@ export default function RegisterPage() {
               </div>
 
               <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', margin: '18px 0 8px' }}>
-                Required document
+                {t('auth:register.requiredDocument')}
               </p>
               {memberType === 'COMPANY' ? (
                 <FileField
-                  label="Trade Licence / Registration Certificate *"
-                  hint="PDF, JPG, PNG (max 10 MB)"
+                  label={t('auth:register.docs.tradeLicense')}
+                  hint={t('auth:register.docs.hintPdf')}
                   accept=".pdf,.jpg,.jpeg,.png,.webp"
                   file={tradeLicenseFile}
                   onChange={setTradeLicenseFile}
                 />
               ) : (
                 <FileField
-                  label="Resident ID Card *"
-                  hint="PDF, JPG, PNG (max 10 MB)"
+                  label={t('auth:register.docs.residentId')}
+                  hint={t('auth:register.docs.hintPdf')}
                   accept=".pdf,.jpg,.jpeg,.png,.webp"
                   file={residentIdFile}
                   onChange={setResidentIdFile}
@@ -442,33 +459,33 @@ export default function RegisterPage() {
               )}
 
               <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', margin: '18px 0 8px' }}>
-                Optional documents
+                {t('auth:register.optionalDocuments')}
               </p>
               <FileField
-                label="Passport"
-                hint="PDF, JPG, PNG (max 10 MB)"
+                label={t('auth:register.docs.passport')}
+                hint={t('auth:register.docs.hintPdf')}
                 accept=".pdf,.jpg,.jpeg,.png,.webp"
                 file={passportFile}
                 onChange={setPassportFile}
               />
               {memberType === 'COMPANY' && (
                 <FileField
-                  label="Resident ID Card"
-                  hint="PDF, JPG, PNG (max 10 MB)"
+                  label={t('auth:register.docs.residentIdOptional')}
+                  hint={t('auth:register.docs.hintPdf')}
                   accept=".pdf,.jpg,.jpeg,.png,.webp"
                   file={residentIdFile}
                   onChange={setResidentIdFile}
                 />
               )}
               <FileField
-                label="Photo"
-                hint="JPG, PNG (max 10 MB)"
+                label={t('auth:register.docs.photo')}
+                hint={t('auth:register.docs.hintImage')}
                 accept=".jpg,.jpeg,.png,.webp"
                 file={photoFile}
                 onChange={setPhotoFile}
               />
               <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: -6, marginBottom: 14 }}>
-                Optional documents never block your application and can be completed later from your profile.
+                {t('auth:register.optionalNote')}
               </p>
 
               {error && <p className="form-error" style={{ marginBottom: 12 }}>{error}</p>}
@@ -480,14 +497,14 @@ export default function RegisterPage() {
                   onClick={() => setStep('basics')}
                   disabled={loading}
                 >
-                  ← Back
+                  {t('auth:register.back')}
                 </button>
                 <button
                   type="submit"
                   className="comm-btn comm-btn-gold"
                   disabled={loading}
                 >
-                  {loading ? 'Sending code…' : 'Send verification code →'}
+                  {loading ? t('auth:register.sendingCode') : t('auth:register.sendCode')}
                 </button>
               </div>
             </form>
@@ -496,13 +513,22 @@ export default function RegisterPage() {
 
         {step === 'otp' && (
           <>
-            <h1 className="comm-register-title">Verify your email</h1>
+            <h1 className="comm-register-title">{t('auth:register.verifyTitle')}</h1>
+            {/* <Trans> rather than string concatenation: where the email sits in
+                the sentence differs by language, and in Arabic and Persian it
+                also has to render LTR inside RTL prose. */}
             <p className="comm-register-desc">
-              We sent a 6-digit code to <strong>{email}</strong>. Enter it below to submit your application.
+              <Trans
+                i18nKey="auth:register.verifyDesc"
+                values={{ email }}
+                components={[<span key="0" className="ltr-embed" />, <strong key="1" className="ltr-embed" />]}
+              />
             </p>
 
             <form onSubmit={onSubmitOtp}>
-              <div className="comm-otp-row" onPaste={onOtpPaste}>
+              {/* The OTP row is a fixed sequence of digits and keeps its visual
+                  order in every language, so it is pinned LTR (§10). */}
+              <div className="comm-otp-row ltr-embed" dir="ltr" onPaste={onOtpPaste}>
                 {otpDigits.map((d, i) => (
                   <input
                     key={i}
@@ -528,15 +554,15 @@ export default function RegisterPage() {
                 style={{ width: '100%', padding: '13px' }}
                 disabled={loading}
               >
-                {loading ? 'Submitting…' : 'Verify & submit application'}
+                {loading ? t('auth:register.verifySubmitting') : t('auth:register.verifySubmit')}
               </button>
 
               <div className="comm-otp-resend">
                 {resendIn > 0 ? (
-                  <span>Resend available in {resendIn}s</span>
+                  <span>{t('auth:register.resendIn', { seconds: resendIn })}</span>
                 ) : (
                   <button type="button" className="comm-linkish" onClick={resendOtp} disabled={loading}>
-                    Resend code
+                    {t('auth:register.resend')}
                   </button>
                 )}
                 <button
@@ -545,7 +571,7 @@ export default function RegisterPage() {
                   onClick={() => setStep('details')}
                   disabled={loading}
                 >
-                  Wrong email? Go back
+                  {t('auth:register.wrongEmail')}
                 </button>
               </div>
             </form>
@@ -554,21 +580,28 @@ export default function RegisterPage() {
 
         {step === 'done' && (
           <>
-            <h1 className="comm-register-title">Application submitted</h1>
+            <h1 className="comm-register-title">{t('auth:register.doneTitle')}</h1>
             <p className="comm-register-desc">
-              Thank you - your membership application has been received and is <strong>pending admin review</strong>.
-              We will email you at <strong>{email}</strong> as soon as it&apos;s approved. You will be able to log in
-              using the email and password you just created.
+              <Trans
+                i18nKey="auth:register.doneDesc"
+                values={{ email }}
+                components={[
+                  <span key="0" />,
+                  <strong key="1" />,
+                  <span key="2" />,
+                  <strong key="3" className="ltr-embed" />,
+                ]}
+              />
             </p>
             <Link href="/login" className="comm-btn comm-btn-gold" style={{ width: '100%', padding: '13px', display: 'block', textAlign: 'center', marginTop: 8 }}>
-              Go to Login
+              {t('auth:register.goToLogin')}
             </Link>
           </>
         )}
 
         {step !== 'done' && (
           <div className="comm-register-login">
-            Already a member? <Link href="/login">Sign in</Link>
+            {t('auth:register.alreadyMember')} <Link href="/login">{t('auth:register.signIn')}</Link>
           </div>
         )}
       </div>
@@ -578,10 +611,11 @@ export default function RegisterPage() {
 
 // ── Sub-components ────────────────────────────
 function StepIndicator({ step }: { step: Step }) {
+  const { t } = useTranslation('auth');
   const steps: { key: Step; label: string }[] = [
-    { key: 'basics',  label: 'Type & Contact' },
-    { key: 'details', label: 'Details & Documents' },
-    { key: 'otp',     label: 'Verify' },
+    { key: 'basics',  label: t('register.steps.basics') },
+    { key: 'details', label: t('register.steps.details') },
+    { key: 'otp',     label: t('register.steps.verify') },
   ];
   const idx = steps.findIndex((s) => s.key === step);
   return (
@@ -609,6 +643,7 @@ function FileField({
   file: File | null;
   onChange: (f: File | null) => void;
 }) {
+  const { t } = useTranslation('auth');
   const inputRef = useRef<HTMLInputElement | null>(null);
   return (
     <div className="comm-form-group">
@@ -619,7 +654,7 @@ function FileField({
             <span className="comm-file-drop-name">{file.name}</span>
           ) : (
             <>
-              <div>Click to upload</div>
+              <div>{t('register.docs.clickToUpload')}</div>
               <div className="comm-file-drop-hint">{hint}</div>
             </>
           )}
@@ -634,7 +669,7 @@ function FileField({
               if (inputRef.current) inputRef.current.value = '';
             }}
           >
-            Remove
+            {t('register.docs.remove')}
           </button>
         )}
       </div>

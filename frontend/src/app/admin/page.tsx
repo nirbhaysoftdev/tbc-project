@@ -2,22 +2,25 @@
 // src/app/admin/page.tsx
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { AuthProvider } from '@/lib/auth';
 import ProtectedLayout from '@/components/layout/ProtectedLayout';
-import { adminAPI, formatEur, downloadBlob } from '@/lib/api';
+import { useTranslation } from 'react-i18next';
+import { adminAPI, formatEur, formatNumber, formatDate, formatDateTime, downloadBlob } from '@/lib/api';
 import { COUNTRIES, DEFAULT_COUNTRY } from '@/lib/countries';
 import InvestmentsTab from '@/components/admin/InvestmentsTab';
 import InvestmentRequestsTab from '@/components/admin/InvestmentRequestsTab';
+import EnquirySettingsTab from '@/components/admin/EnquirySettingsTab';
 import NotifBadge from '@/components/layout/NotifBadge';
 import { openDocument } from '@/lib/openDocument';
 import { useAdminAlerts } from '@/lib/adminAlerts';
 
 function AdminContent() {
+  const { t } = useTranslation(['admin', 'common']);
   const router = useRouter();
   const [stats,   setStats]   = useState<any>(null);
   const [members, setMembers] = useState<any[]>([]);
   const [pending, setPending] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<'members' | 'pending' | 'requests' | 'investments'>('members');
+  const [activeTab, setActiveTab] =
+    useState<'members' | 'pending' | 'requests' | 'investments' | 'enquiries'>('members');
   const { alerts, refresh: refreshAlerts } = useAdminAlerts();
   const [search,  setSearch]  = useState('');
   const [loading, setLoading] = useState(true);
@@ -34,6 +37,14 @@ function AdminContent() {
   const [approveForm,  setApproveForm]  = useState({ rejectReason:'', enableWallet:'true' });
   const [approveDocs,  setApproveDocs]  = useState<FileList | null>(null);
   const [formMsg,      setFormMsg]      = useState('');
+  // Whether `formMsg` is an error.
+  //
+  // This used to be inferred with `formMsg.includes('Failed')`, which only
+  // worked while the message was English: the moment it is translated the
+  // substring disappears and every failure renders in success green. The state
+  // now carries the severity explicitly instead of it being recoverable from
+  // the text.
+  const [formMsgIsError, setFormMsgIsError] = useState(false);
   const [approveMode,  setApproveMode]  = useState<'approve' | 'reject'>('approve');
 
   // Add Member - multi-step wizard
@@ -88,15 +99,18 @@ function AdminContent() {
           Array.from(approveDocs).forEach(file => fd.append('documents', file));
         }
         await adminAPI.approveUser(selectedUser.id, fd);
-        setFormMsg(`${selectedUser.name} activated successfully.`);
+        setFormMsgIsError(false);
+        setFormMsg(t('admin:approve.activated', { name: selectedUser.name }));
       } else {
         await adminAPI.rejectUser(selectedUser.id, approveForm.rejectReason);
-        setFormMsg(`${selectedUser.name}'s application rejected.`);
+        setFormMsgIsError(false);
+        setFormMsg(t('admin:approve.rejected', { name: selectedUser.name }));
       }
       setTimeout(() => { setShowApprove(false); setFormMsg(''); setApproveDocs(null); }, 2000);
       refreshMembers();
     } catch (err: any) {
-      setFormMsg(err.response?.data?.error || 'Action failed.');
+      setFormMsgIsError(true);
+      setFormMsg(err.response?.data?.error || t('admin:approve.actionFailed'));
     }
   };
 
@@ -106,20 +120,20 @@ function AdminContent() {
   const validateAddStep = (step: number): string => {
     const f = addMemberForm;
     if (step === 1) {
-      if (!f.email.trim() || !emailPattern.test(f.email.trim())) return 'Please enter a valid email address.';
-      if (!f.mobile.trim()) return 'Mobile number is required.';
-      if (!f.memberType) return 'Please select a member type.';
+      if (!f.email.trim() || !emailPattern.test(f.email.trim())) return t('admin:addMember.errors.email');
+      if (!f.mobile.trim()) return t('admin:addMember.errors.mobile');
+      if (!f.memberType) return t('admin:addMember.errors.memberType');
       return '';
     }
     if (step === 2) {
-      if (!f.city.trim())    return 'City is required.';
-      if (!f.country.trim()) return 'Country is required.';
+      if (!f.city.trim())    return t('admin:addMember.errors.city');
+      if (!f.country.trim()) return t('admin:addMember.errors.country');
       if (f.memberType === 'COMPANY') {
-        if (!f.companyName.trim()) return 'Company name is required.';
-        if (!addFiles.tradeLicense) return 'Company trade licence / registration certificate is required.';
+        if (!f.companyName.trim()) return t('admin:addMember.errors.companyName');
+        if (!addFiles.tradeLicense) return t('admin:addMember.errors.tradeLicense');
       } else {
-        if (!f.fullName.trim()) return 'Full name is required.';
-        if (!addFiles.residentId) return 'Resident ID card is required.';
+        if (!f.fullName.trim()) return t('admin:addMember.errors.fullName');
+        if (!addFiles.residentId) return t('admin:addMember.errors.residentId');
       }
       return '';
     }
@@ -169,7 +183,8 @@ function AdminContent() {
 
       const name = f.memberType === 'COMPANY' ? f.companyName : f.fullName;
       await adminAPI.createMember(fd);
-      setFormMsg(`${name} created. A welcome email with login details has been sent.`);
+      setFormMsgIsError(false);
+      setFormMsg(t('admin:addMember.created', { name }));
       setTimeout(() => {
         setShowAddMember(false);
         setFormMsg('');
@@ -177,16 +192,17 @@ function AdminContent() {
       }, 2500);
       refreshMembers();
     } catch (err: any) {
-      setAddError(err.response?.data?.error || 'Failed to create member.');
+      setAddError(err.response?.data?.error || t('admin:addMember.createFailed'));
     }
   };
 
   const handleUpdateWallet = async (e: React.FormEvent) => {
     e.preventDefault();
     const res = await adminAPI.updateWallet(selectedUser.id, walletForm);
+    setFormMsgIsError(false);
     setFormMsg(res.data?.walletActivated
-      ? 'Wallet enabled. The member has been emailed the balance it was activated with.'
-      : 'Opening balance updated. The member will see the new values on their dashboard.');
+      ? t('admin:wallet.activated')
+      : t('admin:wallet.updated'));
     setTimeout(() => { setShowWallet(false); setFormMsg(''); }, 2000);
     refreshMembers();
     adminAPI.getStats().then(r => setStats(r.data));
@@ -209,9 +225,9 @@ function AdminContent() {
 
       {/* ── Header ── */}
       <div className="page-header">
-        <h1 className="page-title">Admin Panel</h1>
+        <h1 className="page-title">{t('admin:title')}</h1>
         <div style={{ display:'flex', gap:8, alignItems:'center' }}>
-          <button className="export-btn" onClick={handleExport}>Export CSV</button>
+          <button className="export-btn" onClick={handleExport}>{t('admin:exportCsv')}</button>
          <a href="/admin/withdrawals" style={{
          padding: '8px 16px',
        background: 'rgba(224,82,82,0.12)',
@@ -230,7 +246,7 @@ function AdminContent() {
       stroke="currentColor" strokeWidth="2">
       <path d="M12 5v14M5 12l7-7 7 7"/>
     </svg>
-    Withdrawal Requests
+    {t('admin:withdrawalRequests')}
   </a>
 
 
@@ -239,7 +255,7 @@ function AdminContent() {
             style={{ width:'auto', padding:'8px 20px', fontSize:13, display:'flex', alignItems:'center', gap:6 }}
             onClick={() => { setFormMsg(''); resetAddMemberWizard(); setShowAddMember(true); }}
           >
-            + Add Member
+            {t('admin:addMemberCta')}
           </button>
         </div>
       </div>
@@ -247,16 +263,17 @@ function AdminContent() {
       {/* ── Stats Grid ── */}
       <div className="admin-grid">
         {[
-          { label: 'Active Members',     value: stats?.totalMembers || 0 },
-          { label: 'Pending Approvals',  value: stats?.pendingApprovals || 0, highlight: (stats?.pendingApprovals || 0) > 0 },
-          { label: 'Total AUM',          value: formatEur(stats?.totalAUM || 0) },
-          { label: 'Total Profit Paid',  value: formatEur(stats?.totalProfitDistributed || 0) },
-          { label: 'Total Transactions', value: stats?.totalTransactions || 0 },
+          { key: 'activeMembers',     label: t('admin:stats.activeMembers'),     value: formatNumber(stats?.totalMembers || 0) },
+          { key: 'pendingApprovals',  label: t('admin:stats.pendingApprovals'),  value: formatNumber(stats?.pendingApprovals || 0), highlight: (stats?.pendingApprovals || 0) > 0 },
+          { key: 'totalAum',          label: t('admin:stats.totalAum'),          value: formatEur(stats?.totalAUM || 0) },
+          { key: 'totalProfitPaid',   label: t('admin:stats.totalProfitPaid'),   value: formatEur(stats?.totalProfitDistributed || 0) },
+          { key: 'totalTransactions', label: t('admin:stats.totalTransactions'), value: formatNumber(stats?.totalTransactions || 0) },
         ].map(s => (
-          <div key={s.label} className="admin-stat-card"
+          // Keyed by the stable key, not the translated label.
+          <div key={s.key} className="admin-stat-card"
             style={(s as any).highlight ? { borderColor: 'rgba(200,168,75,0.4)', background: 'rgba(200,168,75,0.06)' } : {}}>
             <p className="admin-stat-label">{s.label}</p>
-            <p className="admin-stat-value"
+            <p className="admin-stat-value ltr-embed"
               style={(s as any).highlight ? { color: 'var(--accent-gold)' } : {}}>
               {s.value}
             </p>
@@ -266,7 +283,7 @@ function AdminContent() {
 
       {/* ── Tab Switcher ── */}
       <div style={{ display: 'flex', gap: 4, marginBottom: 16, borderBottom: '1px solid var(--border)', paddingBottom: 0 }}>
-        {(['members', 'pending', 'requests', 'investments'] as const).map(tab => (
+        {(['members', 'pending', 'requests', 'investments', 'enquiries'] as const).map(tab => (
           <button key={tab}
             onClick={() => setActiveTab(tab)}
             style={{
@@ -277,10 +294,7 @@ function AdminContent() {
               color: activeTab === tab ? 'var(--text-primary)' : 'var(--text-muted)',
               marginBottom: -1,
             }}>
-            {tab === 'pending'
-              ? 'Pending Approvals'
-              : tab === 'requests' ? 'Investment Requests'
-              : tab === 'investments' ? 'Project Investments' : 'Active Members'}
+            {t(`admin:tabs.${tab}`)}
             {tab === 'pending'   && <NotifBadge count={alerts.newMembers} />}
             {tab === 'requests'  && <NotifBadge count={alerts.investmentRequests} />}
           </button>
@@ -291,7 +305,7 @@ function AdminContent() {
       {activeTab === 'members' && (
         <>
           <div style={{ display:'flex', gap:8, alignItems:'center', marginBottom:12 }}>
-            <input className="filter-input" placeholder="Search members…"
+            <input className="filter-input" placeholder={t('admin:members.searchPlaceholder')}
               value={search} onChange={e => handleSearch(e.target.value)}
               style={{ flex:1, maxWidth:320 }} />
           </div>
@@ -300,13 +314,20 @@ function AdminContent() {
             <table className="tx-table">
               <thead>
                 <tr>
-                  <th>Member</th><th>Email</th><th>Status</th><th>Wallet</th><th>Documents</th>
-                  <th>Investment</th><th>Profit</th><th>Total Balance</th><th>Actions</th>
+                  <th>{t('admin:members.columns.member')}</th>
+                  <th>{t('admin:members.columns.email')}</th>
+                  <th>{t('admin:members.columns.status')}</th>
+                  <th>{t('admin:members.columns.wallet')}</th>
+                  <th>{t('admin:members.columns.documents')}</th>
+                  <th>{t('admin:members.columns.investment')}</th>
+                  <th>{t('admin:members.columns.profit')}</th>
+                  <th>{t('admin:members.columns.totalBalance')}</th>
+                  <th>{t('admin:members.columns.actions')}</th>
                 </tr>
               </thead>
               <tbody>
                 {members.length === 0 ? (
-                  <tr><td colSpan={9} style={{ textAlign:'center', padding:32, color:'var(--text-muted)' }}>No members found.</td></tr>
+                  <tr><td colSpan={9} style={{ textAlign:'center', padding:32, color:'var(--text-muted)' }}>{t('admin:members.noneFound')}</td></tr>
                 ) : members.map((m: any) => {
                   const docsComplete = (m.kycDocuments || []).some((d: any) => d.status === 'approved') || m.kycStatus === 'APPROVED';
                   return (
@@ -315,35 +336,37 @@ function AdminContent() {
                   <tr key={m.id}
                     onClick={() => router.push(`/admin/members/detail?id=${m.id}`)}
                     style={{ cursor:'pointer' }}
-                    title={`Open ${m.name}'s details`}>
+                    title={t('admin:members.openRow', { name: m.name })}>
                     <td style={{ fontWeight:600, color:'var(--text-primary)' }}>
                       <span style={{ display:'flex', alignItems:'center', gap:6 }}>
                         {m.name}
-                        <svg viewBox="0 0 24 24" width="12" height="12" fill="none"
+                        {/* "Go deeper" chevron — directional, so it mirrors. */}
+                        <svg className="rtl-mirror" viewBox="0 0 24 24" width="12" height="12" fill="none"
                           stroke="currentColor" strokeWidth="2" style={{ color:'var(--text-muted)' }}>
                           <path d="M9 18l6-6-6-6" />
                         </svg>
                       </span>
                     </td>
-                    <td>{m.email}</td>
+                    <td className="ltr-embed">{m.email}</td>
                     <td>
                       <span className={`badge ${m.status === 'ACTIVE' ? 'badge-completed' : 'badge-failed'}`}>
-                        {m.status}
+                        {/* Status enums reuse the shared common:status labels. */}
+                        {t(`common:status.${m.status.toLowerCase()}`, { defaultValue: m.status })}
                       </span>
                     </td>
                     <td>
                       <span className={`badge ${m.walletEnabled ? 'badge-completed' : 'badge-pending'}`}>
-                        {m.walletEnabled ? 'Enabled' : 'Disabled'}
+                        {m.walletEnabled ? t('admin:members.walletEnabled') : t('admin:members.walletDisabled')}
                       </span>
                     </td>
                     <td>
                       <span className={`badge ${docsComplete ? 'badge-completed' : 'badge-pending'}`}>
-                        {docsComplete ? 'Complete' : 'Incomplete'}
+                        {docsComplete ? t('admin:members.docsComplete') : t('admin:members.docsIncomplete')}
                       </span>
                     </td>
-                    <td>{formatEur(m.wallet?.investmentAmount || 0)}</td>
-                    <td className="amount-credit">+{formatEur(m.wallet?.profitAmount || 0)}</td>
-                    <td style={{ fontWeight:700, color:'var(--text-primary)' }}>{formatEur(m.wallet?.totalBalance || 0)}</td>
+                    <td className="ltr-embed">{formatEur(m.wallet?.investmentAmount || 0)}</td>
+                    <td className="amount-credit ltr-embed">+{formatEur(m.wallet?.profitAmount || 0)}</td>
+                    <td className="ltr-embed" style={{ fontWeight:700, color:'var(--text-primary)' }}>{formatEur(m.wallet?.totalBalance || 0)}</td>
                     <td onClick={e => e.stopPropagation()}>
                       <div style={{ display:'flex', gap:6 }}>
                         {!m.walletEnabled && (
@@ -356,7 +379,7 @@ function AdminContent() {
                               setFormMsg('');
                               setShowWallet(true);
                             }}>
-                            Enable Wallet
+                            {t('admin:members.enableWallet')}
                           </button>
                         )}
                         <button
@@ -367,7 +390,7 @@ function AdminContent() {
                             color:      m.status === 'FROZEN' ? 'var(--green)'                   : 'var(--red)',
                           }}
                           onClick={() => handleFreeze(m.id)}>
-                          {m.status === 'FROZEN' ? 'Unfreeze' : 'Freeze'}
+                          {m.status === 'FROZEN' ? t('admin:members.unfreeze') : t('admin:members.freeze')}
                         </button>
                       </div>
                     </td>
@@ -386,14 +409,19 @@ function AdminContent() {
           <table className="tx-table">
             <thead>
               <tr>
-                <th>Applicant</th><th>Type</th><th>Email</th><th>Company</th>
-                <th>Docs</th><th>Applied</th><th>Actions</th>
+                <th>{t('admin:pending.columns.applicant')}</th>
+                <th>{t('admin:pending.columns.type')}</th>
+                <th>{t('admin:pending.columns.email')}</th>
+                <th>{t('admin:pending.columns.company')}</th>
+                <th>{t('admin:pending.columns.docs')}</th>
+                <th>{t('admin:pending.columns.applied')}</th>
+                <th>{t('admin:pending.columns.actions')}</th>
               </tr>
             </thead>
             <tbody>
               {pending.length === 0 ? (
                 <tr><td colSpan={7} style={{ textAlign:'center', padding:32, color:'var(--text-muted)' }}>
-                  No pending applications.
+                  {t('admin:pending.noneFound')}
                 </td></tr>
               ) : pending.map((u: any) => {
                 const docCount = [
@@ -405,18 +433,18 @@ function AdminContent() {
                   <td style={{ fontWeight:600, color:'var(--text-primary)' }}>{u.name}</td>
                   <td>
                     <span className="badge badge-pending">
-                      {u.accountType === 'BUSINESS' ? 'Company' : 'Personal'}
+                      {u.accountType === 'BUSINESS' ? t('admin:pending.typeCompany') : t('admin:pending.typePersonal')}
                     </span>
                   </td>
-                  <td>{u.email}</td>
+                  <td className="ltr-embed">{u.email}</td>
                   <td>{u.profile?.company || <span style={{ color:'var(--text-muted)' }}>-</span>}</td>
                   <td>
                     <span className={`badge ${docCount > 0 ? 'badge-completed' : 'badge-failed'}`}>
-                      {docCount > 0 ? `${docCount} uploaded` : 'None'}
+                      {docCount > 0 ? t('admin:pending.docsUploaded', { count: docCount }) : t('admin:pending.docsNone')}
                     </span>
                   </td>
                   <td style={{ color:'var(--text-muted)', fontSize:12 }}>
-                    {new Date(u.createdAt).toLocaleDateString()}
+                    {formatDate(u.createdAt)}
                   </td>
                   <td>
                     <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
@@ -426,7 +454,7 @@ function AdminContent() {
                           border:'1px solid var(--border)', background:'transparent', color:'var(--text-secondary)',
                         }}
                         onClick={() => { setSelectedUser(u); setShowDetails(true); }}>
-                        View Details
+                        {t('admin:pending.viewDetails')}
                       </button>
                       <button
                         style={{
@@ -442,7 +470,7 @@ function AdminContent() {
                           setFormMsg('');
                           setShowApprove(true);
                         }}>
-                        Activate Member
+                        {t('admin:pending.activate')}
                       </button>
                       <button
                         style={{
@@ -457,7 +485,7 @@ function AdminContent() {
                           setFormMsg('');
                           setShowApprove(true);
                         }}>
-                        Reject
+                        {t('admin:pending.reject')}
                       </button>
                     </div>
                   </td>
@@ -475,6 +503,10 @@ function AdminContent() {
       )}
 
       {/* ── Project Investments Tab ── */}
+      {/* ── Enquiries: the portal-wide recipient, and the record of what was
+             sent. One address for every project and company. ── */}
+      {activeTab === 'enquiries' && <EnquirySettingsTab />}
+
       {activeTab === 'investments' && (
         <InvestmentsTab members={members} />
       )}
@@ -489,25 +521,26 @@ function AdminContent() {
               borderRadius:'var(--radius-sm)', padding:'12px 14px', fontSize:12, color:'var(--text-secondary)',
               display:'flex', flexDirection:'column', gap:6, marginBottom:16,
             }}>
-              <div><strong style={{ color:'var(--text-primary)' }}>Type:</strong> {selectedUser.accountType === 'BUSINESS' ? 'Company' : 'Personal'}</div>
-              <div><strong style={{ color:'var(--text-primary)' }}>Email:</strong> {selectedUser.email}</div>
-              <div><strong style={{ color:'var(--text-primary)' }}>Mobile:</strong> {selectedUser.profile?.phoneDialCode || ''} {selectedUser.profile?.phone || '-'}</div>
+              <div><strong style={{ color:'var(--text-primary)' }}>{t('admin:details.type')}</strong> {selectedUser.accountType === 'BUSINESS' ? t('admin:pending.typeCompany') : t('admin:pending.typePersonal')}</div>
+              <div><strong style={{ color:'var(--text-primary)' }}>{t('admin:details.email')}</strong> <span className="ltr-embed">{selectedUser.email}</span></div>
+              {/* Dial code + number is a single LTR run even in RTL text. */}
+              <div><strong style={{ color:'var(--text-primary)' }}>{t('admin:details.mobile')}</strong> <span className="ltr-embed">{selectedUser.profile?.phoneDialCode || ''} {selectedUser.profile?.phone || '-'}</span></div>
               {selectedUser.profile?.company && (
-                <div><strong style={{ color:'var(--text-primary)' }}>Company:</strong> {selectedUser.profile.company}</div>
+                <div><strong style={{ color:'var(--text-primary)' }}>{t('admin:details.company')}</strong> {selectedUser.profile.company}</div>
               )}
-              <div><strong style={{ color:'var(--text-primary)' }}>Location:</strong> {selectedUser.profile?.city || '-'}, {selectedUser.profile?.country || '-'}</div>
-              <div><strong style={{ color:'var(--text-primary)' }}>Applied:</strong> {new Date(selectedUser.createdAt).toLocaleString()}</div>
+              <div><strong style={{ color:'var(--text-primary)' }}>{t('admin:details.location')}</strong> {selectedUser.profile?.city || '-'}, {selectedUser.profile?.country || '-'}</div>
+              <div><strong style={{ color:'var(--text-primary)' }}>{t('admin:details.applied')}</strong> {formatDateTime(selectedUser.createdAt)}</div>
             </div>
 
-            <p style={{ fontSize:11, fontWeight:700, color:'var(--text-secondary)', marginBottom:8 }}>DOCUMENTS</p>
+            <p style={{ fontSize:11, fontWeight:700, color:'var(--text-secondary)', marginBottom:8 }}>{t('admin:details.documentsTitle')}</p>
             <div style={{ display:'flex', flexDirection:'column', gap:8, marginBottom:16 }}>
               {[
-                { label: 'Trade Licence / Registration Certificate', url: selectedUser.profile?.tradeLicenseUrl },
-                { label: 'Resident ID Card',                         url: selectedUser.profile?.residentIdUrl },
-                { label: 'Passport',                                 url: selectedUser.profile?.passportUrl },
-                { label: 'Photo',                                    url: selectedUser.profilePhoto },
+                { key: 'tradeLicense', label: t('admin:details.docs.tradeLicense'), url: selectedUser.profile?.tradeLicenseUrl },
+                { key: 'residentId',   label: t('admin:details.docs.residentId'),   url: selectedUser.profile?.residentIdUrl },
+                { key: 'passport',     label: t('admin:details.docs.passport'),     url: selectedUser.profile?.passportUrl },
+                { key: 'photo',        label: t('admin:details.docs.photo'),        url: selectedUser.profilePhoto },
               ].map(doc => (
-                <div key={doc.label} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', fontSize:12 }}>
+                <div key={doc.key} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', fontSize:12 }}>
                   <span style={{ color:'var(--text-secondary)' }}>{doc.label}</span>
                   {doc.url ? (
                     <button onClick={() => openDocument(doc.url)}
@@ -515,10 +548,10 @@ function AdminContent() {
                         color:'var(--accent-blue)', fontWeight:600, fontSize:12, cursor:'pointer',
                         background:'none', border:'none', padding:0,
                       }}>
-                      View
+                      {t('admin:details.view')}
                     </button>
                   ) : (
-                    <span style={{ color:'var(--text-muted)' }}>Not provided</span>
+                    <span style={{ color:'var(--text-muted)' }}>{t('admin:details.notProvided')}</span>
                   )}
                 </div>
               ))}
@@ -526,7 +559,7 @@ function AdminContent() {
 
             <div className="modal-actions">
               <button type="button" className="btn-secondary" onClick={() => setShowDetails(false)}>
-                Close
+                {t('common:action.close')}
               </button>
               <button type="button" className="btn-primary" style={{ width:'auto', padding:'10px 24px' }}
                 onClick={() => {
@@ -537,7 +570,7 @@ function AdminContent() {
                   setFormMsg('');
                   setShowApprove(true);
                 }}>
-                Activate Member
+                {t('admin:pending.activate')}
               </button>
             </div>
           </div>
@@ -549,26 +582,35 @@ function AdminContent() {
         <div className="modal-overlay" onClick={() => setShowApprove(false)}>
           <div className="modal-box" onClick={e => e.stopPropagation()}>
             <p className="modal-title">
-              {approveMode === 'approve' ? `Activate Member - ${selectedUser.name}` : `Reject - ${selectedUser.name}`}
+              {approveMode === 'approve'
+                ? t('admin:approve.titleApprove', { name: selectedUser.name })
+                : t('admin:approve.titleReject', { name: selectedUser.name })}
             </p>
             <form onSubmit={handleApproveOrReject}>
               {approveMode === 'approve' ? (
                 <>
                 <div className="form-group">
-                  <label className="form-label">ENABLE WALLET</label>
+                  <label className="form-label">{t('admin:approve.enableWalletLabel')}</label>
                   <select className="filter-select" style={{ width:'100%' }}
                     value={approveForm.enableWallet}
                     onChange={e => setApproveForm(p => ({ ...p, enableWallet: e.target.value }))}>
-                    <option value="true">Yes - activate wallet access</option>
-                    <option value="false">No - keep wallet disabled for now</option>
+                    <option value="true">{t('admin:approve.walletYes')}</option>
+                    <option value="false">{t('admin:approve.walletNo')}</option>
                   </select>
                   <p style={{ fontSize:11, color:'var(--text-muted)', marginTop:8 }}>
-                    This will activate the account and approve KYC. {approveForm.enableWallet === 'true' ? 'A wallet will be created and enabled.' : 'The wallet can be enabled later from the Active Members tab.'}
+                    {/* Two sentences, each its own key: in Italian, Russian,
+                        Persian and Arabic the second clause does not simply
+                        append to the first, so they are not concatenated
+                        inside one string. */}
+                    {t('admin:approve.noteBase')}{' '}
+                    {approveForm.enableWallet === 'true'
+                      ? t('admin:approve.noteWalletOn')
+                      : t('admin:approve.noteWalletOff')}
                   </p>
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">REQUIRED DOCUMENTS (optional)</label>
+                  <label className="form-label">{t('admin:approve.documentsLabel')}</label>
                   <input
                     type="file"
                     multiple
@@ -577,26 +619,29 @@ function AdminContent() {
                     onChange={e => setApproveDocs(e.target.files)}
                   />
                   <p style={{ fontSize:11, color:'var(--text-muted)', marginTop:8 }}>
-                    Upload on behalf of the member now, or leave blank and complete later from the member&apos;s profile. This does not block activation.
+                    {t('admin:approve.documentsHint')}
                   </p>
                 </div>
                 </>
               ) : (
                 <div className="form-group">
-                  <label className="form-label">REJECTION REASON (optional)</label>
-                  <input className="form-input" placeholder="e.g. Incomplete documentation"
+                  <label className="form-label">{t('admin:approve.rejectReasonLabel')}</label>
+                  <input className="form-input" placeholder={t('admin:approve.rejectReasonPlaceholder')}
                     value={approveForm.rejectReason}
                     onChange={e => setApproveForm(p => ({ ...p, rejectReason: e.target.value }))} />
                 </div>
               )}
+              {/* Severity comes from formMsgIsError, not from the mode: a
+                  failed activation must render red even though the mode is
+                  'approve'. */}
               {formMsg && (
-                <p style={{ color: approveMode === 'approve' ? 'var(--green)' : 'var(--red)', fontSize:12, marginBottom:8 }}>
+                <p style={{ color: formMsgIsError ? 'var(--red)' : 'var(--green)', fontSize:12, marginBottom:8 }}>
                   {formMsg}
                 </p>
               )}
               <div className="modal-actions">
                 <button type="button" className="btn-secondary" onClick={() => setShowApprove(false)}>
-                  Cancel
+                  {t('common:action.cancel')}
                 </button>
                 <button type="submit"
                   style={{
@@ -606,7 +651,7 @@ function AdminContent() {
                     color: approveMode === 'approve' ? 'var(--green)' : 'var(--red)',
                     cursor:'pointer',
                   }}>
-                  {approveMode === 'approve' ? 'Activate Member' : 'Confirm Rejection'}
+                  {approveMode === 'approve' ? t('admin:approve.confirmActivate') : t('admin:approve.confirmReject')}
                 </button>
               </div>
             </form>
@@ -618,20 +663,19 @@ function AdminContent() {
       {showWallet && selectedUser && (
         <div className="modal-overlay" onClick={() => { setShowWallet(false); setFormMsg(''); }}>
           <div className="modal-box" onClick={e => e.stopPropagation()}>
-            <p className="modal-title">Edit Opening Balance - {selectedUser.name}</p>
+            <p className="modal-title">{t('admin:wallet.title', { name: selectedUser.name })}</p>
             <p style={{ fontSize:12, color:'var(--text-muted)', marginBottom:16, marginTop:-10 }}>
-              This is the manual balance carried over for this member, with no project behind it.
-              Capital and profit booked against projects are tracked separately and are not edited here.
+              {t('admin:wallet.intro')}
             </p>
             <form onSubmit={handleUpdateWallet}>
               <div className="form-group">
-                <label className="form-label">OPENING CAPITAL (€)</label>
+                <label className="form-label">{t('admin:wallet.openingCapital')}</label>
                 <input className="form-input" type="number" min="0" step="0.01"
                   value={walletForm.investmentAmount}
                   onChange={e => setWalletForm(p => ({...p, investmentAmount:e.target.value}))} />
               </div>
               <div className="form-group">
-                <label className="form-label">OPENING PROFIT (€)</label>
+                <label className="form-label">{t('admin:wallet.openingProfit')}</label>
                 <input className="form-input" type="number" min="0" step="0.01"
                   value={walletForm.profitAmount}
                   onChange={e => setWalletForm(p => ({...p, profitAmount:e.target.value}))} />
@@ -647,13 +691,15 @@ function AdminContent() {
                 justifyContent:'space-between',
               }}>
                 <div>
-                  <span style={{ fontSize:12, color:'var(--text-muted)', display:'block' }}>New Total Balance</span>
+                  <span style={{ fontSize:12, color:'var(--text-muted)', display:'block' }}>{t('admin:wallet.newTotal')}</span>
                   <span style={{ fontSize:11, color:'var(--text-muted)' }}>
-                    includes {formatEur(selectedUser.wallet?.projectCapital || 0)} project capital
-                    and {formatEur(selectedUser.wallet?.projectProfit || 0)} project profit
+                    {t('admin:wallet.includes', {
+                      capital: formatEur(selectedUser.wallet?.projectCapital || 0),
+                      profit:  formatEur(selectedUser.wallet?.projectProfit || 0),
+                    })}
                   </span>
                 </div>
-                <span style={{ fontSize:15, fontWeight:700, color:'var(--text-primary)' }}>
+                <span className="ltr-embed" style={{ fontSize:15, fontWeight:700, color:'var(--text-primary)' }}>
                   {formatEur(
                     (parseFloat(walletForm.investmentAmount) || 0) +
                     (parseFloat(walletForm.profitAmount)     || 0) +
@@ -668,11 +714,11 @@ function AdminContent() {
               <div className="modal-actions">
                 <button type="button" className="btn-secondary"
                   onClick={() => { setShowWallet(false); setFormMsg(''); }}>
-                  Cancel
+                  {t('common:action.cancel')}
                 </button>
                 <button type="submit" className="btn-primary"
                   style={{ width:'auto', padding:'10px 24px' }}>
-                  Update Wallet
+                  {t('admin:wallet.update')}
                 </button>
               </div>
             </form>
@@ -684,26 +730,29 @@ function AdminContent() {
       {showAddMember && (
         <div className="modal-overlay" onClick={() => { setShowAddMember(false); setFormMsg(''); }}>
           <div className="modal-box" onClick={e => e.stopPropagation()} style={{ maxWidth: 520 }}>
-            <p className="modal-title">Add Member</p>
+            <p className="modal-title">{t('admin:addMember.title')}</p>
             <p style={{ fontSize:12, color:'var(--text-muted)', marginBottom:14, marginTop:-10 }}>
-              A login will be generated and emailed to the member along with a temporary password.
+              {t('admin:addMember.intro')}
             </p>
 
             {/* Step indicator */}
             <div style={{ display:'flex', gap:6, marginBottom:20 }}>
-              {['Type & Contact', 'Details & Documents', 'Wallet & Review'].map((label, i) => {
+              {(['contact', 'details', 'wallet'] as const).map((stepKey, i) => {
+                const label = t(`admin:addMember.steps.${stepKey}`);
                 const n = i + 1;
                 const active = addStep === n;
                 const done   = addStep > n;
                 return (
-                  <div key={label} style={{ flex:1 }}>
+                  <div key={stepKey} style={{ flex:1 }}>
                     <div style={{
                       height:4, borderRadius:2, marginBottom:6,
                       background: active || done ? 'var(--accent-gold, #c8a84b)' : 'var(--border)',
                     }} />
                     <p style={{ fontSize:10, fontWeight:700, letterSpacing:'0.03em',
                       color: active ? 'var(--text-primary)' : 'var(--text-muted)' }}>
-                      STEP {n} · {label.toUpperCase()}
+                      {/* The numeral is locale-formatted; the whole label is
+                          one interpolated string so word order can change. */}
+                      {t('admin:addMember.stepLabel', { number: formatNumber(n), label: label.toUpperCase() })}
                     </p>
                   </div>
                 );
@@ -715,7 +764,7 @@ function AdminContent() {
               {addStep === 1 && (
                 <>
                   <div className="form-group">
-                    <label className="form-label">MEMBER TYPE *</label>
+                    <label className="form-label">{t('admin:addMember.memberTypeLabel')}</label>
                     <div style={{ display:'flex', gap:10 }}>
                       {(['COMPANY', 'PERSONAL'] as const).map(type => (
                         <button
@@ -729,24 +778,24 @@ function AdminContent() {
                             color: addMemberForm.memberType === type ? 'var(--accent-blue)' : 'var(--text-secondary)',
                             fontSize:13, fontWeight:700,
                           }}>
-                          {type === 'COMPANY' ? 'Company' : 'Personal'}
+                          {type === 'COMPANY' ? t('admin:pending.typeCompany') : t('admin:pending.typePersonal')}
                         </button>
                       ))}
                     </div>
                   </div>
                   <div className="form-group">
-                    <label className="form-label">EMAIL *</label>
-                    <input type="email" className="form-input" value={addMemberForm.email}
+                    <label className="form-label">{t('admin:addMember.emailLabel')}</label>
+                    <input type="email" className="form-input" dir="ltr" value={addMemberForm.email}
                       onChange={e => setAddMemberForm(p => ({ ...p, email: e.target.value }))} />
                   </div>
                   <div className="form-group">
-                    <label className="form-label">MOBILE NUMBER *</label>
+                    <label className="form-label">{t('admin:addMember.mobileLabel')}</label>
                     <div className="comm-phone-row">
                       <select
                         className="filter-select comm-phone-code"
                         value={addMobileCountry}
                         onChange={e => setAddMobileCountry(e.target.value)}
-                        aria-label="Country dial code"
+                        aria-label={t('admin:addMember.dialCodeLabel')}
                       >
                         {COUNTRIES.map(c => (
                           <option key={c.code} value={c.code}>
@@ -755,10 +804,11 @@ function AdminContent() {
                         ))}
                       </select>
                       <input
-                        className="form-input comm-phone-input"
+                        className="form-input comm-phone-input ltr-embed"
                         type="tel"
                         inputMode="tel"
-                        placeholder="Phone number"
+                        dir="ltr"
+                        placeholder={t('admin:addMember.mobilePlaceholder')}
                         value={addMemberForm.mobile}
                         onChange={e => setAddMemberForm(p => ({ ...p, mobile: e.target.value }))}
                       />
@@ -772,13 +822,13 @@ function AdminContent() {
                 <>
                   {addMemberForm.memberType === 'COMPANY' ? (
                     <div className="form-group">
-                      <label className="form-label">COMPANY NAME *</label>
+                      <label className="form-label">{t('admin:addMember.companyNameLabel')}</label>
                       <input className="form-input" value={addMemberForm.companyName}
                         onChange={e => setAddMemberForm(p => ({ ...p, companyName: e.target.value }))} />
                     </div>
                   ) : (
                     <div className="form-group">
-                      <label className="form-label">FULL NAME *</label>
+                      <label className="form-label">{t('admin:addMember.fullNameLabel')}</label>
                       <input className="form-input" value={addMemberForm.fullName}
                         onChange={e => setAddMemberForm(p => ({ ...p, fullName: e.target.value }))} />
                     </div>
@@ -786,16 +836,16 @@ function AdminContent() {
 
                   <div style={{ display:'flex', gap:10 }}>
                     <div className="form-group" style={{ flex:1 }}>
-                      <label className="form-label">CITY *</label>
+                      <label className="form-label">{t('admin:addMember.cityLabel')}</label>
                       <input className="form-input" value={addMemberForm.city}
                         onChange={e => setAddMemberForm(p => ({ ...p, city: e.target.value }))} />
                     </div>
                     <div className="form-group" style={{ flex:1 }}>
-                      <label className="form-label">COUNTRY *</label>
+                      <label className="form-label">{t('admin:addMember.countryLabel')}</label>
                       <select className="filter-select" style={{ width:'100%' }}
                         value={addMemberForm.country}
                         onChange={e => setAddMemberForm(p => ({ ...p, country: e.target.value }))}>
-                        <option value="">Select country…</option>
+                        <option value="">{t('admin:addMember.countryPlaceholder')}</option>
                         {COUNTRIES.map(c => (
                           <option key={c.code} value={c.name}>{c.flag} {c.name}</option>
                         ))}
@@ -804,44 +854,44 @@ function AdminContent() {
                   </div>
 
                   <p style={{ fontSize:11, fontWeight:700, color:'var(--text-secondary)', margin:'14px 0 6px' }}>
-                    REQUIRED DOCUMENT *
+                    {t('admin:addMember.requiredDocument')}
                   </p>
                   {addMemberForm.memberType === 'COMPANY' ? (
                     <div className="form-group">
-                      <label className="form-label">TRADE LICENCE / REGISTRATION CERTIFICATE *</label>
+                      <label className="form-label">{t('admin:addMember.tradeLicenseLabel')}</label>
                       <input type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" className="form-input"
                         onChange={e => setAddFiles(p => ({ ...p, tradeLicense: e.target.files?.[0] }))} />
                     </div>
                   ) : (
                     <div className="form-group">
-                      <label className="form-label">RESIDENT ID CARD *</label>
+                      <label className="form-label">{t('admin:addMember.residentIdRequiredLabel')}</label>
                       <input type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" className="form-input"
                         onChange={e => setAddFiles(p => ({ ...p, residentId: e.target.files?.[0] }))} />
                     </div>
                   )}
 
                   <p style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', margin:'14px 0 6px' }}>
-                    OPTIONAL DOCUMENTS
+                    {t('admin:addMember.optionalDocuments')}
                   </p>
                   <div className="form-group">
-                    <label className="form-label">PASSPORT</label>
+                    <label className="form-label">{t('admin:addMember.passportLabel')}</label>
                     <input type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" className="form-input"
                       onChange={e => setAddFiles(p => ({ ...p, passport: e.target.files?.[0] }))} />
                   </div>
                   {addMemberForm.memberType === 'COMPANY' && (
                     <div className="form-group">
-                      <label className="form-label">RESIDENT ID CARD</label>
+                      <label className="form-label">{t('admin:addMember.residentIdLabel')}</label>
                       <input type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" className="form-input"
                         onChange={e => setAddFiles(p => ({ ...p, residentId: e.target.files?.[0] }))} />
                     </div>
                   )}
                   <div className="form-group">
-                    <label className="form-label">PHOTO</label>
+                    <label className="form-label">{t('admin:addMember.photoLabel')}</label>
                     <input type="file" accept=".jpg,.jpeg,.png,.webp" className="form-input"
                       onChange={e => setAddFiles(p => ({ ...p, photo: e.target.files?.[0] }))} />
                   </div>
                   <p style={{ fontSize:11, color:'var(--text-muted)', marginTop:4 }}>
-                    Optional documents never block member creation and can be completed later from the member&apos;s profile.
+                    {t('admin:addMember.optionalNote')}
                   </p>
                 </>
               )}
@@ -850,24 +900,24 @@ function AdminContent() {
               {addStep === 3 && (
                 <>
                   <div className="form-group">
-                    <label className="form-label">ENABLE WALLET *</label>
+                    <label className="form-label">{t('admin:addMember.enableWalletLabel')}</label>
                     <select className="filter-select" style={{ width:'100%' }}
                       value={addMemberForm.enableWallet}
                       onChange={e => setAddMemberForm(p => ({ ...p, enableWallet: e.target.value }))}>
-                      <option value="false">No - create member without a wallet</option>
-                      <option value="true">Yes - activate wallet immediately</option>
+                      <option value="false">{t('admin:addMember.walletNo')}</option>
+                      <option value="true">{t('admin:addMember.walletYes')}</option>
                     </select>
                   </div>
                   {addMemberForm.enableWallet === 'true' && (
                     <div style={{ display:'flex', gap:10 }}>
                       <div className="form-group" style={{ flex:1 }}>
-                        <label className="form-label">INITIAL INVESTMENT (€)</label>
+                        <label className="form-label">{t('admin:addMember.initialInvestment')}</label>
                         <input className="form-input" type="number" min="0" step="0.01"
                           value={addMemberForm.investmentAmount}
                           onChange={e => setAddMemberForm(p => ({ ...p, investmentAmount: e.target.value }))} />
                       </div>
                       <div className="form-group" style={{ flex:1 }}>
-                        <label className="form-label">INITIAL PROFIT (€)</label>
+                        <label className="form-label">{t('admin:addMember.initialProfit')}</label>
                         <input className="form-input" type="number" min="0" step="0.01"
                           value={addMemberForm.profitAmount}
                           onChange={e => setAddMemberForm(p => ({ ...p, profitAmount: e.target.value }))} />
@@ -876,28 +926,30 @@ function AdminContent() {
                   )}
 
                   <p style={{ fontSize:11, fontWeight:700, color:'var(--text-secondary)', margin:'18px 0 8px' }}>
-                    REVIEW
+                    {t('admin:addMember.reviewTitle')}
                   </p>
                   <div style={{
                     background:'rgba(255,255,255,0.03)', border:'1px solid var(--border)',
                     borderRadius:'var(--radius-sm)', padding:'12px 14px', fontSize:12, color:'var(--text-secondary)',
                     display:'flex', flexDirection:'column', gap:6,
                   }}>
-                    <div><strong style={{ color:'var(--text-primary)' }}>Type:</strong> {addMemberForm.memberType === 'COMPANY' ? 'Company' : 'Personal'}</div>
-                    <div><strong style={{ color:'var(--text-primary)' }}>Name:</strong> {addMemberForm.memberType === 'COMPANY' ? addMemberForm.companyName : addMemberForm.fullName}</div>
-                    <div><strong style={{ color:'var(--text-primary)' }}>Email:</strong> {addMemberForm.email}</div>
-                    <div><strong style={{ color:'var(--text-primary)' }}>Mobile:</strong> {(COUNTRIES.find(c => c.code === addMobileCountry) || DEFAULT_COUNTRY).dial} {addMemberForm.mobile}</div>
-                    <div><strong style={{ color:'var(--text-primary)' }}>Location:</strong> {addMemberForm.city}, {addMemberForm.country}</div>
+                    <div><strong style={{ color:'var(--text-primary)' }}>{t('admin:addMember.reviewType')}</strong> {addMemberForm.memberType === 'COMPANY' ? t('admin:pending.typeCompany') : t('admin:pending.typePersonal')}</div>
+                    <div><strong style={{ color:'var(--text-primary)' }}>{t('admin:addMember.reviewName')}</strong> {addMemberForm.memberType === 'COMPANY' ? addMemberForm.companyName : addMemberForm.fullName}</div>
+                    <div><strong style={{ color:'var(--text-primary)' }}>{t('admin:addMember.reviewEmail')}</strong> <span className="ltr-embed">{addMemberForm.email}</span></div>
+                    <div><strong style={{ color:'var(--text-primary)' }}>{t('admin:addMember.reviewMobile')}</strong> <span className="ltr-embed">{(COUNTRIES.find(c => c.code === addMobileCountry) || DEFAULT_COUNTRY).dial} {addMemberForm.mobile}</span></div>
+                    <div><strong style={{ color:'var(--text-primary)' }}>{t('admin:addMember.reviewLocation')}</strong> {addMemberForm.city}, {addMemberForm.country}</div>
                     <div>
-                      <strong style={{ color:'var(--text-primary)' }}>Documents:</strong>{' '}
+                      <strong style={{ color:'var(--text-primary)' }}>{t('admin:addMember.reviewDocuments')}</strong>{' '}
+                      {/* Joined with the locale's own list separator rather
+                          than a hardcoded ", " — Arabic uses "،". */}
                       {[
-                        addMemberForm.memberType === 'COMPANY' && addFiles.tradeLicense && 'Trade Licence',
-                        addFiles.residentId && 'Resident ID',
-                        addFiles.passport && 'Passport',
-                        addFiles.photo && 'Photo',
-                      ].filter(Boolean).join(', ') || 'None uploaded'}
+                        addMemberForm.memberType === 'COMPANY' && addFiles.tradeLicense && t('admin:addMember.docNames.tradeLicense'),
+                        addFiles.residentId && t('admin:addMember.docNames.residentId'),
+                        addFiles.passport && t('admin:addMember.docNames.passport'),
+                        addFiles.photo && t('admin:addMember.docNames.photo'),
+                      ].filter(Boolean).join(t('common:listSeparator')) || t('admin:addMember.noneUploaded')}
                     </div>
-                    <div><strong style={{ color:'var(--text-primary)' }}>Wallet:</strong> {addMemberForm.enableWallet === 'true' ? 'Enabled' : 'Disabled'}</div>
+                    <div><strong style={{ color:'var(--text-primary)' }}>{t('admin:addMember.reviewWallet')}</strong> {addMemberForm.enableWallet === 'true' ? t('admin:members.walletEnabled') : t('admin:members.walletDisabled')}</div>
                   </div>
                 </>
               )}
@@ -905,8 +957,10 @@ function AdminContent() {
               {addError && (
                 <p style={{ color:'var(--red)', fontSize:12, marginTop:12 }}>{addError}</p>
               )}
+              {/* Replaces `formMsg.includes('Failed')`, which stopped working
+                  the moment the message was translated. */}
               {formMsg && (
-                <p style={{ color: formMsg.includes('Failed') ? 'var(--red)' : 'var(--green)', fontSize:12, marginTop:12 }}>
+                <p style={{ color: formMsgIsError ? 'var(--red)' : 'var(--green)', fontSize:12, marginTop:12 }}>
                   {formMsg}
                 </p>
               )}
@@ -915,21 +969,21 @@ function AdminContent() {
                 {addStep === 1 ? (
                   <button type="button" className="btn-secondary"
                     onClick={() => { setShowAddMember(false); setFormMsg(''); }}>
-                    Cancel
+                    {t('common:action.cancel')}
                   </button>
                 ) : (
                   <button type="button" className="btn-secondary" onClick={goAddBack}>
-                    Back
+                    {t('admin:addMember.back')}
                   </button>
                 )}
                 {addStep < 3 ? (
                   <button type="button" className="btn-primary" style={{ width:'auto', padding:'10px 24px' }}
                     onClick={goAddNext}>
-                    Next
+                    {t('admin:addMember.next')}
                   </button>
                 ) : (
                   <button type="submit" className="btn-primary" style={{ width:'auto', padding:'10px 24px' }}>
-                    Create Member
+                    {t('admin:addMember.create')}
                   </button>
                 )}
               </div>
@@ -943,10 +997,8 @@ function AdminContent() {
 
 export default function AdminPage() {
   return (
-    <AuthProvider>
-      <ProtectedLayout requireAdmin>
-        <AdminContent />
-      </ProtectedLayout>
-    </AuthProvider>
+    <ProtectedLayout requireAdmin>
+      <AdminContent />
+    </ProtectedLayout>
   );
 }

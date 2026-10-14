@@ -1,0 +1,42 @@
+{
+  "main": {
+    "community": "Community",
+    "dashboard": "Dashboard",
+    "projects": "Projects",
+    "companies": "Companies",
+    "portfolio": "Portfolio",
+    "transactions": "Transactions",
+    "cards": "Cards",
+    "settings": "Settings",
+    "adminPanel": "Admin Panel",
+    "activityLogs": "Activity Logs",
+    "withdrawalRequests": "Withdrawal Req.",
+    "myProfile": "My Profile",
+    "walletShort": "Wallet (SalBank)"
+  },
+  "community": {
+    "feed": "Feed",
+    "dealRoom": "Deal Room",
+    "directory": "Community",
+    "events": "Events",
+    "messages": "Messages"
+  },
+  "landing": {
+    "what": "The community",
+    "advantages": "Advantages",
+    "howItWorks": "Opportunities",
+    "profit": "Profits",
+    "faq": "FAQ",
+    "home": "Trillion Business Community — home",
+    "sections": "Sections",
+    "memberLogin": "Member log in",
+    "apply": "Apply",
+    "applyForMembership": "Apply for membership"
+  },
+  "alerts": {
+    "none": "No pending updates",
+    "summary": "{{members}} new member(s), {{investments}} investment request(s), {{withdrawals}} withdrawal request(s)",
+    "adminQueue": "{{members}} new member(s), {{investments}} investment request(s)",
+    "withdrawalQueue": "{{count}} withdrawal request(s) awaiting approval"
+  }
+}

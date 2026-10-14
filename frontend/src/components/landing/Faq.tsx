@@ -3,13 +3,16 @@
 // Height-animated disclosure via Motion, so the panel opens smoothly without
 // the max-height guesswork the CSS version relied on.
 
-import { useState } from 'react';
+import { useState, useMemo} from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'motion/react';
-import { FAQS } from '@/lib/landing-data';
+import { getFaqs } from '@/lib/landing-data';
 import { EASE, Reveal, SplitWordsInView, useCalm } from './motion';
+import { useTranslation } from 'react-i18next';
 
 export default function Faq() {
+  const { t } = useTranslation('landing');
+  const FAQS = useMemo(() => getFaqs(t), [t]);
   const calm = useCalm();
   const [open, setOpen] = useState<number | null>(0);
 
@@ -19,7 +22,7 @@ export default function Faq() {
         <div className="lp-faq-intro">
           <Reveal className="lp-tag">FAQ</Reveal>
           <h2 className="lp-section-title lp-align-left">
-            <SplitWordsInView text="Answers, before you ask." />
+            <SplitWordsInView text={t('faq.heading')} />
           </h2>
           <Reveal className="lp-section-sub lp-align-left" delay={0.1}>
             What the community is, who it is for, and what membership gets you.

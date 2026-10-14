@@ -12,19 +12,22 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence, useInView } from 'motion/react';
 import { EASE, useCalm } from './motion';
+import { useTranslation } from 'react-i18next';
 
 /** Illustrative pairings, drawn from the twelve sectors in the community. */
 const MATCHES = [
-  { a: 'Real Estate', b: 'Finance', note: 'a site meets its funding' },
-  { a: 'Energy', b: 'Technology', note: 'a project meets its systems' },
-  { a: 'Fashion', b: 'Production', note: 'a collection meets its campaign' },
-  { a: 'Healthcare', b: 'Academy', note: 'a programme meets its people' },
-  { a: 'Construction', b: 'Consulting', note: 'a build meets its expertise' },
+  // Keys only; the pair labels and notes live in landing:heroOverlay.pairs.
+  'realEstateFinance',
+  'energyTechnology',
+  'fashionProduction',
+  'healthcareAcademy',
+  'constructionConsulting',
 ];
 
 const CYCLE_MS = 3600;
 
 export default function HeroOverlay() {
+  const { t } = useTranslation('landing');
   const calm = useCalm();
   const ref = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, { amount: 0.4 });
@@ -93,13 +96,13 @@ export default function HeroOverlay() {
           transition={{ duration: 0.55, ease: EASE.out }}
         >
           <span className="lp-ho-pair">
-            <span>{m.a}</span>
+            <span>{t(`heroOverlay.pairs.${m}.a`)}</span>
             <span className="lp-ho-link" aria-hidden>
               ⇄
             </span>
-            <span>{m.b}</span>
+            <span>{t(`heroOverlay.pairs.${m}.b`)}</span>
           </span>
-          <span className="lp-ho-note">{m.note}</span>
+          <span className="lp-ho-note">{t(`heroOverlay.pairs.${m}.note`)}</span>
         </motion.div>
       </AnimatePresence>
     </div>

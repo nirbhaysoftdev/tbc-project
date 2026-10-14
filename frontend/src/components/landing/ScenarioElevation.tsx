@@ -1,4 +1,5 @@
 'use client';
+import { useMemo } from 'react';
 // src/components/landing/ScenarioElevation.tsx
 //
 // The worked example as an annotated architectural elevation. A project rises
@@ -14,8 +15,9 @@
 // Desktop only; narrow screens get the linear stack instead.
 
 import { motion } from 'motion/react';
-import { SCENARIO } from '@/lib/landing-data';
+import { getScenario } from '@/lib/landing-data';
 import { EASE } from './motion';
+import { useTranslation } from 'react-i18next';
 
 const W = 960;
 const H = 640;
@@ -48,6 +50,8 @@ const ANNOT: Record<string, { side: 'l' | 'r'; cy: number; tx: number; ty: numbe
 };
 
 export default function ScenarioElevation({ done, calm }: { done: number; calm: boolean }) {
+  const { t } = useTranslation('landing');
+  const SCENARIO = useMemo(() => getScenario(t), [t]);
   const order = SCENARIO.layers.map((l) => l.key);
   const isOn = (key: string) => order.indexOf(key) < done;
   const complete = done >= SCENARIO.layers.length;

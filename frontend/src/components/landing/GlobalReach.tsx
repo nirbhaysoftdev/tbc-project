@@ -7,10 +7,11 @@
 // it was drafted in, and tightened for a single compact section rather
 // than a standalone page.
 
-import { useState } from 'react';
+import { useState, useMemo} from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { ADVANTAGE_COUNTRIES, ADVANTAGES, type AdvBrand, type AdvCard } from '@/lib/landing-data';
+import { ADVANTAGE_COUNTRIES, getAdvantages, type AdvBrand, type AdvCard } from '@/lib/landing-data';
 import { Reveal, SplitWordsInView } from './motion';
+import { useTranslation } from 'react-i18next';
 
 const ICONS: Record<AdvCard['icon'], string> = {
   bank: 'M3 21h18M3 10h18M5 10v11M9 10v11M15 10v11M19 10v11M12 3l9 7H3l9-7z',
@@ -46,6 +47,8 @@ function Icon({ name, className }: { name: AdvCard['icon']; className?: string }
 }
 
 export default function GlobalReach() {
+  const { t } = useTranslation('landing');
+  const ADVANTAGES = useMemo(() => getAdvantages(t), [t]);
   const [cat, setCat] = useState<'all' | AdvCard['cat']>('all');
   const [hoveredBrand, setHoveredBrand] = useState<{ cardKey: string; brand: AdvBrand } | null>(null);
 
@@ -67,8 +70,8 @@ export default function GlobalReach() {
       {/* Hub strip */}
       <Reveal className="lp-adv-strip" delay={0.1}>
         <div className="lp-adv-strip-head">
-          <span className="lp-adv-strip-title">80+ jurisdictions</span>
-          <span className="lp-adv-strip-badge">Active corridors</span>
+          <span className="lp-adv-strip-title">{t('advantages.stripTitle')}</span>
+          <span className="lp-adv-strip-badge">{t('advantages.stripBadge')}</span>
         </div>
 
         <div className="lp-adv-hubs">
@@ -79,7 +82,7 @@ export default function GlobalReach() {
             </span>
           ))}
           <span className="lp-adv-hub lp-adv-hub-more">
-            +{ADVANTAGE_COUNTRIES.length - ADVANTAGES.hubs.length} more regions
+            {t('advantages.moreRegions', { count: ADVANTAGE_COUNTRIES.length - ADVANTAGES.hubs.length })}
           </span>
         </div>
       </Reveal>
@@ -91,7 +94,7 @@ export default function GlobalReach() {
           className={`lp-adv-filter ${cat === 'all' ? 'is-on' : ''}`}
           onClick={() => setCat('all')}
         >
-          All privileges ({ADVANTAGES.cards.length})
+          {t('advantages.allPrivileges', { count: ADVANTAGES.cards.length })}
         </button>
         {ADVANTAGES.categories.map((c) => (
           <button
@@ -139,7 +142,7 @@ export default function GlobalReach() {
                     className={`lp-adv-brand ${b.wide ? 'is-wide' : ''}`}
                     tabIndex={0}
                     role="group"
-                    aria-label={`${b.name}: ${b.hoverDetail}`}
+                    aria-label={t('advantages.brandAria', { name: b.name, detail: b.hoverDetail })}
                     onPointerEnter={() => setHoveredBrand({ cardKey: card.key, brand: b })}
                     onFocus={() => setHoveredBrand({ cardKey: card.key, brand: b })}
                   >
@@ -154,7 +157,9 @@ export default function GlobalReach() {
             )}
 
             <AnimatePresence initial={false}>
-              {hoveredBrand?.cardKey === card.key && (
+              {/* Bound to a local so TypeScript keeps the non-null narrowing
+                  inside the JSX body. */}
+              {hoveredBrand && hoveredBrand.cardKey === card.key && (
                 <motion.div
                   key={hoveredBrand.brand.key}
                   className="lp-adv-brand-popover"
@@ -164,7 +169,7 @@ export default function GlobalReach() {
                   exit={{ opacity: 0, y: -4 }}
                   transition={{ duration: 0.18 }}
                 >
-                  <span className="lp-adv-brand-popover-kicker">Partner access</span>
+                  <span className="lp-adv-brand-popover-kicker">{t('advantages.partnerAccess')}</span>
                   <strong>{hoveredBrand.brand.name}</strong>
                   <span className="lp-adv-brand-popover-detail">{hoveredBrand.brand.hoverDetail}</span>
                 </motion.div>

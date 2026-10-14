@@ -2,13 +2,15 @@
 // src/app/community/network/page.tsx
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { communityAPI, messagesAPI } from '@/lib/api';
+import { useTranslation } from 'react-i18next';
+import { communityAPI, messagesAPI, formatNumber } from '@/lib/api';
 
 const API_URL = process.env.NODE_ENV === 'production'
   ? (process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || '')
   : '';
 
 export default function NetworkPage() {
+  const { t } = useTranslation(['community', 'common', 'auth']);
   const router = useRouter();
   const [members,  setMembers]  = useState<any[]>([]);
   const [search,   setSearch]   = useState('');
@@ -40,10 +42,10 @@ export default function NetworkPage() {
       {/* Header */}
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 600, marginBottom: 4 }}>
-          Member Directory
+          {t('community:directory.title')}
         </h1>
         <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-          Connect with {total} verified members across the circle.
+          {t('community:directory.subtitle', { count: total })}
         </p>
       </div>
 
@@ -51,21 +53,24 @@ export default function NetworkPage() {
       <form onSubmit={handleSearch} style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
         <input
           className="comm-form-input" style={{ flex: 1, minWidth: 200, padding: '9px 14px', fontSize: 13 }}
-          placeholder="Search by name, company, industry…"
+          placeholder={t('community:directory.searchPlaceholder')}
           value={search} onChange={e => setSearch(e.target.value)}
         />
         <select className="comm-form-select" style={{ width: 'auto', padding: '9px 12px', fontSize: 12 }}
           value={industry} onChange={e => { setIndustry(e.target.value); setPage(1); }}>
-          <option value="">All Industries</option>
-          <option value="Private Equity">Private Equity</option>
-          <option value="Real Estate">Real Estate</option>
-          <option value="Technology">Technology</option>
-          <option value="Finance">Finance</option>
-          <option value="Family Office">Family Office</option>
-          <option value="Hospitality">Hospitality</option>
+          {/* `value` is the stored industry string the API filters on and must
+              stay English; the option text reuses the onboarding industry
+              labels so the two screens agree. */}
+          <option value="">{t('community:directory.allIndustries')}</option>
+          <option value="Private Equity">{t('auth:onboarding.industries.privateEquity')}</option>
+          <option value="Real Estate">{t('auth:onboarding.industries.realEstate')}</option>
+          <option value="Technology">{t('auth:onboarding.industries.technology')}</option>
+          <option value="Finance">{t('auth:onboarding.industries.finance')}</option>
+          <option value="Family Office">{t('auth:onboarding.industries.familyOffice')}</option>
+          <option value="Hospitality">{t('auth:onboarding.industries.hospitality')}</option>
         </select>
         <button type="submit" className="comm-btn comm-btn-primary" style={{ padding: '9px 18px', fontSize: 12 }}>
-          Search
+          {t('common:action.search')}
         </button>
       </form>
 
@@ -74,8 +79,8 @@ export default function NetworkPage() {
         <div className="comm-empty"><div className="spinner" style={{ width: 32, height: 32, borderWidth: 2, margin: 0 }} /></div>
       ) : members.length === 0 ? (
         <div className="comm-empty">
-          <div className="comm-empty-text">No members found</div>
-          <div className="comm-empty-sub">Try adjusting your search or filters.</div>
+          <div className="comm-empty-text">{t('community:directory.notFound')}</div>
+          <div className="comm-empty-sub">{t('community:directory.notFoundSub')}</div>
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 14 }}>
@@ -93,6 +98,7 @@ export default function NetworkPage() {
                 <div style={{ display: 'flex', gap: 6, justifyContent: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
                   {m.profile?.industry && (
                     <span className="comm-mbadge" style={{ background: 'rgba(100,100,180,0.12)', color: '#a0a8ff' }}>
+                      {/* The stored industry string, shown as entered. */}
                       {m.profile.industry}
                     </span>
                   )}
@@ -108,7 +114,7 @@ export default function NetworkPage() {
                   style={{ width: '100%' }}
                   onClick={() => msgMember(m.id)}
                 >
-                  Send Message
+                  {t('common:action.sendMessage')}
                 </button>
               </div>
             );
@@ -119,11 +125,19 @@ export default function NetworkPage() {
       {/* Pagination */}
       {total > 24 && (
         <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 28 }}>
-          <button className="comm-btn comm-btn-secondary" disabled={page === 1} onClick={() => setPage(p => p - 1)}>← Prev</button>
+          {/* The arrow is part of the translated string, NOT a mirrored icon:
+              `.rtl-mirror` here would scaleX the button's text as well. Each
+              language's resource file carries the arrow that points the right
+              way for its own reading direction. */}
+          <button className="comm-btn comm-btn-secondary" disabled={page === 1} onClick={() => setPage(p => p - 1)}>
+            {t('community:directory.prev')}
+          </button>
           <span style={{ fontSize: 13, color: 'var(--text-muted)', padding: '10px 14px' }}>
-            Page {page} of {Math.ceil(total / 24)}
+            {t('common:pagination.page')} {formatNumber(page)} {t('common:pagination.of', { total: formatNumber(Math.ceil(total / 24)) })}
           </span>
-          <button className="comm-btn comm-btn-secondary" disabled={page >= Math.ceil(total / 24)} onClick={() => setPage(p => p + 1)}>Next →</button>
+          <button className="comm-btn comm-btn-secondary" disabled={page >= Math.ceil(total / 24)} onClick={() => setPage(p => p + 1)}>
+            {t('community:directory.next')}
+          </button>
         </div>
       )}
     </div>
