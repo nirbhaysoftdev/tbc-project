@@ -63,18 +63,26 @@ npx prisma migrate diff \
 will not reach production.
 
 `backend` runs `prisma generate` on `postinstall`, so `npm install` can no
-longer leave a stale client behind. A stale client selects columns the database
-does not have, which produces the same 500s as missing migrations.
+longer leave a stale client **on disk**. A stale client selects columns the
+database does not have, which produces the same 500s as missing migrations.
+
+That only covers the files. A process that was already running keeps the old
+client in memory, because nothing watches `node_modules` - so a generate must
+always be followed by a restart. See "Restart after `prisma generate`" under
+Deploying.
 
 ## Deploying
 
 ```bash
+# Back up first whenever migrations are pending - several include DROP COLUMN.
+pg_dump -Fc tbc_db > ~/tbc-$(date +%F-%H%M).dump
+
 cd /var/www/tbc-project && git pull origin main
 
 cd backend
 npm install                 # regenerates the Prisma client via postinstall
 npx prisma migrate deploy   # only when migrations changed
-pm2 restart tbc-api
+pm2 restart tbc-api         # ALWAYS, not just on code changes - see below
 
 cd ../frontend
 npm install && rm -rf .next out && npm run build
@@ -85,9 +93,85 @@ rsync -a --delete out/ /var/www/tbc-project/frontend-dist/
 nginx serves `/var/www/tbc-project/frontend-dist`. Skipping it means the build
 silently changes nothing on the live site.
 
+**Restart after `prisma generate`, every time.** `postinstall` regenerates the
+client into `node_modules`, and neither pm2 nor nodemon watches `node_modules`
+- a process started before the generate keeps the old client in memory. It
+then selects columns that do not exist, or refuses to select ones that do, and
+you get 500s from endpoints whose code is obviously correct. This has already
+cost an afternoon locally: `Unknown field 'enquiryEmail' for select statement`
+from a process whose files were up to date.
+
 Never run `db:reset` (drops the database) or `db:migrate` (that is
 `migrate dev`, which can offer to reset on drift) against production.
 `db:deploy` is the production-safe one.
+
+### Environment variables that break things quietly
+
+`backend/.env`:
+
+| Variable | Why it matters |
+|---|---|
+| `FRONTEND_URL` | The media stream sends `Content-Security-Policy: frame-ancestors 'self' $FRONTEND_URL` and defaults to `http://localhost:3000`. Wrong in production and **every PDF, Word and image viewer renders nothing** while the rest of the portal looks healthy. |
+| `SMTP_*` | OTP, approvals, invoices and Connect Now enquiries all go through `services/mailer.js`. |
+| `DEFAULT_ENQUIRY_EMAIL` | Fallback recipient for enquiries when no address is configured in Admin → Enquiries. Optional; the code falls back to `codehands12@gmail.com`. |
+
+`frontend` at **build time** (the frontend is a static export, so these are
+baked into the bundle - changing them later does nothing until you rebuild):
+
+| Variable | Why it matters |
+|---|---|
+| `NEXT_PUBLIC_API_URL` | Every API call. Wrong value = a portal that loads and can do nothing. |
+
+### Uploaded media lives outside git and outside nginx
+
+```
+backend/storage/project-media/    project images, PDFs, video
+backend/storage/company-media/    company logos, banners, gallery, PDFs, Word, video
+```
+
+- **Never wipe these.** They hold every project and company upload, and
+  nothing else has a copy. Back them up with the database.
+- They must be writable by the pm2 user. `ensureDir()` creates them on boot,
+  but it cannot fix ownership.
+- They are **not** under `/uploads` and are not served by nginx at all -
+  company media goes through `/api/companies/:id/media/...`, which the existing
+  `/api` proxy already covers. **No nginx change is needed** for either module.
+- Each directory holds a `.gitignore` (`*` / `!.gitignore`) so uploads are
+  never committed. Keep it. `company-media` was missing one once and 114MB of
+  member uploads went into the repo and onto GitHub; removing them needed a
+  history rewrite and a force-push.
+
+### Document size limits
+
+`services/uploadLimits.js` is the authority: documents 8MB, images 10MB, video
+300MB. `frontend/src/lib/uploadLimits.ts` mirrors the numbers so a file is
+refused before it uploads - **change both together.** Multer keeps only the
+outer 300MB ceiling, because it applies one limit per request and cannot vary
+it by mime type.
+
+### After a history rewrite
+
+If history has been rewritten (it has been once, to purge committed uploads),
+every commit SHA changed and `git pull` on the server fails. Use:
+
+```bash
+cd /var/www/tbc-project
+git fetch origin && git reset --hard origin/main
+```
+
+`reset --hard` discards uncommitted local changes, so check `git status` on the
+server first if anything was ever hand-edited there.
+
+### After deploying
+
+1. **Admin Panel → Enquiries** - set the enquiry recipient addresses. Several
+   are supported; every one receives every enquiry. Changing them emails the
+   addresses added and removed.
+2. Open a project and a company detail page and check the banner image loads.
+   That is the quickest proof `FRONTEND_URL` is right.
+3. Send one test enquiry and confirm it arrives.
+4. Confirm Projects and Companies appear in the sidebar for an admin *and* for
+   a member.
 
 ## Uploads are authorised, never static
 
