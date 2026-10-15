@@ -112,7 +112,7 @@ const ADV_CARDS: {
   { key: 'banking',      cat: 'banking',            icon: 'bank',   brands: ['enbd', 'mashreq', 'wio', 'fab', 'sib'], hasDesc: false },
   { key: 'zurich',       cat: 'insurance-law',      icon: 'shield', brands: ['zurich'],                                hasDesc: true },
   { key: 'legal-fiscal', cat: 'insurance-law',      icon: 'legal',  brands: ['legal', 'fiscal'],                       hasDesc: true },
-  { key: 'tga',          cat: 'mobility-lifestyle', icon: 'jet',    brands: ['tga'],                                   hasDesc: true },
+  // { key: 'tga',          cat: 'mobility-lifestyle', icon: 'jet',    brands: ['tga'],                                   hasDesc: true },
   { key: 'barcelo',      cat: 'mobility-lifestyle', icon: 'hotel',  brands: ['barcelo', 'radisson'],                   hasDesc: true },
   { key: 'kalaani',      cat: 'mobility-lifestyle', icon: 'estate', brands: ['kalaani'],                               hasDesc: true },
   { key: 'Charity',      cat: 'mobility-lifestyle', icon: 'estate', brands: ['Eben-ezer'],                             hasDesc: true },

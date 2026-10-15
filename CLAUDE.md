@@ -149,6 +149,14 @@ refused before it uploads - **change both together.** Multer keeps only the
 outer 300MB ceiling, because it applies one limit per request and cannot vary
 it by mime type.
 
+**nginx must allow the same ceiling.** `client_max_body_size` defaults to 1MB,
+so without it every upload over 1MB dies with a `413 Request Entity Too Large`
+from nginx — before Express, so the response is an HTML error page with no
+`error` field and the UI only says "Could not save this project." Set
+`client_max_body_size 300m;` in the server block to match `MAX_ANY`. This bit
+production once with a 1.8MB PDF. If large videos stall rather than 413,
+raise `client_body_timeout` and `proxy_read_timeout` too; both default to 60s.
+
 ### After a history rewrite
 
 If history has been rewritten (it has been once, to purge committed uploads),
