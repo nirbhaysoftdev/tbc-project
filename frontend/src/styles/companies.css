@@ -19,8 +19,8 @@
  * so it is contained rather than cropped, on a plate that keeps a white
  * wordmark readable against the dark navy. */
 .cp-logo {
-  width: 56px;
-  height: 56px;
+  width: 80px;
+  height: 80px;
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.07);
   border: 1px solid var(--border);
@@ -34,8 +34,9 @@
 .cp-logo img {
   width: 100%;
   height: 100%;
+  border-radius: 15px;
   object-fit: contain;
-  padding: 6px;
+  padding: 3px;
   user-select: none;
   -webkit-user-select: none;
 }
@@ -57,7 +58,7 @@
  * convention for a company profile and saves a row of vertical space. */
 .cp-card-logo {
   position: absolute;
-  bottom: -20px;
+  bottom: 2px;
   inset-inline-start: 14px;
   z-index: 2;
   box-shadow: 0 6px 18px rgba(4, 6, 16, 0.6);
