@@ -5,7 +5,7 @@ const crypto  = require('crypto');
 const multer  = require('multer');
 const { MAX_ANY } = require('../services/uploadLimits');
 const router  = express.Router();
-const { authenticate, requireAdmin, requireActive } = require('../middleware/auth');
+const { authenticate, requireAdmin, requireSuperAdmin, requireActive } = require('../middleware/auth');
 const ctrl = require('../controllers/companiesController');
 const mediaCtrl = require('../controllers/companyMediaController');
 
@@ -55,6 +55,6 @@ router.get('/',                       ctrl.getCompanies);
 router.get('/:id',                    ctrl.getCompany);
 router.post('/',    requireAdmin,     ctrl.createCompany);
 router.put('/:id',  requireAdmin,     ctrl.updateCompany);
-router.delete('/:id', requireAdmin,   ctrl.deleteCompany);
+router.delete('/:id', requireSuperAdmin, ctrl.deleteCompany);
 
 module.exports = router;

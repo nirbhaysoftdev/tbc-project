@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { projectsAPI, investmentRequestAPI, formatEur, formatNumber, formatDate } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import ProjectMedia from '@/components/community/ProjectMedia';
+import { isAdminRole } from '@/lib/roles';
 
 const RISK_COLORS: Record<string, string> = {
   LOW:    'comm-risk-low',
@@ -147,7 +148,7 @@ function DealDetailInner() {
   const daysLeft  = Math.ceil((new Date(project.fundingDeadline).getTime() - Date.now()) / 86400000);
   const remaining = project.targetAmount - project.raisedAmount;
   const minAmount = Math.ceil(project.targetAmount * (project.minInvestmentPct / 100));
-  const isAdmin = user?.role === 'ADMIN';
+  const isAdmin = isAdminRole(user?.role);
 
   return (
     <div style={{ maxWidth: 1000, margin: '0 auto', padding: '24px 28px 80px' }}>

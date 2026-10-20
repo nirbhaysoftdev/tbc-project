@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/lib/auth';
 import { messagesAPI } from '@/lib/api';
 import LanguageSelector from '@/components/i18n/LanguageSelector';
+import { isAdminRole } from '@/lib/roles';
 
 const API_URL = process.env.NODE_ENV === 'production'
   ? (process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || '')
@@ -141,14 +142,14 @@ export default function CommunityNav({
               <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)' }}>
                 <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{user?.name}</div>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
-                  {user?.role === 'ADMIN' ? t('common:role.admin') : t('common:role.member')}
+                  {isAdminRole(user?.role) ? t('common:role.admin') : t('common:role.member')}
                 </div>
               </div>
               {[
                 { label: t('nav:main.myProfile'),  href: '/settings', id: 'profile' },
                 { label: t('nav:main.settings'),   href: '/settings', id: 'settings' },
                 ...(user?.wallet ? [{ label: t('nav:main.walletShort'), href: '/dashboard', id: 'wallet' }] : []),
-                ...(user?.role === 'ADMIN' ? [{ label: t('nav:main.adminPanel'), href: '/admin', id: 'admin' }] : []),
+                ...(isAdminRole(user?.role) ? [{ label: t('nav:main.adminPanel'), href: '/admin', id: 'admin' }] : []),
               ].map(item => (
                 // Keyed by `id`, not href: two entries share /settings, and a
                 // translated label is not a stable React key.

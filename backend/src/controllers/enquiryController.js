@@ -31,6 +31,7 @@ const prisma = require('../utils/prismaClient');
 const sanitizeHtml = require('sanitize-html');
 const { sendEnquiryEmail, sendEnquiryRecipientChangedEmails } = require('../services/mailer');
 const { logActivity } = require('../services/activityLog');
+const { isAdmin } = require('../utils/roles');
 const {
   getEnquiryRecipients, setEnquiryRecipients, MAX_RECIPIENTS,
 } = require('../services/enquirySettings');
@@ -95,7 +96,7 @@ const createEnquiry = async (req, res) => {
       // A member may only enquire about something they can actually see. A
       // draft or archived profile is not in the directory, so an enquiry about
       // one would be a message about a page that does not exist for them.
-      if (req.user.role !== 'ADMIN' && !['ACTIVE', 'INACTIVE'].includes(company.status)) {
+      if (!isAdmin(req.user.role) && !['ACTIVE', 'INACTIVE'].includes(company.status)) {
         return res.status(404).json({ error: 'Company not found' });
       }
       subjectName = company.name;
@@ -105,7 +106,7 @@ const createEnquiry = async (req, res) => {
         select: { id: true, title: true, status: true },
       });
       if (!project) return res.status(404).json({ error: 'Project not found' });
-      if (req.user.role !== 'ADMIN' && !['ACTIVE', 'FUNDED', 'CLOSED'].includes(project.status)) {
+      if (!isAdmin(req.user.role) && !['ACTIVE', 'FUNDED', 'CLOSED'].includes(project.status)) {
         return res.status(404).json({ error: 'Project not found' });
       }
       subjectName = project.title;

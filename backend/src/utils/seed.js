@@ -30,13 +30,16 @@ async function main() {
       "TBC Admin",
       "admin@trillionbc.com",
       adminPass,
-      "ADMIN",
+      // Bootstrapping: the role can only be granted BY a super admin, so the
+      // first one has to be seeded. Promote the real operators from the panel
+      // and demote this account afterwards.
+      "SUPER_ADMIN",
       "ACTIVE",
       now,
       now,
     ],
   );
-  console.log("✅ Admin created: admin@trillionbc.com");
+  console.log("✅ Super admin created: admin@trillionbc.com");
 
   // ── Member ────────────────────────────────────────────
   const memberPass = await bcrypt.hash("Member@123", 12);

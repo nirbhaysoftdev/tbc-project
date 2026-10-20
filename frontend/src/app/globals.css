@@ -2334,6 +2334,12 @@ width: 65px;
 /* Arrows in buttons and links point "forward", so they mirror with the text. */
 [dir='rtl'] .rtl-mirror { transform: scaleX(-1); }
 
+/* ...but not inside a subtree that is pinned left-to-right, such as the
+   landing page: there the text reads LTR, so a forward arrow already points
+   the right way and mirroring it would point it backwards. Listed after the
+   rule above so it wins at equal specificity. */
+[dir='ltr'] .rtl-mirror { transform: none; }
+
 /*
   Logos, charts, maps, media controls and brand marks are not directional and
   must never be mirrored (§10). Opt out explicitly so a future blanket rule

@@ -4,6 +4,8 @@ import ProtectedLayout from '@/components/layout/ProtectedLayout';
 import { useTranslation } from 'react-i18next';
 import { withdrawAPI, formatEur, formatDate } from '@/lib/api';
 import { useAdminAlerts } from '@/lib/adminAlerts';
+import { useAuth } from '@/lib/auth';
+import { isSuperAdminRole } from '@/lib/roles';
 
 interface Request {
   id: string;
@@ -23,6 +25,8 @@ interface Request {
 
 function WithdrawalsContent() {
   const { t } = useTranslation(['admin', 'common']);
+  const { user } = useAuth();
+  const isSuper = isSuperAdminRole(user?.role);
   const [requests, setRequests] = useState<Request[]>([]);
   const [loading, setLoading]   = useState(true);
   const [selected, setSelected] = useState<Request | null>(null);
@@ -179,17 +183,28 @@ function WithdrawalsContent() {
 
             <div className="modal-actions" style={{ marginTop: 24 }}>
               <button className="btn-secondary" onClick={() => setSelected(null)}>{t('common:action.close')}</button>
-              <button className="btn-danger"
-                disabled={processing === selected.id + 'reject'}
-                onClick={() => handle(selected.id, 'reject')}>
-                {processing === selected.id + 'reject' ? t('admin:withdrawals.rejecting') : t('admin:withdrawals.reject')}
-              </button>
-              <button className="btn-primary"
-                style={{ width: 'auto', padding: '10px 24px', marginTop: 0 }}
-                disabled={processing === selected.id + 'approve'}
-                onClick={() => handle(selected.id, 'approve')}>
-                {processing === selected.id + 'approve' ? t('admin:withdrawals.approving') : t('admin:withdrawals.approveDebit')}
-              </button>
+              {/* Both decisions are final and move money out of the platform,
+                  so an admin can review a request but not settle it. */}
+              {isSuper ? (
+                <>
+                  <button className="btn-danger"
+                    disabled={processing === selected.id + 'reject'}
+                    onClick={() => handle(selected.id, 'reject')}>
+                    {processing === selected.id + 'reject' ? t('admin:withdrawals.rejecting') : t('admin:withdrawals.reject')}
+                  </button>
+                  <button className="btn-primary"
+                    style={{ width: 'auto', padding: '10px 24px', marginTop: 0 }}
+                    disabled={processing === selected.id + 'approve'}
+                    onClick={() => handle(selected.id, 'approve')}>
+                    {processing === selected.id + 'approve' ? t('admin:withdrawals.approving') : t('admin:withdrawals.approveDebit')}
+                  </button>
+                </>
+              ) : (
+                <span style={{ fontSize: 12, color: 'var(--text-secondary)', alignSelf: 'center' }}>
+                  {t('admin:withdrawals.superAdminOnly',
+                     'Approving or rejecting a withdrawal requires super admin access.')}
+                </span>
+              )}
             </div>
           </div>
         </div>

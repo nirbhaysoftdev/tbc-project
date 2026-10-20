@@ -52,9 +52,32 @@ const ACTIVITY = {
   // ── System ──
   STATEMENT_SENT:             { category: 'SYSTEM',     label: 'Statement sent' },
   DATA_EXPORTED:              { category: 'SYSTEM',     label: 'Data exported' },
+
+  // ── Super admin ──
+  // Everything only a SUPER_ADMIN can do. Kept in its own category so the
+  // Logs page can show the privileged actions on their own, which is the
+  // view you want when answering "who changed this account?".
+  MEMBER_RESTORED:            { category: 'SUPER_ADMIN', label: 'Member restored' },
+  MEMBER_PURGED:              { category: 'SUPER_ADMIN', label: 'Member permanently purged' },
+  MEMBER_PROFILE_EDITED:      { category: 'SUPER_ADMIN', label: 'Member record edited' },
+  ROLE_CHANGED:               { category: 'SUPER_ADMIN', label: 'Role changed' },
+  EMAIL_CHANGED:              { category: 'SUPER_ADMIN', label: 'Member email changed' },
+  PASSWORD_RESET_BY_ADMIN:    { category: 'SUPER_ADMIN', label: 'Password reset by super admin' },
+  DOCUMENT_UPLOADED:          { category: 'SUPER_ADMIN', label: 'Identity document uploaded' },
+  DOCUMENT_DELETED:           { category: 'SUPER_ADMIN', label: 'Identity document deleted' },
+  KYC_DOCUMENT_REVIEWED:      { category: 'SUPER_ADMIN', label: 'KYC document reviewed' },
+  IMPERSONATION_STARTED:      { category: 'SUPER_ADMIN', label: 'Impersonation started' },
+  PROJECT_DELETED:            { category: 'SUPER_ADMIN', label: 'Project deleted' },
+  PROJECT_TRANSFERRED:        { category: 'SUPER_ADMIN', label: 'Project ownership transferred' },
+  COMPANY_DELETED:            { category: 'SUPER_ADMIN', label: 'Company deleted' },
+  COMPANY_TRANSFERRED:        { category: 'SUPER_ADMIN', label: 'Company ownership transferred' },
+  POST_DELETED:               { category: 'SUPER_ADMIN', label: 'Post deleted by super admin' },
+  COMMENT_DELETED:            { category: 'SUPER_ADMIN', label: 'Comment deleted by super admin' },
+  ENQUIRY_DELETED:            { category: 'SUPER_ADMIN', label: 'Enquiry deleted' },
+  TRANSACTION_REVERSED:       { category: 'SUPER_ADMIN', label: 'Transaction reversed' },
 };
 
-const CATEGORIES = ['EMAIL', 'MEMBER', 'INVESTMENT', 'PROFIT', 'WITHDRAWAL', 'WALLET', 'SYSTEM'];
+const CATEGORIES = ['EMAIL', 'MEMBER', 'INVESTMENT', 'PROFIT', 'WITHDRAWAL', 'WALLET', 'SYSTEM', 'SUPER_ADMIN'];
 
 /**
  * Append one line to the activity feed. Fire and forget - callers must not

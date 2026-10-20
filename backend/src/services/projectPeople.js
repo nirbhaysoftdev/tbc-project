@@ -16,6 +16,7 @@
 //     services/memberVisibility.js — the names here are already visible to
 //     members through the project card.
 const prisma = require('../utils/prismaClient');
+const { LIVE_USER } = require('../utils/roles');
 
 const MAX_PEOPLE = 60;      // a project list, not a mailing list
 const MAX_NAME   = 120;
@@ -81,7 +82,7 @@ async function normalizePeople(raw) {
   const byId = new Map();
   if (ids.length > 0) {
     const users = await prisma.user.findMany({
-      where:  { id: { in: ids } },
+      where:  { id: { in: ids }, ...LIVE_USER },
       select: { id: true, name: true },
     });
     users.forEach((u) => byId.set(u.id, u.name));

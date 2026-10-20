@@ -2,6 +2,7 @@
 const prisma = require('../utils/prismaClient');
 const i18n = require('../services/i18n/translationService');
 const { memberCardSelect, memberProfileSelect } = require('../services/memberVisibility');
+const { isAdmin, LIVE_USER } = require('../utils/roles');
 
 // ── Get feed posts ────────────────────────────
 const getFeed = async (req, res) => {
@@ -90,7 +91,7 @@ const deletePost = async (req, res) => {
   try {
     const post = await prisma.post.findUnique({ where: { id: req.params.id } });
     if (!post) return res.status(404).json({ error: 'Post not found' });
-    if (post.authorId !== req.user.id && req.user.role !== 'ADMIN') {
+    if (post.authorId !== req.user.id && !isAdmin(req.user.role)) {
       return res.status(403).json({ error: 'Not authorized' });
     }
     await prisma.post.delete({ where: { id: req.params.id } });
@@ -164,7 +165,7 @@ const addComment = async (req, res) => {
 const getMembers = async (req, res) => {
   try {
     const { search, industry, page = 1, limit = 24 } = req.query;
-    const where = { role: 'MEMBER', status: 'ACTIVE' };
+    const where = { ...LIVE_USER, role: 'MEMBER', status: 'ACTIVE' };
 
     if (search) {
       where.OR = [
@@ -199,9 +200,9 @@ const getMembers = async (req, res) => {
 // ── Get single member profile ─────────────────
 const getMemberProfile = async (req, res) => {
   try {
-    const isSelfOrAdmin = req.user.id === req.params.id || req.user.role === 'ADMIN';
-    const member = await prisma.user.findUnique({
-      where:  { id: req.params.id },
+    const isSelfOrAdmin = req.user.id === req.params.id || isAdmin(req.user.role);
+    const member = await prisma.user.findFirst({
+      where:  { id: req.params.id, ...LIVE_USER },
       select: memberProfileSelect({ isSelfOrAdmin }),
     });
     if (!member) return res.status(404).json({ error: 'Member not found' });
@@ -287,7 +288,7 @@ const markNotificationRead = async (req, res) => {
 const getCommunityStats = async (req, res) => {
   try {
     const [totalMembers, activePosts, activeProjects] = await Promise.all([
-      prisma.user.count({ where: { role: 'MEMBER', status: 'ACTIVE' } }),
+      prisma.user.count({ where: { ...LIVE_USER, role: 'MEMBER', status: 'ACTIVE' } }),
       prisma.post.count(),
       prisma.project.count({ where: { status: 'ACTIVE' } }),
     ]);

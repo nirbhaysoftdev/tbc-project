@@ -40,7 +40,9 @@
     "emptySearch": "No members match that search.",
     "noneFound": "No members found.",
     "enableWallet": "Enable Wallet",
-    "openRow": "Open {{name}}'s details"
+    "openRow": "Open {{name}}'s details",
+    "openingBalance": "Opening balance",
+    "frozenNotice": "This member is frozen and cannot sign in."
   },
   "pending": {
     "columns": {
@@ -648,6 +650,7 @@
     "noteLabel": "Note to include (optional)",
     "notePlaceholder": "e.g. Your Q3 profit cycle has been credited.",
     "sendEmail": "Send email",
-    "sending": "Sending…"
+    "sending": "Sending…",
+    "actionFailed": "That action could not be completed."
   }
 }

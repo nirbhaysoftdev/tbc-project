@@ -21,6 +21,7 @@ import { companiesAPI, mediaSrc, formatEur } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import '@/styles/projects.css';
 import '@/styles/companies.css';
+import { isAdminRole } from '@/lib/roles';
 
 const STATUS_CLASS: Record<string, string> = {
   ACTIVE: 'pj-badge-active',
@@ -95,7 +96,7 @@ function CompanyDetailInner() {
   // Create, edit and upload are all `requireAdmin` on the server (backend
   // routes/companies.js), so the manage controls are admin-only here. Showing
   // them to anyone else would offer them a 403.
-  const canManage = user?.role === 'ADMIN';
+  const canManage = isAdminRole(user?.role);
 
 
   if (loading) {

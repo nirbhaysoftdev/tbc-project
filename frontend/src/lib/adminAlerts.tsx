@@ -5,6 +5,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth';
 import { adminAPI } from '@/lib/api';
+import { isAdminRole } from '@/lib/roles';
 
 export type AdminAlerts = {
   newMembers: number;
@@ -24,7 +25,7 @@ export function AdminAlertsProvider({ children }: { children: React.ReactNode })
   const { user } = useAuth();
   const [alerts, setAlerts] = useState<AdminAlerts>(EMPTY);
 
-  const isAdmin = user?.role === 'ADMIN';
+  const isAdmin = isAdminRole(user?.role);
 
   const refresh = () => {
     if (!isAdmin) return;

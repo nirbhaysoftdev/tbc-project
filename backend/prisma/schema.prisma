@@ -14,6 +14,7 @@ datasource db {
 enum Role {
   MEMBER
   ADMIN
+  SUPER_ADMIN
 }
 
 enum UserStatus {
@@ -156,6 +157,12 @@ model User {
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 
+  // Soft delete (super admin). A row with deletedAt set is invisible to every
+  // member-facing query and cannot log in; the ledger keeps its references.
+  // Purging the row outright is a separate, explicitly confirmed action.
+  deletedAt     DateTime?
+  deletedById   String?
+
   // Wallet (optional - not all community members have a wallet)
   wallet              Wallet?
   transactions        Transaction[]
@@ -196,6 +203,7 @@ model User {
   activityActed       ActivityLog[]        @relation("ActivityActor")
   activityTargeted    ActivityLog[]        @relation("ActivityTarget")
 
+  @@index([deletedAt])
   @@map("users")
 }
 

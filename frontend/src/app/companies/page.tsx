@@ -14,6 +14,7 @@ import { companiesAPI, formatEur } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import '@/styles/projects.css';
 import '@/styles/companies.css';
+import { isAdminRole } from '@/lib/roles';
 
 interface Facets {
   categories: { value: string; count: number }[];
@@ -47,7 +48,7 @@ const EMPTY_FILTERS = {
 
 function CompaniesPage() {
   const { user } = useAuth();
-  const isAdmin = user?.role === 'ADMIN';
+  const isAdmin = isAdminRole(user?.role);
 
   const [companies, setCompanies] = useState<CompanySummary[]>([]);
   const [facets, setFacets] = useState<Facets | null>(null);

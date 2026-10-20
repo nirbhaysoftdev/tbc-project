@@ -6,6 +6,7 @@ import ProtectedLayout from '@/components/layout/ProtectedLayout';
 import { useAuth } from '@/lib/auth';
 import { profileAPI } from '@/lib/api';
 import LanguageSelector from '@/components/i18n/LanguageSelector';
+import { isAdminRole } from '@/lib/roles';
 
 const API_URL = process.env.NODE_ENV === 'production' 
   ? (process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || '')
@@ -62,7 +63,7 @@ function SettingsContent() {
             <p style={{ fontWeight:700 }}>{user?.name}</p>
             <p className="ltr-embed" style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>{user?.email}</p>
             <p style={{ fontSize:11, color:'var(--accent-blue)', marginTop:4, fontWeight:600 }}>
-              {user?.role === 'ADMIN' ? t('common:role.administrator') : t('common:role.member')}
+              {isAdminRole(user?.role) ? t('common:role.administrator') : t('common:role.member')}
             </p>
           </div>
         </div>

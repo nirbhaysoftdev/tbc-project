@@ -4,7 +4,7 @@ const router  = express.Router();
 const multer  = require('multer');
 const path    = require('path');
 const fs      = require('fs');
-const { authenticate, requireAdmin } = require('../middleware/auth');
+const { authenticate, requireAdmin, requireSuperAdmin } = require('../middleware/auth');
 const adminController = require('../controllers/adminController');
 const memberOverviewController = require('../controllers/memberOverviewController');
 const activityLogController = require('../controllers/activityLogController');
@@ -59,10 +59,17 @@ const memberUpload = multer({
 
 router.use(authenticate, requireAdmin);
 
+// Everything below is open to ADMIN unless it carries requireSuperAdmin.
+// The split: an admin runs the day-to-day portal, a super admin holds the
+// irreversible actions (deletion, rejection, freezing, credential changes)
+// and the two money levers that leave no ledger entry behind them — wallet
+// opening balances and withdrawal decisions. See routes/superAdmin.js.
+
 // ── MMS - Pending applicants & approval ──────────
 router.get('/pending',              adminController.getPendingUsers);
 router.post('/users/:id/approve',   docUpload.array('documents', 5), adminController.approveUser);
-router.post('/users/:id/reject',    adminController.rejectUser);
+// Terminal: REJECTED blocks login for good.
+router.post('/users/:id/reject',    requireSuperAdmin, adminController.rejectUser);
 
 // Members
 router.get('/members',              adminController.getMembers);
@@ -80,11 +87,15 @@ router.post(
   adminController.createMember,
 );
 router.put('/members/:id',          upload.single('photo'), adminController.updateMember);
-router.delete('/members/:id',       adminController.deleteMember);
-router.put('/members/:id/freeze',   adminController.toggleFreeze);
+router.delete('/members/:id',       requireSuperAdmin, adminController.deleteMember);
+router.put('/members/:id/freeze',   requireSuperAdmin, adminController.toggleFreeze);
 
 // Wallet management
-router.put('/members/:id/wallet',   adminController.updateWallet);
+// Two separate powers that used to be one call. Switching a member's wallet on
+// is routine admin work; writing an opening balance overwrites a number with
+// no Transaction row to explain it, so it is super-admin only.
+router.put('/members/:id/wallet-enabled', adminController.setWalletEnabled);
+router.put('/members/:id/wallet',   requireSuperAdmin, adminController.updateWallet);
 
 // Transactions
 router.post('/transactions',        adminController.addTransaction);
@@ -99,6 +110,7 @@ router.get('/notifications',        adminController.getNotificationCounts);
 // collide (different paths).
 router.get('/logs/types',           activityLogController.listLogTypes);
 router.get('/logs',                 activityLogController.listLogs);
-router.get('/export',               adminController.exportData);
+// Bulk PII in a single response.
+router.get('/export',               requireSuperAdmin, adminController.exportData);
 
 module.exports = router;

@@ -10,6 +10,7 @@ const {
   sendWalletActivatedEmail,
 } = require('../services/mailer');
 const { logActivity } = require('../services/activityLog');
+const { isSuperAdmin, LIVE_USER } = require('../utils/roles');
 
 // ── Generate a readable temporary password ─────
 function generateTempPassword() {
@@ -23,7 +24,10 @@ const truthy = (v) => v === true || v === 'true' || v === '1' || v === 1;
 const getMembers = async (req, res) => {
   try {
     const { search, status, page = 1, limit = 20 } = req.query;
-    const where = { role: 'MEMBER' };
+    // Soft-deleted members are hidden unless a super admin explicitly asks for
+    // them — that is the only view from which they can be restored or purged.
+    const includeDeleted = truthy(req.query.includeDeleted) && isSuperAdmin(req.user.role);
+    const where = { role: 'MEMBER', ...(includeDeleted ? {} : LIVE_USER) };
     if (status) where.status = status;
     if (search) {
       where.OR = [
@@ -211,6 +215,17 @@ const updateMember = async (req, res) => {
     const { name, email, password } = req.body;
     const profilePhoto = req.file ? `/uploads/${req.file.filename}` : undefined;
 
+    // Name and photo are routine admin work. Email and password are not: either
+    // one hands over control of the account, so both are super-admin only and
+    // go through the dedicated endpoints in superAdminController, which notify
+    // the member. Refuse rather than silently dropping the field — an admin who
+    // typed a new email needs to know it was not saved.
+    if (req.user.role !== 'SUPER_ADMIN' && (email || password)) {
+      return res.status(403).json({
+        error: 'Changing a member\'s email or password requires super admin access.',
+      });
+    }
+
     const updateData = {};
     if (name)  updateData.name  = name;
     if (email) updateData.email = email;
@@ -323,6 +338,74 @@ const toggleFreeze = async (req, res) => {
 //
 // New money should go through the investment request / project engine instead;
 // admin migrates members off the opening balance one at a time.
+// ── Enable a member's wallet (admin) ──────────
+// The flag only. `updateWallet` below writes opening BALANCES and is super
+// admin only, so these two powers had to stop being one call: an admin
+// switching a wallet on should not need to name an opening figure, and naming
+// one should not be a side effect of switching it on.
+//
+// Switching off is allowed and leaves every balance untouched — the wallet
+// simply stops being reachable in the UI.
+const setWalletEnabled = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const enabled = req.body.enabled === undefined ? true : truthy(req.body.enabled);
+
+    const before = await prisma.user.findUnique({
+      where:  { id },
+      select: { id: true, name: true, email: true, walletEnabled: true, deletedAt: true },
+    });
+    if (!before || before.deletedAt) return res.status(404).json({ error: 'Member not found' });
+
+    if (before.walletEnabled === enabled) {
+      return res.json({ walletEnabled: enabled, changed: false });
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.user.update({ where: { id }, data: { walletEnabled: enabled } });
+      if (enabled) {
+        // A wallet row must exist before anything can be booked against it.
+        // syncWallet recomputes the cached balances from the ledger, so this
+        // never invents a figure.
+        await tx.wallet.upsert({ where: { userId: id }, update: {}, create: { userId: id } });
+        await walletService.syncWallet(id, tx);
+      }
+    });
+
+    await prisma.adminLog.create({
+      data: {
+        adminId:  req.user.id,
+        targetId: id,
+        action:   enabled ? 'ENABLE_WALLET' : 'DISABLE_WALLET',
+        details:  { walletEnabled: enabled },
+      },
+    });
+
+    logActivity({
+      type:       enabled ? 'WALLET_ACTIVATED' : 'WALLET_UPDATED',
+      title:      `Wallet ${enabled ? 'enabled' : 'disabled'}: ${before.name || ''}`.trim(),
+      description: enabled ? 'Wallet switched on by admin' : 'Wallet switched off by admin',
+      actorId:    req.user.id,
+      actorName:  req.user.name,
+      targetId:   id,
+      targetName: before.name,
+      metadata:   { walletEnabled: enabled },
+    });
+
+    // Fire and forget: a mail failure must never roll back the activation.
+    if (enabled) {
+      const breakdown = await walletService.getWalletBreakdown(id);
+      sendWalletActivatedEmail({ user: before, breakdown })
+        .catch((e) => console.error('wallet activation email failed:', e.message));
+    }
+
+    res.json({ walletEnabled: enabled, changed: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
 const updateWallet = async (req, res) => {
   try {
     const { investmentAmount, profitAmount } = req.body;
@@ -481,7 +564,7 @@ const addTransaction = async (req, res) => {
 const getNotificationCounts = async (req, res) => {
   try {
     const [newMembers, investmentRequests, withdrawRequests] = await Promise.all([
-      prisma.user.count({ where: { role: 'MEMBER', status: 'PENDING' } }),
+      prisma.user.count({ where: { ...LIVE_USER, role: 'MEMBER', status: 'PENDING' } }),
       prisma.investmentRequest.count({ where: { status: { in: ['PENDING', 'APPROVED'] } } }),
       prisma.withdrawRequest.count({ where: { status: 'PENDING' } }),
     ]);
@@ -502,8 +585,8 @@ const getNotificationCounts = async (req, res) => {
 const getStats = async (req, res) => {
   try {
     const [totalMembers, pendingApprovals, walletUsers, transactions] = await Promise.all([
-      prisma.user.count({ where: { role: 'MEMBER', status: 'ACTIVE' } }),
-      prisma.user.count({ where: { role: 'MEMBER', status: 'PENDING' } }),
+      prisma.user.count({ where: { ...LIVE_USER, role: 'MEMBER', status: 'ACTIVE' } }),
+      prisma.user.count({ where: { ...LIVE_USER, role: 'MEMBER', status: 'PENDING' } }),
       prisma.wallet.findMany({ select: { userId: true } }),
       prisma.transaction.count({ where: { status: 'COMPLETED' } }),
     ]);
@@ -535,7 +618,7 @@ const getStats = async (req, res) => {
 const exportData = async (req, res) => {
   try {
     const members = await prisma.user.findMany({
-      where:   { role: 'MEMBER' },
+      where:   { ...LIVE_USER, role: 'MEMBER' },
       include: { wallet: true },
     });
 
@@ -569,7 +652,7 @@ const exportData = async (req, res) => {
 const getPendingUsers = async (req, res) => {
   try {
     const { search, page = 1, limit = 20 } = req.query;
-    const where = { role: 'MEMBER', status: 'PENDING' };
+    const where = { ...LIVE_USER, role: 'MEMBER', status: 'PENDING' };
     if (search) {
       where.OR = [
         { name:  { contains: search, mode: 'insensitive' } },
@@ -740,7 +823,7 @@ const rejectUser = async (req, res) => {
 
 module.exports = {
   getMembers, createMember, updateMember, deleteMember,
-  toggleFreeze, updateWallet, addTransaction, getStats, exportData,
+  toggleFreeze, setWalletEnabled, updateWallet, addTransaction, getStats, exportData,
   getNotificationCounts,
   getPendingUsers, approveUser, rejectUser,
 };

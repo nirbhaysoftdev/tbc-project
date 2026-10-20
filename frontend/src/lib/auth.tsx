@@ -10,7 +10,7 @@ interface User {
   id: string;
   name: string;
   email: string;
-  role: 'MEMBER' | 'ADMIN';
+  role: 'MEMBER' | 'ADMIN' | 'SUPER_ADMIN';
   status: 'ACTIVE' | 'PENDING' | 'FROZEN' | 'REJECTED';
   kycStatus: 'NOT_SUBMITTED' | 'PENDING' | 'APPROVED' | 'REJECTED';
   walletEnabled: boolean;

@@ -12,6 +12,7 @@
 const path = require('path');
 const jwt = require('jsonwebtoken');
 const prisma = require('../utils/prismaClient');
+const { isAdmin } = require('../utils/roles');
 
 const UPLOADS_ROOT = path.resolve(__dirname, '../../uploads');
 
@@ -91,7 +92,7 @@ async function classifyStoredUrl(storedUrl) {
 /** May `user` read a document owned by `ownerId`? Admins and the owner only. */
 function canReadDoc(user, ownerId) {
   if (!user) return false;
-  return user.role === 'ADMIN' || user.id === ownerId;
+  return isAdmin(user.role) || user.id === ownerId;
 }
 
 /**

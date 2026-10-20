@@ -101,6 +101,12 @@ export const adminAPI = {
   updateMember:    (id: string, data: FormData) => api.put(`/admin/members/${id}`, data, { headers: { 'Content-Type': 'multipart/form-data' } }),
   deleteMember:    (id: string)            => api.delete(`/admin/members/${id}`),
   toggleFreeze:    (id: string)            => api.put(`/admin/members/${id}/freeze`),
+  // Switching a member's wallet on. Opening BALANCES are a separate,
+  // super-admin-only call (superAdminAPI has no equivalent: the balances
+  // endpoint below is the one that moved).
+  setWalletEnabled:(id: string, enabled = true) =>
+    api.put(`/admin/members/${id}/wallet-enabled`, { enabled }),
+  // Super admin only. An ADMIN calling this gets a 403.
   updateWallet:    (id: string, data: object) => api.put(`/admin/members/${id}/wallet`, data),
   addTransaction:  (data: object)          => api.post('/admin/transactions', data),
   // One member's full money picture (detail page) and the statement email it sends
@@ -110,6 +116,123 @@ export const adminAPI = {
   // Activity logs (emails, member/investment requests, profit, withdrawals)
   getLogs:         (params?: Record<string, string>) => api.get('/admin/logs', { params }),
   getLogTypes:     ()                      => api.get('/admin/logs/types'),
+};
+
+// ── Super admin ───────────────────────────────
+// Everything behind requireSuperAdmin. An ADMIN calling any of these gets a
+// 403, so the UI must gate the controls with isSuperAdminRole() rather than
+// relying on the error — see src/lib/roles.ts.
+export const superAdminAPI = {
+  // ── Users ──
+  // Not limited to role MEMBER, unlike adminAPI.getMembers: managing admins is
+  // the point of the panel.
+  listUsers:   (params?: Record<string, string>) => api.get('/super-admin/users', { params }),
+  getUser:     (id: string) => api.get(`/super-admin/users/${id}`),
+
+  /**
+   * The whole record in one call: account fields at the top level, with
+   * `profile` and `membership` nested. Only the keys present are written, so
+   * an omitted field is left alone rather than cleared.
+   */
+  updateUser:  (id: string, data: object | FormData) =>
+    data instanceof FormData
+      ? api.put(`/super-admin/users/${id}`, data, { headers: { 'Content-Type': 'multipart/form-data' } })
+      : api.put(`/super-admin/users/${id}`, data),
+
+  // Credentials and role are separate endpoints: each is logged and notified on
+  // its own, because either one hands over control of the account.
+  changeEmail: (id: string, email: string, markVerified = false) =>
+    api.put(`/super-admin/users/${id}/email`, { email, markVerified }),
+
+  /**
+   * mode "link" emails the member a reset code and changes nothing — prefer it,
+   * since nobody but the member ever learns the password. mode "set" writes one
+   * directly and returns the plaintext ONCE, for a member who cannot receive
+   * mail. It is never logged, so it cannot be recovered after this response.
+   */
+  resetPassword: (id: string, body: { mode: 'link' } | { mode: 'set'; password?: string }) =>
+    api.post(`/super-admin/users/${id}/reset-password`, body),
+
+  setRole: (id: string, role: 'MEMBER' | 'ADMIN' | 'SUPER_ADMIN') =>
+    api.put(`/super-admin/users/${id}/role`, { role }),
+
+  // Recoverable. The account vanishes from the portal and cannot sign in, but
+  // the row survives so the ledger keeps its references.
+  deleteUser:  (id: string) => api.delete(`/super-admin/users/${id}`),
+  restoreUser: (id: string) => api.post(`/super-admin/users/${id}/restore`),
+
+  /**
+   * Irreversible. `confirm` must be the member's exact email address, which is
+   * what makes this impossible to reach by a mistyped id or a stale tab.
+   */
+  purgeUser:   (id: string, confirm: string) =>
+    api.post(`/super-admin/users/${id}/purge`, { confirm }),
+
+  /**
+   * Returns a 30-minute token that authenticates AS the member. Read-only: the
+   * API refuses every non-GET made with it, which is what keeps the audit log
+   * truthful. Swap it in, then call endImpersonation to drop back.
+   */
+  impersonate: (id: string) => api.post(`/super-admin/users/${id}/impersonate`),
+  impersonationStatus: () => api.get('/super-admin/impersonation/status'),
+
+  // ── Identity documents ──
+  // kind is passport | residentId | tradeLicense | cv. These land in uploads/
+  // and are authorised per request by fileAccess.js (readable by the owner or
+  // an admin). Open them with openDocument(), never a plain <a href>.
+  uploadDocument: (id: string, kind: string, file: File) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    return api.post(`/super-admin/users/${id}/documents/${kind}`, fd,
+      { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
+  deleteDocument: (id: string, kind: string) =>
+    api.delete(`/super-admin/users/${id}/documents/${kind}`),
+
+  addKycDocument: (id: string, documentType: 'id_proof' | 'business_proof', file: File) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('documentType', documentType);
+    return api.post(`/super-admin/users/${id}/kyc-documents`, fd,
+      { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
+  reviewKycDocument: (id: string, docId: string, status: 'pending' | 'approved' | 'rejected') =>
+    api.put(`/super-admin/users/${id}/kyc-documents/${docId}`, { status }),
+  deleteKycDocument: (id: string, docId: string) =>
+    api.delete(`/super-admin/users/${id}/kyc-documents/${docId}`),
+
+  // ── Projects and companies ──
+  /**
+   * What a forced delete would destroy, before anything happens. Ask for this
+   * first and show it: a project with settled investments cannot be deleted at
+   * all, and the manifest is the only place that says so in advance.
+   */
+  projectDeleteManifest: (id: string) =>
+    api.get(`/super-admin/projects/${id}/delete-manifest`),
+
+  /** `confirm` must be the project's exact title. */
+  forceDeleteProject: (id: string, confirm: string, cascadeRequests = false) =>
+    api.post(`/super-admin/projects/${id}/force-delete`, { confirm, cascadeRequests }),
+
+  transferProject: (id: string, data: { ownerId?: string; managerId?: string }) =>
+    api.put(`/super-admin/projects/${id}/transfer`, data),
+  transferCompany: (id: string, createdById: string) =>
+    api.put(`/super-admin/companies/${id}/transfer`, { createdById }),
+
+  // ── Content ──
+  deletePost:    (id: string) => api.delete(`/super-admin/posts/${id}`),
+  deleteComment: (id: string) => api.delete(`/super-admin/comments/${id}`),
+  deleteEnquiry: (id: string) => api.delete(`/super-admin/enquiries/${id}`),
+
+  // ── Ledger ──
+  /**
+   * Books the mirror-image entry and lets the wallet recompute. The original
+   * row stays in the member's statement with the correction beside it — which
+   * is why no endpoint anywhere edits a balance directly. Only the manual
+   * categories (ADMIN_CREDIT, ADMIN_DEBIT, WITHDRAWAL) can be reversed.
+   */
+  reverseTransaction: (id: string) =>
+    api.post(`/super-admin/transactions/${id}/reverse`),
 };
 
 // ── Investment / Profit Engine (admin) ────────

@@ -3,6 +3,7 @@
 const PDFDocument = require('pdfkit');
 const prisma = require('../utils/prismaClient');
 const walletService = require('../services/walletService');
+const { isAdmin } = require('../utils/roles');
 // ── Get transactions with filters ────────────
 const getTransactions = async (req, res) => {
   try {
@@ -20,7 +21,7 @@ const getTransactions = async (req, res) => {
 
    const where = {};
 
-if (req.user.role !== "ADMIN") {
+if (!isAdmin(req.user.role)) {
   where.userId = req.user.id;
 }
 
@@ -38,13 +39,13 @@ if (req.user.role !== "ADMIN") {
       if (maxAmount) where.amount.lte = parseFloat(maxAmount);
     }
 
-    const isAdmin = req.user.role === 'ADMIN';
+    const viewerIsAdmin = isAdmin(req.user.role);
 
     const [transactions, total] = await Promise.all([
       prisma.transaction.findMany({
         where,
         // An admin sees every member's rows, so each one has to name its owner.
-        include: isAdmin
+        include: viewerIsAdmin
           ? { user: { select: { id: true, name: true, email: true } } }
           : undefined,
         orderBy: { createdAt: 'desc' },

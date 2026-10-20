@@ -5,7 +5,7 @@ const crypto  = require('crypto');
 const multer  = require('multer');
 const { MAX_ANY } = require('../services/uploadLimits');
 const router  = express.Router();
-const { authenticate, requireAdmin, requireActive } = require('../middleware/auth');
+const { authenticate, requireAdmin, requireSuperAdmin, requireActive } = require('../middleware/auth');
 const ctrl = require('../controllers/projectsController');
 const requestCtrl = require('../controllers/investmentRequestController');
 const mediaCtrl = require('../controllers/projectMediaController');
@@ -55,7 +55,9 @@ router.get('/',                            ctrl.getProjects);
 router.get('/:id',                         ctrl.getProject);
 router.post('/',        requireAdmin,      ctrl.createProject);
 router.put('/:id',      requireAdmin,      ctrl.updateProject);
-router.delete('/:id',   requireAdmin,      ctrl.deleteProject);
+// Irreversible, and the Investment / Transaction / milestone foreign keys are
+// Restrict — see superAdminController.forceDeleteProject for the forced path.
+router.delete('/:id',   requireSuperAdmin, ctrl.deleteProject);
 // "Invest Now" raises a request - it never moves money on its own.
 router.post('/:id/invest',                 ctrl.invest);
 router.put('/investment-requests/:id/cancel', requestCtrl.cancelRequest);

@@ -35,6 +35,9 @@ const CATEGORY_STYLE: Record<string, { color: string; bg: string; label: string 
   WITHDRAWAL: { color: '#ffbe32', bg: 'rgba(255,190,50,0.12)',  label: 'Withdrawals' },
   WALLET:     { color: '#b79cff', bg: 'rgba(160,140,255,0.14)', label: 'Wallet' },
   SYSTEM:     { color: '#8c9ab5', bg: 'rgba(140,154,181,0.12)', label: 'System' },
+  // Privileged actions on their own filter: the view you want when answering
+  // "who changed this account?".
+  SUPER_ADMIN:{ color: '#ff8f6b', bg: 'rgba(255,143,107,0.13)', label: 'Super admin' },
 };
 
 const PAGE_SIZE = 50;

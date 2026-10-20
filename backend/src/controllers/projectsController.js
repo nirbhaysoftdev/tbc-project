@@ -10,6 +10,7 @@ const investmentRequestController = require('./investmentRequestController');
 const { sanitizeRichText, richTextToPlain } = require('../services/richText');
 const { normalizePeopleFields } = require('../services/projectPeople');
 const { stripPrivateContact, stripPrivateContactMany } = require('../services/contactPrivacy');
+const { isAdmin, LIVE_USER } = require('../utils/roles');
 
 // ── Shared shaping ────────────────────────────
 // `valuation` is the showcase figure and is always euros; `targetAmount` is the
@@ -70,7 +71,7 @@ const getProjects = async (req, res) => {
     // lets a member-facing screen ask for the unfiltered set deliberately.
     if (status && status !== 'ALL') {
       where.status = status;
-    } else if (!status && req.user.role !== 'ADMIN') {
+    } else if (!status && !isAdmin(req.user.role)) {
       where.status = 'ACTIVE';
     }
 
@@ -190,7 +191,7 @@ const getProjects = async (req, res) => {
     // model later cannot leak by default.
     const visible = stripPrivateContactMany(localised, {
       kind: 'PROJECT',
-      isAdmin: req.user.role === 'ADMIN',
+      isAdmin: isAdmin(req.user.role),
     });
 
     res.json({
@@ -215,7 +216,7 @@ const getProjects = async (req, res) => {
 // already see on a project card (services/memberVisibility.js).
 const getFacets = async (req, res) => {
   try {
-    const where = req.user.role === 'ADMIN' ? {} : { status: 'ACTIVE' };
+    const where = isAdmin(req.user.role) ? {} : { status: 'ACTIVE' };
 
     const [categories, locations, owners, bounds] = await Promise.all([
       prisma.project.groupBy({ by: ['category'], where, _count: { category: true } }),
@@ -267,11 +268,11 @@ const searchPeople = async (req, res) => {
     const take = Math.min(Math.max(parseInt(req.query.limit, 10) || 10, 1), 25);
 
     const where = term
-      ? { OR: [
+      ? { ...LIVE_USER, OR: [
           { name:  { contains: term, mode: 'insensitive' } },
           { email: { contains: term, mode: 'insensitive' } },
         ] }
-      : {};
+      : { ...LIVE_USER };
 
     const members = await prisma.user.findMany({
       where,
@@ -333,7 +334,7 @@ const getProject = async (req, res) => {
     // A DRAFT or CANCELLED project is not part of the showcase: only an admin
     // or the owner may open one by id, so guessing a URL does not reveal
     // something that was never published.
-    const isManager = req.user.role === 'ADMIN' || project.ownerId === req.user.id;
+    const isManager = isAdmin(req.user.role) || project.ownerId === req.user.id;
     if (!isManager && !['ACTIVE', 'FUNDED', 'CLOSED'].includes(project.status)) {
       return res.status(404).json({ error: 'Project not found' });
     }
@@ -364,7 +365,7 @@ const getProject = async (req, res) => {
     res.json({
       project: stripPrivateContact(
         { ...localised, milestones },
-        { kind: 'PROJECT', isAdmin: req.user.role === 'ADMIN' },
+        { kind: 'PROJECT', isAdmin: isAdmin(req.user.role) },
       ),
     });
   } catch (err) {
@@ -535,7 +536,7 @@ const updateProject = async (req, res) => {
   try {
     const project = await prisma.project.findUnique({ where: { id: req.params.id } });
     if (!project) return res.status(404).json({ error: 'Project not found' });
-    if (project.ownerId !== req.user.id && req.user.role !== 'ADMIN') {
+    if (project.ownerId !== req.user.id && !isAdmin(req.user.role)) {
       return res.status(403).json({ error: 'Not authorized' });
     }
 
@@ -578,7 +579,7 @@ const updateProject = async (req, res) => {
 
     // Owner can be reassigned by an admin only: letting an owner hand their
     // own project to someone else is not a flow this module has.
-    if (has('ownerId') && req.user.role === 'ADMIN') {
+    if (has('ownerId') && isAdmin(req.user.role)) {
       const next = toText(b.ownerId, 64);
       if (next && next !== project.ownerId) {
         const found = await prisma.user.findUnique({ where: { id: next }, select: { id: true } });
@@ -650,7 +651,7 @@ const addMilestone = async (req, res) => {
   try {
     const project = await prisma.project.findUnique({ where: { id: req.params.id } });
     if (!project) return res.status(404).json({ error: 'Project not found' });
-    if (project.ownerId !== req.user.id && req.user.role !== 'ADMIN') {
+    if (project.ownerId !== req.user.id && !isAdmin(req.user.role)) {
       return res.status(403).json({ error: 'Not authorized' });
     }
 

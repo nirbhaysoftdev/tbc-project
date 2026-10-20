@@ -13,6 +13,7 @@ import ProjectCard, { ProjectSummary, prettyCategory } from '@/components/projec
 import { projectsAPI, formatEur } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import '@/styles/projects.css';
+import { isAdminRole } from '@/lib/roles';
 
 interface Facets {
   categories: { value: string; count: number }[];
@@ -46,7 +47,7 @@ const EMPTY_FILTERS = {
 
 export default function ProjectsPage() {
   const { user } = useAuth();
-  const isAdmin = user?.role === 'ADMIN';
+  const isAdmin = isAdminRole(user?.role);
 
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [facets, setFacets] = useState<Facets | null>(null);

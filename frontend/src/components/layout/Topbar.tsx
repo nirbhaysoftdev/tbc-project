@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { useAdminAlerts } from '@/lib/adminAlerts';
 import NotifBadge from './NotifBadge';
 import LanguageSelector from '@/components/i18n/LanguageSelector';
+import { isAdminRole } from '@/lib/roles';
 
 // `href` is the shared route and never changes with language; `key` is what
 // gets translated. Switching language must not change the URL (§16).
@@ -24,7 +25,7 @@ export default function Topbar() {
   const { setOpen } = useSidebar();
   const { alerts } = useAdminAlerts();
   const { user } = useAuth();
-  const isAdmin = user?.role === 'ADMIN';
+  const isAdmin = isAdminRole(user?.role);
 
   return (
     <header className="topbar">

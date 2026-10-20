@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useTranslation } from 'react-i18next';
 import { projectsAPI, investmentRequestAPI, formatEur, formatNumber } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+import { isAdminRole, isSuperAdminRole } from '@/lib/roles';
 
 // The stored category values, shared by the create form and the filter so the
 // two can never drift. These are DATA, not display text — see
@@ -266,7 +267,7 @@ function InvestModal({ project, onClose, onInvested }: { project: any; onClose: 
 }
 
 // ── Project Card ───────────────────────────────
-function ProjectCard({ project, onInvest, onDelete, isAdmin }: { project: any; onInvest: (p: any) => void; onDelete: (id: string) => void; isAdmin: boolean }) {
+function ProjectCard({ project, onInvest, onDelete, isAdmin, canDelete }: { project: any; onInvest: (p: any) => void; onDelete: (id: string) => void; isAdmin: boolean; canDelete: boolean }) {
   const { t } = useTranslation(['community', 'common']);
   const daysLeft = Math.ceil((new Date(project.fundingDeadline).getTime() - Date.now()) / 86400000);
 
@@ -336,7 +337,10 @@ function ProjectCard({ project, onInvest, onDelete, isAdmin }: { project: any; o
             {t('community:dealRoom.investedAmount', { amount: formatEur(project.myCapital) })}
           </div>
         )}
-        {isAdmin && (
+        {/* Deleting a project is irreversible and touches the investment
+            ledger, so it is super admin only — distinct from `isAdmin`, which
+            only decides whether the Invest button is shown. */}
+        {canDelete && (
           <button
             className="comm-deal-btn"
             style={{ flex: 0, padding: '7px 14px', color: 'var(--red)', borderColor: 'rgba(224,82,82,0.3)', background: 'rgba(224,82,82,0.08)' }}
@@ -393,7 +397,7 @@ export default function DealRoomPage() {
             {t('community:dealRoom.subtitle')}
           </p>
         </div>
-        {user?.role === 'ADMIN' && (
+        {isAdminRole(user?.role) && (
           <button className="comm-btn comm-btn-gold" onClick={() => setCreateOpen(true)}>
             {t('community:dealRoom.submitCta')}
           </button>
@@ -425,14 +429,15 @@ export default function DealRoomPage() {
         <div className="comm-empty">
           <div className="comm-empty-text">{t('community:dealRoom.emptyActive')}</div>
           <div className="comm-empty-sub">{t('community:dealRoom.emptyActiveSub')}</div>
-          {user?.role === 'ADMIN' && (
+          {isAdminRole(user?.role) && (
             <button className="comm-btn comm-btn-gold" onClick={() => setCreateOpen(true)}>{t('community:dealRoom.submitDeal')}</button>
           )}
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
           {projects.map(p => (
-            <ProjectCard key={p.id} project={p} onInvest={setInvestTarget} onDelete={handleDelete} isAdmin={user?.role === 'ADMIN'} />
+            <ProjectCard key={p.id} project={p} onInvest={setInvestTarget} onDelete={handleDelete}
+              isAdmin={isAdminRole(user?.role)} canDelete={isSuperAdminRole(user?.role)} />
           ))}
         </div>
       )}

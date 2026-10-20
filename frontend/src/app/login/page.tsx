@@ -8,6 +8,7 @@ import { useAuth } from '@/lib/auth';
 import { authAPI } from '@/lib/api';
 import { useGoogleSignIn } from '@/lib/useGoogleSignIn';
 import LanguageSelector from '@/components/i18n/LanguageSelector';
+import { isAdminRole } from '@/lib/roles';
 
 export default function LoginPage() {
   const { t } = useTranslation(['auth', 'common']);
@@ -33,7 +34,7 @@ export default function LoginPage() {
   // signed-in session, or Back lands on it again.
   useEffect(() => {
     if (authLoading || !user) return;
-    router.replace(user.role === 'ADMIN' ? '/admin' : routeAfterAuth(user));
+    router.replace(isAdminRole(user.role) ? '/admin' : routeAfterAuth(user));
   }, [user, authLoading, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {

@@ -5,13 +5,14 @@ import { useTranslation } from 'react-i18next';
 import ProtectedLayout from '@/components/layout/ProtectedLayout';
 import { useAuth } from '@/lib/auth';
 import { transactionsAPI, formatEur, formatDate, downloadBlob } from '@/lib/api';
+import { isAdminRole } from '@/lib/roles';
 
 function TransactionsContent() {
   const { t } = useTranslation(['dashboard', 'common']);
   const { user } = useAuth();
   // An admin's list spans every member, so the rows have to name their owner.
   // A member only ever sees their own rows, where the column is noise.
-  const showMember = user?.role === 'ADMIN';
+  const showMember = isAdminRole(user?.role);
 
   const [transactions, setTx]     = useState<any[]>([]);
   const [pagination,   setPag]    = useState<any>({});

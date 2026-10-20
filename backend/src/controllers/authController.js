@@ -240,6 +240,14 @@ const googleAuth = async (req, res) => {
       include: { wallet: true },
     });
 
+    // A soft-deleted account is not a sign-in candidate, and must not be
+    // quietly revived by one. The row is matched rather than filtered out on
+    // purpose: filtering would fall through to the create below and collide
+    // with the unique email the deleted row still holds.
+    if (user?.deletedAt) {
+      return res.status(403).json({ error: 'This account is no longer active' });
+    }
+
     if (!user) {
       // Create new user via Google - no password, PENDING status until admin approval
       user = await prisma.user.create({
@@ -316,7 +324,7 @@ const login = async (req, res) => {
         id: true, name: true, email: true, passwordHash: true,
         role: true, status: true, kycStatus: true,
         profilePhoto: true, walletEnabled: true,
-        emailVerified: true, accountType: true,
+        emailVerified: true, accountType: true, deletedAt: true,
         wallet: { select: {
           investmentAmount: true, profitAmount: true,
           totalBalance: true, currency: true, frozen: true,
@@ -324,7 +332,9 @@ const login = async (req, res) => {
       },
     });
 
-    if (!user || !user.passwordHash) {
+    // A soft-deleted account is indistinguishable from one that never existed:
+    // the same generic error, so nothing here reveals that the row survives.
+    if (!user || !user.passwordHash || user.deletedAt) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
@@ -392,7 +402,7 @@ const forgotPassword = async (req, res) => {
 
   try {
     const user = await prisma.user.findUnique({ where: { email: normalized } });
-    if (user) {
+    if (user && !user.deletedAt) {
       await otpService.issueOtp(normalized, 'RESET').catch((e) => {
         // Swallow resend-cooldown/etc. errors so the response never differs
         // based on whether an account exists.
@@ -421,7 +431,7 @@ const resetPassword = async (req, res) => {
     await otpService.verifyOtp(normalized, code, 'RESET');
 
     const user = await prisma.user.findUnique({ where: { email: normalized } });
-    if (!user) {
+    if (!user || user.deletedAt) {
       return res.status(400).json({ error: 'Invalid or expired code' });
     }
 

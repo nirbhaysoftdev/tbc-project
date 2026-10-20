@@ -36,7 +36,14 @@ import Footer from '@/components/landing/Footer';
 
 export default function LandingPage() {
   return (
-    <div className="lp-root">
+    /* The landing page stays left-to-right in every language. Its layout is
+       built from physical, not logical, properties (landing.css carries no
+       RTL rules at all), so mirroring the page under Arabic or Persian
+       breaks the hero, the nav and every section. Pinning `dir` here keeps
+       the design intact while the text is still fully translated; the
+       authenticated portal, which IS built for both directions, continues to
+       follow <html dir> from I18nProvider. */
+    <div className="lp-root" dir="ltr">
       <a href="#what" className="lp-skip">
         Skip to content
       </a>

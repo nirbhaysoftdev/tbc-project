@@ -6,6 +6,7 @@ import { useSidebar } from '@/lib/sidebar';
 import { useTranslation } from 'react-i18next';
 import { useAdminAlerts } from '@/lib/adminAlerts';
 import NotifBadge from './NotifBadge';
+import { isAdminRole, isSuperAdminRole } from '@/lib/roles';
 
 const API_URL = process.env.NODE_ENV === 'production'
   ? (process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || '')
@@ -48,7 +49,7 @@ export default function Sidebar() {
       <nav className="sidebar-nav">
         {NAV_ITEMS
   .filter(item => {
-    if (user?.role === 'ADMIN') {
+    if (isAdminRole(user?.role)) {
       // hide wallet-only member pages
       return !['/dashboard', '/portfolio', '/cards'].includes(item.href);
     }
@@ -61,7 +62,7 @@ export default function Sidebar() {
       <span>{t(`nav:main.${key}`)}</span>
     </Link>
 ))}
-        {user?.role === 'ADMIN' && (
+        {isAdminRole(user?.role) && (
          
           <>
     <Link href="/admin" onClick={onNav}
@@ -94,6 +95,15 @@ export default function Sidebar() {
         style={{ marginInlineStart: 'auto' }}
       />
     </Link>
+    {/* The privileged panel. Shown only to a super admin — an admin seeing a
+        link to a page that bounces them is a worse experience than no link. */}
+    {isSuperAdminRole(user?.role) && (
+      <Link href="/admin/super" onClick={onNav}
+        className={`nav-item ${pathname.startsWith('/admin/super') ? 'active' : ''}`}>
+        <SuperAdminIcon />
+        <span>{t('nav:main.superAdmin', 'Super Admin')}</span>
+      </Link>
+    )}
   </>
           
         )}
@@ -162,6 +172,17 @@ function SettingsIcon() {
 }
 function AdminIcon() {
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>;
+}
+
+// The admin shield with a key through it: the same family, one tier up.
+function SuperAdminIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+      <circle cx="12" cy="10" r="2.2"/>
+      <path d="M12 12.2V16" strokeLinecap="round"/>
+    </svg>
+  );
 }
 
 function CompaniesIcon() {

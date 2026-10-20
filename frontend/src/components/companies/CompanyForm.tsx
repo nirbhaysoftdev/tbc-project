@@ -18,6 +18,8 @@ import CompanyMedia, { VideoLink } from './CompanyMedia';
 import TagInput from './TagInput';
 import { companiesAPI, mediaSrc, formatEur } from '@/lib/api';
 import { checkFileSizes, documentLimitHint, imageLimitHint } from '@/lib/uploadLimits';
+import { useAuth } from '@/lib/auth';
+import { isSuperAdminRole } from '@/lib/roles';
 
 const CATEGORIES = [
   'REAL_ESTATE', 'ENERGY', 'TECHNOLOGY', 'MANUFACTURING', 'HOSPITALITY',
@@ -53,6 +55,7 @@ export default function CompanyForm({
   onSaved?: (company: any) => void;
 }) {
   const router = useRouter();
+  const { user } = useAuth();
   const editing = Boolean(initial?.id);
 
   const [name, setName] = useState(initial?.name || '');
@@ -638,7 +641,9 @@ export default function CompanyForm({
         </div>
 
         <div className="pj-form-actions">
-          {editing && (
+          {/* Irreversible, like project deletion: super admin only. An admin
+              creates and edits companies but does not remove them. */}
+          {editing && isSuperAdminRole(user?.role) && (
             <button type="button" className="pj-btn pj-btn-danger" onClick={remove} disabled={saving}>
               Delete company
             </button>

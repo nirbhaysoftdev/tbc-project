@@ -18,6 +18,7 @@ const mediaCtrl = require('./companyMediaController');
 const { sanitizeRichText, richTextToPlain } = require('../services/richText');
 const { normalizePeople } = require('../services/projectPeople');
 const { stripPrivateContact, stripPrivateContactMany } = require('../services/contactPrivacy');
+const { isAdmin } = require('../utils/roles');
 
 const STATUSES = ['DRAFT', 'ACTIVE', 'INACTIVE', 'ARCHIVED'];
 
@@ -200,7 +201,7 @@ const getCompanies = async (req, res) => {
     // directory needs their own drafts to be visible.
     if (status && status !== 'ALL') {
       where.status = status;
-    } else if (!status && req.user.role !== 'ADMIN') {
+    } else if (!status && !isAdmin(req.user.role)) {
       where.status = 'ACTIVE';
     }
 
@@ -279,7 +280,7 @@ const getCompanies = async (req, res) => {
     // added to the model later cannot leak by default.
     const visible = stripPrivateContactMany(localised, {
       kind: 'COMPANY',
-      isAdmin: req.user.role === 'ADMIN',
+      isAdmin: isAdmin(req.user.role),
     });
 
     res.json({
@@ -302,7 +303,7 @@ const getCompanies = async (req, res) => {
 // the companies rather than a hardcoded list that drifts from the data.
 const getFacets = async (req, res) => {
   try {
-    const where = req.user.role === 'ADMIN' ? {} : { status: 'ACTIVE' };
+    const where = isAdmin(req.user.role) ? {} : { status: 'ACTIVE' };
 
     const [categories, rows, bounds] = await Promise.all([
       prisma.company.groupBy({ by: ['category'], where, _count: { category: true } }),
@@ -366,21 +367,21 @@ const getCompany = async (req, res) => {
 
     // A draft or archived profile is not part of the directory: only an admin
     // may open one by id, so guessing a URL reveals nothing unpublished.
-    const isAdmin = req.user.role === 'ADMIN';
-    if (!isAdmin && company.status !== 'ACTIVE' && company.status !== 'INACTIVE') {
+    const viewerIsAdmin = isAdmin(req.user.role);
+    if (!viewerIsAdmin && company.status !== 'ACTIVE' && company.status !== 'INACTIVE') {
       return res.status(404).json({ error: 'Company not found' });
     }
 
     const shaped = {
       ...company,
       ...imagesFor(company, req.user.id),
-      canManage: isAdmin,
+      canManage: viewerIsAdmin,
     };
 
     const localised = await i18n.localizeOne('Company', shaped, req.language, { onMissing: 'queue' });
 
     res.json({
-      company: stripPrivateContact(localised, { kind: 'COMPANY', isAdmin }),
+      company: stripPrivateContact(localised, { kind: 'COMPANY', isAdmin: viewerIsAdmin }),
     });
   } catch (err) {
     console.error('getCompany error:', err);

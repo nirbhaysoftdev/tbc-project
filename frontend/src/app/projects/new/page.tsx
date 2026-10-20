@@ -7,6 +7,7 @@ import ProtectedLayout from '@/components/layout/ProtectedLayout';
 import ProjectForm from '@/components/projects/ProjectForm';
 import { useAuth } from '@/lib/auth';
 import '@/styles/projects.css';
+import { isAdminRole } from '@/lib/roles';
 
 export default function NewProjectPage() {
   const router = useRouter();
@@ -15,7 +16,7 @@ export default function NewProjectPage() {
   // The create and update endpoints are admin-only on the server, so this is
   // about not showing a form that cannot save rather than about access
   // control.
-  if (user && user.role !== 'ADMIN') {
+  if (user && !isAdminRole(user.role)) {
     return (
       <ProtectedLayout>
         <div className="pj-page">

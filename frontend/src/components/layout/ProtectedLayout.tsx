@@ -7,15 +7,24 @@ import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
 import { SidebarProvider } from "@/lib/sidebar";
 import { AdminAlertsProvider } from "@/lib/adminAlerts";
+import { isAdminRole, isSuperAdminRole } from '@/lib/roles';
+import ImpersonationBanner from './ImpersonationBanner';
 
 interface Props {
   children: React.ReactNode;
   requireAdmin?: boolean;
+  /**
+   * Gate the page on SUPER_ADMIN. An ADMIN reaching it is sent to /admin
+   * rather than /dashboard: they are staff, and the member dashboard is not
+   * where they belong.
+   */
+  requireSuperAdmin?: boolean;
 }
 
 export default function ProtectedLayout({
   children,
   requireAdmin = false,
+  requireSuperAdmin = false,
 }: Props) {
   const { user, loading, hasToken, authError, refresh } = useAuth();
   const router = useRouter();
@@ -53,7 +62,7 @@ export default function ProtectedLayout({
     if (!user) return;
 
     // PENDING user - redirect to onboarding flow
-    if (user.status === "PENDING" && user.role !== "ADMIN") {
+    if (user.status === "PENDING" && !isAdminRole(user.role)) {
       if (!pathname.startsWith("/onboarding")) {
         router.replace("/onboarding/pending");
       }
@@ -62,7 +71,7 @@ export default function ProtectedLayout({
 
     // Admin trying to access restricted pages
     if (
-      user.role === "ADMIN" &&
+      isAdminRole(user.role) &&
       !ADMIN_ALLOWED.some((path) => pathname.startsWith(path))
     ) {
       router.replace("/admin");
@@ -70,11 +79,17 @@ export default function ProtectedLayout({
     }
 
     // Member trying to access admin pages
-    if (requireAdmin && user.role !== "ADMIN") {
+    if (requireAdmin && !isAdminRole(user.role)) {
       router.replace("/dashboard");
       return;
     }
-  }, [user, loading, hasToken, pathname, requireAdmin, router]);
+
+    // Admin trying to access a super-admin page.
+    if (requireSuperAdmin && !isSuperAdminRole(user.role)) {
+      router.replace(isAdminRole(user.role) ? "/admin" : "/dashboard");
+      return;
+    }
+  }, [user, loading, hasToken, pathname, requireAdmin, requireSuperAdmin, router]);
 
   // Loading state
   if (loading) {
@@ -116,12 +131,15 @@ export default function ProtectedLayout({
 
   // Block render if unauthorized
   if (!user) return null;
-  if (user.status === "PENDING" && user.role !== "ADMIN") return null;
-  if (requireAdmin && user.role !== "ADMIN") return null;
+  if (user.status === "PENDING" && !isAdminRole(user.role)) return null;
+  if (requireAdmin && !isAdminRole(user.role)) return null;
+  if (requireSuperAdmin && !isSuperAdminRole(user.role)) return null;
 
   return (
     <SidebarProvider>
       <AdminAlertsProvider>
+      {/* Renders nothing unless this session is an impersonation. */}
+      <ImpersonationBanner />
       <div className="app-layout">
         <Sidebar />
 

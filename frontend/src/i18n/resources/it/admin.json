@@ -40,7 +40,9 @@
     "noneFound": "Nessun membro trovato.",
     "openRow": "Apri i dettagli di {{name}}",
     "empty": "Ancora nessun membro",
-    "emptySearch": "Nessun membro corrisponde a questa ricerca."
+    "emptySearch": "Nessun membro corrisponde a questa ricerca.",
+    "openingBalance": "Saldo iniziale",
+    "frozenNotice": "Questo membro è bloccato e non può accedere."
   },
   "pending": {
     "columns": {
@@ -648,6 +650,7 @@
     "noteLabel": "Nota da includere (facoltativa)",
     "notePlaceholder": "es. Il tuo ciclo di profitto del Q3 è stato accreditato.",
     "sendEmail": "Invia email",
-    "sending": "Invio…"
+    "sending": "Invio…",
+    "actionFailed": "Azione non completata."
   }
 }

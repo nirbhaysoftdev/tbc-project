@@ -2,7 +2,7 @@
 const express = require('express');
 const rateLimit = require('express-rate-limit');
 const router = express.Router();
-const { authenticate, requireAdmin, requireActive } = require('../middleware/auth');
+const { authenticate, requireAdmin, requireSuperAdmin, requireActive } = require('../middleware/auth');
 const ctrl = require('../controllers/enquiryController');
 
 // Every route here needs a real, approved member. The member's identity comes
@@ -30,6 +30,7 @@ router.get('/', requireAdmin, ctrl.listEnquiries);
 // The portal-wide recipient. Above nothing else, but kept below '/' so the
 // listing route is not shadowed.
 router.get('/recipient', requireAdmin, ctrl.getRecipient);
-router.put('/recipient', requireAdmin, ctrl.updateRecipient);
+// Redirects every future enquiry email, so it is an interception risk.
+router.put('/recipient', requireSuperAdmin, ctrl.updateRecipient);
 
 module.exports = router;

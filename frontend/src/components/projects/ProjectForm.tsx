@@ -18,6 +18,8 @@ import RichTextEditor from './RichTextEditor';
 import ProjectDocuments from './ProjectDocuments';
 import { projectsAPI, mediaSrc } from '@/lib/api';
 import { checkFileSizes, documentLimitHint } from '@/lib/uploadLimits';
+import { useAuth } from '@/lib/auth';
+import { isSuperAdminRole } from '@/lib/roles';
 
 const CATEGORIES = [
   'REAL_ESTATE', 'ENERGY', 'TECHNOLOGY', 'MANUFACTURING', 'HOSPITALITY',
@@ -48,6 +50,7 @@ export default function ProjectForm({
   onSaved?: (project: any) => void;
 }) {
   const router = useRouter();
+  const { user } = useAuth();
   const editing = Boolean(initial?.id);
 
   const [title, setTitle] = useState(initial?.title || '');
@@ -463,7 +466,11 @@ export default function ProjectForm({
       </div>
 
       <div className="pj-form-actions">
-        {editing && (
+        {/* Deleting a project is irreversible and touches the investment
+            ledger, so an admin can create and edit one but not remove it. A
+            super admin deletes from Admin → Super Admin, which shows what
+            would be destroyed before it happens. */}
+        {editing && isSuperAdminRole(user?.role) && (
           <button type="button" className="pj-btn pj-btn-danger" onClick={remove} disabled={saving}>
             Delete project
           </button>

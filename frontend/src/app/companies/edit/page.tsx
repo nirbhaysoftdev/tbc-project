@@ -13,6 +13,7 @@ import { companiesAPI } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import '@/styles/projects.css';
 import '@/styles/companies.css';
+import { isAdminRole } from '@/lib/roles';
 
 function EditCompanyInner() {
   const router = useRouter();
@@ -32,7 +33,7 @@ function EditCompanyInner() {
       .finally(() => setLoading(false));
   }, [id]);
 
-  const blocked = user && user.role !== 'ADMIN';
+  const blocked = user && !isAdminRole(user.role);
 
   if (loading) {
     return (

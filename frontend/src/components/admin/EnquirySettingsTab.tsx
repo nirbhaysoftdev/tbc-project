@@ -19,6 +19,8 @@ import { enquiriesAPI, formatDateTime } from '@/lib/api';
 // (.pj-input, .pj-select, .pj-btn, .pj-error, .pj-ok). They are all `.pj-*`
 // scoped, so importing the sheet here cannot affect the rest of the panel.
 import '@/styles/projects.css';
+import { useAuth } from '@/lib/auth';
+import { isSuperAdminRole } from '@/lib/roles';
 
 interface Recipient {
   emails: string[];
@@ -49,6 +51,10 @@ const STATUS_STYLE: Record<string, React.CSSProperties> = {
 };
 
 export default function EnquirySettingsTab() {
+  const { user } = useAuth();
+  // Changing these addresses redirects every future enquiry email, so an admin
+  // may read the setting but not rewrite it.
+  const isSuper = isSuperAdminRole(user?.role);
   const [recipient, setRecipient] = useState<Recipient | null>(null);
   // The list being edited, plus the address currently being typed. Kept
   // separate so an unconfirmed entry cannot be saved by accident.
@@ -263,9 +269,15 @@ export default function EnquirySettingsTab() {
                   )}
                 </div>
               </div>
-              <button type="submit" className="pj-btn pj-btn-primary" disabled={saving || !dirty}>
-                {saving ? 'Saving…' : 'Save & notify'}
-              </button>
+              {isSuper ? (
+                <button type="submit" className="pj-btn pj-btn-primary" disabled={saving || !dirty}>
+                  {saving ? 'Saving…' : 'Save & notify'}
+                </button>
+              ) : (
+                <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                  Changing the enquiry recipients requires super admin access.
+                </span>
+              )}
             </div>
           </form>
         )}

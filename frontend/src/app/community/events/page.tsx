@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { eventsAPI, formatDate, formatNumber } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+import { isAdminRole, isSuperAdminRole } from '@/lib/roles';
 
 const TYPE_COLORS: Record<string, string> = {
   GALA:        'type-event',
@@ -135,7 +136,7 @@ export default function EventsPage() {
             {t('community:events.subtitle')}
           </p>
         </div>
-        {user?.role === 'ADMIN' && (
+        {isAdminRole(user?.role) && (
           <button className="comm-btn comm-btn-primary" onClick={() => setCreateOpen(true)}>
             {t('community:events.createCta')}
           </button>
@@ -166,7 +167,7 @@ export default function EventsPage() {
           <div className="comm-empty-text">
             {upcoming ? t('community:events.emptyUpcoming') : t('community:events.emptyPast')}
           </div>
-          {user?.role === 'ADMIN' && (
+          {isAdminRole(user?.role) && (
             <button className="comm-btn comm-btn-primary" onClick={() => setCreateOpen(true)}>
               {t('community:events.createFirst')}
             </button>
@@ -233,7 +234,10 @@ export default function EventsPage() {
                       {ev.registeredByMe ? t('community:events.registered') : t('community:events.rsvp')}
                     </button>
                   )}
-                  {user?.role === 'ADMIN' && (
+                  {/* Deleting an event destroys every registration against
+                      it, so it is super admin only. An admin creates and
+                      edits events. */}
+                  {isSuperAdminRole(user?.role) && (
                     <button className="comm-deal-btn"
                       style={{ flex: 0, padding: '7px 14px', color: 'var(--red)', borderColor: 'rgba(224,82,82,0.3)', background: 'rgba(224,82,82,0.08)' }}
                       onClick={async () => {

@@ -20,6 +20,7 @@ import { prettyCategory } from '@/components/projects/ProjectCard';
 import { projectsAPI, mediaSrc, formatEur } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import '@/styles/projects.css';
+import { isAdminRole } from '@/lib/roles';
 
 const STATUS_CLASS: Record<string, string> = {
   ACTIVE: 'pj-badge-active',
@@ -97,7 +98,7 @@ function ProjectDetailInner() {
   // these controls to a project's non-admin owner would offer them a 403.
   // `project.canManage` from the API is about seeing an unpublished project,
   // which is a different question.
-  const canManage = user?.role === 'ADMIN';
+  const canManage = isAdminRole(user?.role);
 
 
   const setBanner = async (docId: string) => {

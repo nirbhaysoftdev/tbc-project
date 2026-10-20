@@ -18,6 +18,8 @@ import {
 } from '@/components/admin/MemberCharts';
 import MemberCapitalModal from '@/components/admin/MemberCapitalModal';
 import { openDocument } from '@/lib/openDocument';
+import { useAuth } from '@/lib/auth';
+import { isSuperAdminRole } from '@/lib/roles';
 import { Trans, useTranslation } from 'react-i18next';
 
 const FILE_BASE = process.env.NODE_ENV === 'production'
@@ -94,6 +96,8 @@ function MemberDetailContent() {
   const { t } = useTranslation(['admin', 'common', 'dashboard']);
   const id = useSearchParams().get('id');
   const router = useRouter();
+  const { user } = useAuth();
+  const isSuper = isSuperAdminRole(user?.role);
 
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -105,6 +109,16 @@ function MemberDetailContent() {
   // capital belongs on the member's page, and this stays the only route into
   // returning capital.
   const [capitalOpen, setCapitalOpen] = useState(false);
+
+  // Member actions, moved here off the Active Members list: every action that
+  // changes one member now lives on that member's own page, so the list is
+  // read-only. Opening balances and freezing are super admin only — see
+  // src/lib/roles.ts.
+  const [walletOpen, setWalletOpen] = useState(false);
+  const [walletForm, setWalletForm] = useState({ investmentAmount: '', profitAmount: '' });
+  const [walletMsg, setWalletMsg] = useState('');
+  const [actionErr, setActionErr] = useState('');
+  const [acting, setActing] = useState(false);
 
   const [emailOpen, setEmailOpen] = useState(false);
   const [emailNote, setEmailNote] = useState('');
@@ -125,6 +139,59 @@ function MemberDetailContent() {
       .catch(e => setError(e.response?.data?.error || t('admin:memberDetail.loadFailed')))
       .finally(() => setLoading(false));
   }, [id]);
+
+  const reload = () => {
+    if (id) adminAPI.getMemberOverview(id).then(r => setData(r.data));
+  };
+
+  // The flag only. The opening-balance form below is a separate path.
+  const handleEnableWallet = async () => {
+    if (!id) return;
+    setActing(true);
+    setActionErr('');
+    try {
+      await adminAPI.setWalletEnabled(id, true);
+      reload();
+    } catch (e: any) {
+      setActionErr(e.response?.data?.error || t('admin:memberDetail.actionFailed'));
+    } finally {
+      setActing(false);
+    }
+  };
+
+  // Freezing locks a member out of the platform.
+  const handleFreeze = async () => {
+    if (!id) return;
+    setActing(true);
+    setActionErr('');
+    try {
+      await adminAPI.toggleFreeze(id);
+      reload();
+    } catch (e: any) {
+      setActionErr(e.response?.data?.error || t('admin:memberDetail.actionFailed'));
+    } finally {
+      setActing(false);
+    }
+  };
+
+  const handleUpdateWallet = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!id) return;
+    setActing(true);
+    setActionErr('');
+    try {
+      const res = await adminAPI.updateWallet(id, walletForm);
+      setWalletMsg(res.data?.walletActivated
+        ? t('admin:wallet.activated')
+        : t('admin:wallet.updated'));
+      setTimeout(() => { setWalletOpen(false); setWalletMsg(''); }, 2000);
+      reload();
+    } catch (err: any) {
+      setActionErr(err.response?.data?.error || t('admin:memberDetail.actionFailed'));
+    } finally {
+      setActing(false);
+    }
+  };
 
   const handleSend = async () => {
     if (!id) return;
@@ -227,6 +294,46 @@ function MemberDetailContent() {
           <span className={`badge ${member.walletEnabled ? 'badge-completed' : 'badge-pending'}`}>
             {member.walletEnabled ? t('admin:memberDetail.walletEnabled') : t('admin:memberDetail.walletDisabled')}
           </span>
+          {!member.walletEnabled && (
+            <button
+              disabled={acting}
+              style={{ padding: '8px 14px', fontSize: 12, borderRadius: 6, cursor: acting ? 'default' : 'pointer',
+                border: '1px solid rgba(58,111,255,0.3)', background: 'rgba(58,111,255,0.1)', color: 'var(--accent-blue)' }}
+              onClick={handleEnableWallet}>
+              {t('admin:members.enableWallet')}
+            </button>
+          )}
+          {/* Opening balances overwrite a figure with no ledger entry behind
+              it, so they are super admin only. */}
+          {isSuper && (
+            <button
+              style={{ padding: '8px 14px', fontSize: 12, borderRadius: 6, cursor: 'pointer',
+                border: '1px solid rgba(197,164,74,0.3)', background: 'rgba(197,164,74,0.1)', color: 'var(--gold, #c5a44a)' }}
+              onClick={() => {
+                setWalletForm({
+                  investmentAmount: String(breakdown.openingCapital ?? 0),
+                  profitAmount:     String(breakdown.openingProfit ?? 0),
+                });
+                setWalletMsg('');
+                setActionErr('');
+                setWalletOpen(true);
+              }}>
+              {t('admin:members.openingBalance')}
+            </button>
+          )}
+          {isSuper && (
+            <button
+              disabled={acting}
+              style={{
+                padding: '8px 14px', fontSize: 12, borderRadius: 6, cursor: acting ? 'default' : 'pointer',
+                border:     member.status === 'FROZEN' ? '1px solid rgba(76,217,138,0.3)' : '1px solid rgba(224,82,82,0.3)',
+                background: member.status === 'FROZEN' ? 'rgba(76,217,138,0.1)'           : 'rgba(224,82,82,0.1)',
+                color:      member.status === 'FROZEN' ? 'var(--green)'                   : 'var(--red)',
+              }}
+              onClick={handleFreeze}>
+              {member.status === 'FROZEN' ? t('admin:members.unfreeze') : t('admin:members.freeze')}
+            </button>
+          )}
           <button
             className="btn-primary"
             style={{ width: 'auto', padding: '9px 20px', fontSize: 13, display: 'flex', alignItems: 'center', gap: 7 }}
@@ -238,6 +345,14 @@ function MemberDetailContent() {
           </button>
         </div>
       </div>
+
+      {actionErr && (
+        <div style={{
+          padding: '11px 16px', marginBottom: 18, borderRadius: 'var(--radius-sm)',
+          background: 'rgba(224,82,82,0.1)', border: '1px solid rgba(224,82,82,0.3)',
+          color: 'var(--red)', fontSize: 13,
+        }}>{actionErr}</div>
+      )}
 
       {emailMsg && (
         <div style={{
@@ -527,11 +642,78 @@ function MemberDetailContent() {
         </div>
       </Section>
 
+      {/* ── Opening balance ── */}
+      {walletOpen && (
+        <div className="modal-overlay" onClick={() => { setWalletOpen(false); setWalletMsg(''); }}>
+          <div className="modal-box" onClick={e => e.stopPropagation()}>
+            <p className="modal-title">{t('admin:wallet.title', { name: member.name })}</p>
+            <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 16, marginTop: -10 }}>
+              {t('admin:wallet.intro')}
+            </p>
+            <form onSubmit={handleUpdateWallet}>
+              <div className="form-group">
+                <label className="form-label">{t('admin:wallet.openingCapital')}</label>
+                <input className="form-input" type="number" min="0" step="0.01"
+                  value={walletForm.investmentAmount}
+                  onChange={e => setWalletForm(p => ({ ...p, investmentAmount: e.target.value }))} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">{t('admin:wallet.openingProfit')}</label>
+                <input className="form-input" type="number" min="0" step="0.01"
+                  value={walletForm.profitAmount}
+                  onChange={e => setWalletForm(p => ({ ...p, profitAmount: e.target.value }))} />
+              </div>
+              {/* Live total preview */}
+              <div style={{
+                background: 'rgba(58,111,255,0.06)',
+                border: '1px solid rgba(58,111,255,0.15)',
+                borderRadius: 'var(--radius-sm)',
+                padding: '12px 14px',
+                marginBottom: 16,
+                display: 'flex',
+                justifyContent: 'space-between',
+              }}>
+                <div>
+                  <span style={{ fontSize: 12, color: 'var(--text-muted)', display: 'block' }}>{t('admin:wallet.newTotal')}</span>
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                    {t('admin:wallet.includes', {
+                      capital: formatEur(breakdown.projectCapital || 0),
+                      profit:  formatEur(breakdown.projectProfit || 0),
+                    })}
+                  </span>
+                </div>
+                <span className="ltr-embed" style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>
+                  {formatEur(
+                    (parseFloat(walletForm.investmentAmount) || 0) +
+                    (parseFloat(walletForm.profitAmount)     || 0) +
+                    (breakdown.projectCapital                || 0) +
+                    (breakdown.projectProfit                 || 0)
+                  )}
+                </span>
+              </div>
+              {walletMsg && (
+                <p style={{ color: 'var(--green)', fontSize: 12, marginBottom: 8 }}>{walletMsg}</p>
+              )}
+              <div className="modal-actions">
+                <button type="button" className="btn-secondary"
+                  onClick={() => { setWalletOpen(false); setWalletMsg(''); }}>
+                  {t('common:action.cancel')}
+                </button>
+                <button type="submit" className="btn-primary" disabled={acting}
+                  style={{ width: 'auto', padding: '10px 24px' }}>
+                  {t('admin:wallet.update')}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {capitalOpen && (
         <MemberCapitalModal
           member={member}
           onClose={() => setCapitalOpen(false)}
-          onDone={() => { if (id) adminAPI.getMemberOverview(id).then(r => setData(r.data)); }}
+          onDone={reload}
         />
       )}
 

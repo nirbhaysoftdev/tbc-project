@@ -12,10 +12,17 @@ import EnquirySettingsTab from '@/components/admin/EnquirySettingsTab';
 import NotifBadge from '@/components/layout/NotifBadge';
 import { openDocument } from '@/lib/openDocument';
 import { useAdminAlerts } from '@/lib/adminAlerts';
+import { useAuth } from '@/lib/auth';
+import { isSuperAdminRole } from '@/lib/roles';
 
 function AdminContent() {
   const { t } = useTranslation(['admin', 'common']);
   const router = useRouter();
+  const { user } = useAuth();
+  // The controls an ADMIN must not see at all. Rendering them and letting the
+  // API return 403 would read as a bug rather than a boundary — see
+  // src/lib/roles.ts.
+  const isSuper = isSuperAdminRole(user?.role);
   const [stats,   setStats]   = useState<any>(null);
   const [members, setMembers] = useState<any[]>([]);
   const [pending, setPending] = useState<any[]>([]);
@@ -26,14 +33,12 @@ function AdminContent() {
   const [loading, setLoading] = useState(true);
 
   // Modals
-  const [showWallet,   setShowWallet]   = useState(false);
   const [showApprove,  setShowApprove]  = useState(false);
   const [showAddMember, setShowAddMember] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any>(null);
 
   // Forms
-  const [walletForm,   setWalletForm]   = useState({ investmentAmount:'', profitAmount:'' });
   const [approveForm,  setApproveForm]  = useState({ rejectReason:'', enableWallet:'true' });
   const [approveDocs,  setApproveDocs]  = useState<FileList | null>(null);
   const [formMsg,      setFormMsg]      = useState('');
@@ -196,23 +201,6 @@ function AdminContent() {
     }
   };
 
-  const handleUpdateWallet = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const res = await adminAPI.updateWallet(selectedUser.id, walletForm);
-    setFormMsgIsError(false);
-    setFormMsg(res.data?.walletActivated
-      ? t('admin:wallet.activated')
-      : t('admin:wallet.updated'));
-    setTimeout(() => { setShowWallet(false); setFormMsg(''); }, 2000);
-    refreshMembers();
-    adminAPI.getStats().then(r => setStats(r.data));
-  };
-
-  const handleFreeze = async (id: string) => {
-    await adminAPI.toggleFreeze(id);
-    refreshMembers();
-  };
-
   const handleExport = async () => {
     const res = await adminAPI.exportData();
     downloadBlob(res.data, `TBC-Members-${Date.now()}.csv`);
@@ -227,7 +215,10 @@ function AdminContent() {
       <div className="page-header">
         <h1 className="page-title">{t('admin:title')}</h1>
         <div style={{ display:'flex', gap:8, alignItems:'center' }}>
-          <button className="export-btn" onClick={handleExport}>{t('admin:exportCsv')}</button>
+          {/* A full member export is bulk PII in one file. */}
+          {isSuper && (
+            <button className="export-btn" onClick={handleExport}>{t('admin:exportCsv')}</button>
+          )}
          <a href="/admin/withdrawals" style={{
          padding: '8px 16px',
        background: 'rgba(224,82,82,0.12)',
@@ -316,18 +307,16 @@ function AdminContent() {
                 <tr>
                   <th>{t('admin:members.columns.member')}</th>
                   <th>{t('admin:members.columns.email')}</th>
-                  <th>{t('admin:members.columns.status')}</th>
                   <th>{t('admin:members.columns.wallet')}</th>
                   <th>{t('admin:members.columns.documents')}</th>
                   <th>{t('admin:members.columns.investment')}</th>
                   <th>{t('admin:members.columns.profit')}</th>
                   <th>{t('admin:members.columns.totalBalance')}</th>
-                  <th>{t('admin:members.columns.actions')}</th>
                 </tr>
               </thead>
               <tbody>
                 {members.length === 0 ? (
-                  <tr><td colSpan={9} style={{ textAlign:'center', padding:32, color:'var(--text-muted)' }}>{t('admin:members.noneFound')}</td></tr>
+                  <tr><td colSpan={7} style={{ textAlign:'center', padding:32, color:'var(--text-muted)' }}>{t('admin:members.noneFound')}</td></tr>
                 ) : members.map((m: any) => {
                   const docsComplete = (m.kycDocuments || []).some((d: any) => d.status === 'approved') || m.kycStatus === 'APPROVED';
                   return (
@@ -340,6 +329,15 @@ function AdminContent() {
                     <td style={{ fontWeight:600, color:'var(--text-primary)' }}>
                       <span style={{ display:'flex', alignItems:'center', gap:6 }}>
                         {m.name}
+                        {/* The Status column is gone; a frozen member is the
+                            one state the list still has to surface, because a
+                            frozen account cannot sign in. */}
+                        {m.status === 'FROZEN' && (
+                          <span className="badge badge-failed" style={{ fontSize:10, padding:'1px 6px' }}
+                            title={t('admin:members.frozenNotice')}>
+                            {t('common:status.frozen', { defaultValue: 'Frozen' })}
+                          </span>
+                        )}
                         {/* "Go deeper" chevron — directional, so it mirrors. */}
                         <svg className="rtl-mirror" viewBox="0 0 24 24" width="12" height="12" fill="none"
                           stroke="currentColor" strokeWidth="2" style={{ color:'var(--text-muted)' }}>
@@ -348,12 +346,6 @@ function AdminContent() {
                       </span>
                     </td>
                     <td className="ltr-embed">{m.email}</td>
-                    <td>
-                      <span className={`badge ${m.status === 'ACTIVE' ? 'badge-completed' : 'badge-failed'}`}>
-                        {/* Status enums reuse the shared common:status labels. */}
-                        {t(`common:status.${m.status.toLowerCase()}`, { defaultValue: m.status })}
-                      </span>
-                    </td>
                     <td>
                       <span className={`badge ${m.walletEnabled ? 'badge-completed' : 'badge-pending'}`}>
                         {m.walletEnabled ? t('admin:members.walletEnabled') : t('admin:members.walletDisabled')}
@@ -367,33 +359,6 @@ function AdminContent() {
                     <td className="ltr-embed">{formatEur(m.wallet?.investmentAmount || 0)}</td>
                     <td className="amount-credit ltr-embed">+{formatEur(m.wallet?.profitAmount || 0)}</td>
                     <td className="ltr-embed" style={{ fontWeight:700, color:'var(--text-primary)' }}>{formatEur(m.wallet?.totalBalance || 0)}</td>
-                    <td onClick={e => e.stopPropagation()}>
-                      <div style={{ display:'flex', gap:6 }}>
-                        {!m.walletEnabled && (
-                          <button
-                            style={{ padding:'4px 10px', fontSize:11, borderRadius:6, cursor:'pointer',
-                              border:'1px solid rgba(58,111,255,0.3)', background:'rgba(58,111,255,0.1)', color:'var(--accent-blue)' }}
-                            onClick={() => {
-                              setSelectedUser(m);
-                              setWalletForm({ investmentAmount: String(m.wallet?.openingCapital ?? 0), profitAmount: String(m.wallet?.openingProfit ?? 0) });
-                              setFormMsg('');
-                              setShowWallet(true);
-                            }}>
-                            {t('admin:members.enableWallet')}
-                          </button>
-                        )}
-                        <button
-                          style={{
-                            padding:'4px 10px', fontSize:11, borderRadius:6, cursor:'pointer',
-                            border:     m.status === 'FROZEN' ? '1px solid rgba(76,217,138,0.3)' : '1px solid rgba(224,82,82,0.3)',
-                            background: m.status === 'FROZEN' ? 'rgba(76,217,138,0.1)'           : 'rgba(224,82,82,0.1)',
-                            color:      m.status === 'FROZEN' ? 'var(--green)'                   : 'var(--red)',
-                          }}
-                          onClick={() => handleFreeze(m.id)}>
-                          {m.status === 'FROZEN' ? t('admin:members.unfreeze') : t('admin:members.freeze')}
-                        </button>
-                      </div>
-                    </td>
                   </tr>
                   );
                 })}
@@ -472,6 +437,10 @@ function AdminContent() {
                         }}>
                         {t('admin:pending.activate')}
                       </button>
+                      {/* Rejection is terminal: REJECTED blocks login for
+                          good, so only a super admin may do it. An admin
+                          approves, or leaves the application pending. */}
+                      {isSuper && (
                       <button
                         style={{
                           padding:'4px 12px', fontSize:11, borderRadius:6, cursor:'pointer',
@@ -487,6 +456,7 @@ function AdminContent() {
                         }}>
                         {t('admin:pending.reject')}
                       </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -652,73 +622,6 @@ function AdminContent() {
                     cursor:'pointer',
                   }}>
                   {approveMode === 'approve' ? t('admin:approve.confirmActivate') : t('admin:approve.confirmReject')}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* ── Edit Wallet Modal ── */}
-      {showWallet && selectedUser && (
-        <div className="modal-overlay" onClick={() => { setShowWallet(false); setFormMsg(''); }}>
-          <div className="modal-box" onClick={e => e.stopPropagation()}>
-            <p className="modal-title">{t('admin:wallet.title', { name: selectedUser.name })}</p>
-            <p style={{ fontSize:12, color:'var(--text-muted)', marginBottom:16, marginTop:-10 }}>
-              {t('admin:wallet.intro')}
-            </p>
-            <form onSubmit={handleUpdateWallet}>
-              <div className="form-group">
-                <label className="form-label">{t('admin:wallet.openingCapital')}</label>
-                <input className="form-input" type="number" min="0" step="0.01"
-                  value={walletForm.investmentAmount}
-                  onChange={e => setWalletForm(p => ({...p, investmentAmount:e.target.value}))} />
-              </div>
-              <div className="form-group">
-                <label className="form-label">{t('admin:wallet.openingProfit')}</label>
-                <input className="form-input" type="number" min="0" step="0.01"
-                  value={walletForm.profitAmount}
-                  onChange={e => setWalletForm(p => ({...p, profitAmount:e.target.value}))} />
-              </div>
-              {/* Live total preview */}
-              <div style={{
-                background:   'rgba(58,111,255,0.06)',
-                border:       '1px solid rgba(58,111,255,0.15)',
-                borderRadius: 'var(--radius-sm)',
-                padding:      '12px 14px',
-                marginBottom: 16,
-                display:      'flex',
-                justifyContent:'space-between',
-              }}>
-                <div>
-                  <span style={{ fontSize:12, color:'var(--text-muted)', display:'block' }}>{t('admin:wallet.newTotal')}</span>
-                  <span style={{ fontSize:11, color:'var(--text-muted)' }}>
-                    {t('admin:wallet.includes', {
-                      capital: formatEur(selectedUser.wallet?.projectCapital || 0),
-                      profit:  formatEur(selectedUser.wallet?.projectProfit || 0),
-                    })}
-                  </span>
-                </div>
-                <span className="ltr-embed" style={{ fontSize:15, fontWeight:700, color:'var(--text-primary)' }}>
-                  {formatEur(
-                    (parseFloat(walletForm.investmentAmount) || 0) +
-                    (parseFloat(walletForm.profitAmount)     || 0) +
-                    (selectedUser.wallet?.projectCapital     || 0) +
-                    (selectedUser.wallet?.projectProfit      || 0)
-                  )}
-                </span>
-              </div>
-              {formMsg && (
-                <p style={{ color:'var(--green)', fontSize:12, marginBottom:8 }}>{formMsg}</p>
-              )}
-              <div className="modal-actions">
-                <button type="button" className="btn-secondary"
-                  onClick={() => { setShowWallet(false); setFormMsg(''); }}>
-                  {t('common:action.cancel')}
-                </button>
-                <button type="submit" className="btn-primary"
-                  style={{ width:'auto', padding:'10px 24px' }}>
-                  {t('admin:wallet.update')}
                 </button>
               </div>
             </form>
