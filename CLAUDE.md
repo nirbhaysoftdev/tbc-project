@@ -114,6 +114,7 @@ Never run `db:reset` (drops the database) or `db:migrate` (that is
 | `FRONTEND_URL` | The media stream sends `Content-Security-Policy: frame-ancestors 'self' $FRONTEND_URL` and defaults to `http://localhost:3000`. Wrong in production and **every PDF, Word and image viewer renders nothing** while the rest of the portal looks healthy. |
 | `SMTP_*` | OTP, approvals, invoices and Connect Now enquiries all go through `services/mailer.js`. |
 | `DEFAULT_ENQUIRY_EMAIL` | Fallback recipient for enquiries when no address is configured in Admin → Enquiries. Optional; the code falls back to `codehands12@gmail.com`. |
+| `ADMIN_NOTIFY_EMAIL` | Fallback recipient for new-signup alerts when no address is set in Admin → Super Admin → Notifications. Optional, and unlike enquiries there is **no hardcoded default**: with neither the setting nor this variable, applications arrive with nobody told. The screen says so in red. |
 
 `frontend` at **build time** (the frontend is a static export, so these are
 baked into the bundle - changing them later does nothing until you rebuild):
@@ -277,6 +278,30 @@ the bytes must reach the browser to be displayed, so devtools, the network tab
 and a screenshot all remain. The ticketed, permission-checked endpoint is the
 part that actually protects the file; the rest removes the download paths a
 member would actually use.
+
+## Portal-wide recipient lists
+
+`services/recipientList.js` is the one implementation behind every "who gets
+this mail?" setting: parsing a pasted list, de-duplicating case-insensitively,
+capping at 10 addresses, storing it in `SystemConfig` as a comma-separated
+string, and reporting what was added and removed so the caller can notify the
+mailboxes involved. Two settings use it:
+
+| Setting | Key | Env fallback | Set in |
+|---|---|---|---|
+| Enquiry recipients | `enquiryRecipientEmail` | `DEFAULT_ENQUIRY_EMAIL` | Admin → Enquiries |
+| New-signup alerts | `signupNotifyEmail` | `ADMIN_NOTIFY_EMAIL` | Admin → Super Admin → Notifications |
+
+Both are portal-wide, both deliver every message to every address on the list,
+and both refuse an empty list. Reading is open to any admin; writing is super
+admin only, because an admin who could redirect the signup alerts could
+approve their own invitee unobserved.
+
+Add a third by calling `recipientSetting({ key, fallback })` rather than
+re-implementing the parsing. The signup setting was lifted out of
+`enquirySettings.js` for exactly this reason: a second copy that stopped
+de-duplicating case-insensitively would send `Ops@x.com` and `ops@x.com` two of
+everything, and nobody would notice for weeks.
 
 ## What members may see about each other
 

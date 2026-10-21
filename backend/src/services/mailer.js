@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const nodemailer = require('nodemailer');
 const { logActivity } = require('./activityLog');
+const { getSignupNotifyRecipients } = require('./signupNotifySettings');
 
 let cachedTransport = null;
 
@@ -587,13 +588,24 @@ function adminNewSignupHtml({ user, adminUrl }) {
     title: 'New membership application',
     intro: 'A new user has submitted a membership application and is awaiting your review.',
     bodyHtml: body,
-    footerNote: 'You are receiving this because you are set as ADMIN_NOTIFY_EMAIL.',
+    footerNote: 'You are receiving this because your address is a new-signup recipient in Admin → Super Admin.',
   });
 }
 
+// Recipients come from the portal setting, with ADMIN_NOTIFY_EMAIL as the
+// fallback — see signupNotifySettings.js. Resolved here rather than at the two
+// call sites in authController so neither signup path can be left behind when
+// the setting changes shape again.
+//
+// An empty list is a configured state, not an error: a portal with nobody
+// watching applications sends nothing. The caller already treats a failure as
+// non-fatal, because a signup must never fail over a notification.
 async function sendAdminNewSignupNotification(user) {
-  const to = process.env.ADMIN_NOTIFY_EMAIL;
-  if (!to) return;
+  const { emails } = await getSignupNotifyRecipients();
+  if (emails.length === 0) return;
+  // An array: nodemailer addresses all of them on one message, which is what
+  // the enquiry recipients do too.
+  const to = emails;
   const adminUrl = `${process.env.FRONTEND_URL || 'https://trillionbusinesscommunity.com'}/admin`;
   return sendMail({
     to,

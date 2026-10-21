@@ -17,29 +17,56 @@ async function main() {
 
   const now = new Date();
 
-  // ── Admin ─────────────────────────────────────────────
-  const adminPass = await bcrypt.hash("Admin@123", 12);
+  // ── Super admin ───────────────────────────────────────
+  //
+  // The role is circular — only a super admin can grant it — so the first one
+  // has to be seeded. This is the owner account; `admin@trillionbc.com` below
+  // is a plain ADMIN so the two tiers can be told apart while testing.
+  //
+  // ON CONFLICT writes the role, so re-seeding a database that still has the
+  // two tiers the other way round corrects them. It deliberately leaves
+  // "passwordHash" and the name alone: a seed must never reset the password or
+  // rename an account someone is already using.
+  const superPass = await bcrypt.hash("Admin@123", 12);
   await query(
     `
     INSERT INTO users (id, name, email, "passwordHash", role, status, "createdAt", "updatedAt")
     VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
-    ON CONFLICT (email) DO UPDATE SET name = EXCLUDED.name
+    ON CONFLICT (email) DO UPDATE SET role = EXCLUDED.role, status = EXCLUDED.status
   `,
     [
       uuidv4(),
-      "TBC Admin",
-      "admin@trillionbc.com",
-      adminPass,
-      // Bootstrapping: the role can only be granted BY a super admin, so the
-      // first one has to be seeded. Promote the real operators from the panel
-      // and demote this account afterwards.
+      "Code Hands",
+      "codehands12@gmail.com",
+      superPass,
       "SUPER_ADMIN",
       "ACTIVE",
       now,
       now,
     ],
   );
-  console.log("✅ Super admin created: admin@trillionbc.com");
+  console.log("✅ Super admin created: codehands12@gmail.com");
+
+  // ── Admin ─────────────────────────────────────────────
+  const adminPass = await bcrypt.hash("Admin@123", 12);
+  await query(
+    `
+    INSERT INTO users (id, name, email, "passwordHash", role, status, "createdAt", "updatedAt")
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+    ON CONFLICT (email) DO UPDATE SET role = EXCLUDED.role
+  `,
+    [
+      uuidv4(),
+      "TBC Admin",
+      "admin@trillionbc.com",
+      adminPass,
+      "ADMIN",
+      "ACTIVE",
+      now,
+      now,
+    ],
+  );
+  console.log("✅ Admin created: admin@trillionbc.com");
 
   // ── Member ────────────────────────────────────────────
   const memberPass = await bcrypt.hash("Member@123", 12);
@@ -204,6 +231,7 @@ async function main() {
   await query(`DELETE FROM system_config WHERE key = $1`, ["dev_notice"]);
 
   console.log("\n🎉 Seed complete!");
+  console.log("   Super admin: codehands12@gmail.com  /  Admin@123");
   console.log("   Admin:  admin@trillionbc.com  /  Admin@123");
   console.log("   Member: antonino@trillionbc.com  /  Member@123\n");
 }

@@ -113,6 +113,13 @@ export const adminAPI = {
   getMemberOverview:   (id: string)                 => api.get(`/admin/members/${id}/overview`),
   sendMemberStatement: (id: string, note?: string)  => api.post(`/admin/members/${id}/send-statement`, note ? { note } : {}),
   exportData:      ()                      => api.get('/admin/export', { responseType: 'blob' }),
+  /**
+   * Where new-member application alerts are delivered. Reading is open to any
+   * admin; saving is super admin only, so gate the form with isSuperAdminRole()
+   * rather than relying on the 403.
+   */
+  getSignupNotify:    ()                => api.get('/admin/signup-notify'),
+  updateSignupNotify: (emails: string[]) => api.put('/admin/signup-notify', { emails }),
   // Activity logs (emails, member/investment requests, profit, withdrawals)
   getLogs:         (params?: Record<string, string>) => api.get('/admin/logs', { params }),
   getLogTypes:     ()                      => api.get('/admin/logs/types'),

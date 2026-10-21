@@ -25,7 +25,11 @@ import { Trans, useTranslation } from 'react-i18next';
 const FILE_BASE = process.env.NODE_ENV === 'production'
   ? (process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || '')
   : '';
-const fileUrl = (path?: string | null) => (path ? `${FILE_BASE}${path}` : null);
+// A Google signup stores its avatar as an absolute URL, so prefixing the API
+// origin would produce a broken src for exactly those members. Profile photos
+// are the one PUBLIC kind, so no signing is needed either way.
+const fileUrl = (path?: string | null) =>
+  (path ? (/^https?:\/\//.test(path) ? path : `${FILE_BASE}${path}`) : null);
 
 const shortDate = (d?: string | null) =>
   d ? new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';

@@ -11,12 +11,19 @@
 // Every destructive control lives in the Danger zone at the bottom of the
 // detail pane, below everything else, and each one states its consequence in
 // the confirmation rather than asking "Are you sure?".
+//
+// Two further tabs sit beside the accounts:
+//   Projects      every project in the portal, with the forced delete that the
+//                 ordinary one on the project form cannot do.
+//   Notifications where new-member application alerts are emailed.
 
 import { useCallback, useEffect, useState } from 'react';
 import ProtectedLayout from '@/components/layout/ProtectedLayout';
 import { superAdminAPI, formatDateTime } from '@/lib/api';
 import { openDocument } from '@/lib/openDocument';
 import { useAuth } from '@/lib/auth';
+import SuperProjectsTab from '@/components/admin/SuperProjectsTab';
+import SignupNotifyTab from '@/components/admin/SignupNotifyTab';
 
 type Role = 'MEMBER' | 'ADMIN' | 'SUPER_ADMIN';
 
@@ -101,6 +108,8 @@ const LABEL: React.CSSProperties = {
 
 function SuperAdminContent() {
   const { user: me } = useAuth();
+
+  const [tab, setTab] = useState<'users' | 'projects' | 'notifications'>('users');
 
   const [rows,    setRows]    = useState<UserRow[]>([]);
   const [search,  setSearch]  = useState('');
@@ -316,6 +325,23 @@ function SuperAdminContent() {
         </span>
       </div>
 
+      {/* Same underline-tab idiom as the admin panel's own tabs. */}
+      <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid var(--border)',
+                    marginBottom: 18 }}>
+        {([['users', 'Accounts'], ['projects', 'Projects'],
+           ['notifications', 'Notifications']] as const).map(([key, label]) => (
+          <button key={key} onClick={() => setTab(key)}
+            style={{
+              padding: '9px 16px', fontSize: 13, cursor: 'pointer', background: 'none',
+              border: 'none', fontWeight: tab === key ? 600 : 500,
+              borderBottom: tab === key ? '2px solid var(--accent-blue)' : '2px solid transparent',
+              color: tab === key ? 'var(--text-primary)' : 'var(--text-muted)',
+            }}>
+            {label}
+          </button>
+        ))}
+      </div>
+
       {(notice || error) && (
         <div style={{
           ...CARD, marginBottom: 16, padding: '12px 16px', fontSize: 13,
@@ -338,6 +364,7 @@ function SuperAdminContent() {
         </div>
       )}
 
+      {tab === 'users' && (
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(260px, 340px) 1fr', gap: 18, alignItems: 'start' }}>
 
         {/* ── Accounts ── */}
@@ -665,6 +692,10 @@ function SuperAdminContent() {
           </div>
         )}
       </div>
+      )}
+
+      {tab === 'projects'      && <SuperProjectsTab />}
+      {tab === 'notifications' && <SignupNotifyTab />}
     </div>
   );
 }

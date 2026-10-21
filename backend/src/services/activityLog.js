@@ -52,6 +52,11 @@ const ACTIVITY = {
   // ── System ──
   STATEMENT_SENT:             { category: 'SYSTEM',     label: 'Statement sent' },
   DATA_EXPORTED:              { category: 'SYSTEM',     label: 'Data exported' },
+  // Both are written by code that predates them being catalogued here, so the
+  // rows already exist with category SYSTEM. Listing them is what gives the
+  // Logs page a filter for "who changed where our mail goes?".
+  ENQUIRY_RECIPIENT_CHANGED:  { category: 'SYSTEM',     label: 'Enquiry recipients changed' },
+  SIGNUP_NOTIFY_CHANGED:      { category: 'SYSTEM',     label: 'New-signup recipients changed' },
 
   // ── Super admin ──
   // Everything only a SUPER_ADMIN can do. Kept in its own category so the

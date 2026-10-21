@@ -8,6 +8,7 @@ const { authenticate, requireAdmin, requireSuperAdmin } = require('../middleware
 const adminController = require('../controllers/adminController');
 const memberOverviewController = require('../controllers/memberOverviewController');
 const activityLogController = require('../controllers/activityLogController');
+const signupNotifyController = require('../controllers/signupNotifyController');
 
 // Multer config for profile photos
 const storage = multer.diskStorage({
@@ -104,6 +105,13 @@ router.post('/transactions',        adminController.addTransaction);
 router.get('/stats',                adminController.getStats);
 // Pending-action counts behind the notification badge
 router.get('/notifications',        adminController.getNotificationCounts);
+
+// ── New-signup notification recipients ───────────
+// Any admin may see where application alerts go; only a super admin may
+// redirect them, because an admin who could point them at their own mailbox
+// would be able to approve an applicant with nobody else told.
+router.get('/signup-notify',        signupNotifyController.getRecipients);
+router.put('/signup-notify',        requireSuperAdmin, signupNotifyController.updateRecipients);
 
 // ── Activity logs ────────────────────────────────
 // /types is declared before the list route only for readability; they do not

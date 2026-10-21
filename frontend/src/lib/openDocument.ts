@@ -12,6 +12,19 @@ const FILE_BASE = process.env.NODE_ENV === 'production'
 export async function openDocument(storedPath?: string | null) {
   if (!storedPath) return;
 
+  // An absolute URL is already hosted elsewhere and has nothing to sign — a
+  // Google account's avatar (`payload.picture`, stored verbatim on signup) is
+  // the case that happens. Signing it would 400 with "path must be an
+  // /uploads/... URL", which is what the admin Documents list used to show for
+  // the Photo row of every member who signed up with Google.
+  //
+  // useSignedSrc() has had the same guard all along; only this helper was
+  // missing it.
+  if (/^https?:\/\//.test(storedPath)) {
+    window.open(storedPath, '_blank', 'noopener,noreferrer');
+    return;
+  }
+
   // Open the tab synchronously, before awaiting: a window.open() after an
   // await is treated as an unrequested popup and gets blocked.
   const tab = window.open('', '_blank');
