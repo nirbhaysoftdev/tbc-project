@@ -1,0 +1,146 @@
+/* src/styles/pwa.css
+ *
+ * The install invitation. A card pinned to the bottom of the viewport: bottom
+ * is where a phone's thumb is and where every OS puts its own install sheet,
+ * and it keeps the banner clear of the topbar and the impersonation bar.
+ *
+ * It sits above the sidebar and the mobile drawer (z-index) but below nothing
+ * that matters, and it never covers the full screen - a member who ignores it
+ * can keep working, which is the difference between an invitation and a wall.
+ */
+
+.pwa-banner {
+  position: fixed;
+  z-index: 1200;
+  left: max(12px, env(safe-area-inset-left));
+  right: max(12px, env(safe-area-inset-right));
+  bottom: calc(12px + env(safe-area-inset-bottom));
+
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 14px;
+  align-items: start;
+
+  padding: 16px 40px 16px 16px;
+  background: var(--bg-sidebar);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  animation: pwa-rise 220ms ease-out;
+}
+
+.pwa-banner.is-closing {
+  animation: pwa-sink 180ms ease-in forwards;
+}
+
+@keyframes pwa-rise {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes pwa-sink {
+  to { opacity: 0; transform: translateY(16px); }
+}
+
+/* Honours a member who has asked their system for less motion. */
+@media (prefers-reduced-motion: reduce) {
+  .pwa-banner, .pwa-banner.is-closing { animation: none; }
+}
+
+.pwa-banner-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+}
+
+.pwa-banner-body { min-width: 0; }
+
+.pwa-banner-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.pwa-banner-sub {
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+.pwa-banner-note {
+  margin-top: 8px;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--accent-gold);
+}
+
+.pwa-steps {
+  list-style: decimal;
+  margin: 10px 0 0;
+  padding-inline-start: 18px;
+  font-size: 12.5px;
+  line-height: 1.85;
+  color: var(--text-secondary);
+}
+
+.pwa-glyph {
+  vertical-align: -3px;
+  color: var(--accent-blue);
+}
+
+.pwa-banner-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.pwa-btn-install,
+.pwa-btn-later {
+  font-size: 13px;
+  font-weight: 600;
+  padding: 9px 16px;
+  border-radius: var(--radius-sm);
+}
+
+.pwa-btn-install {
+  background: var(--accent-blue);
+  color: #fff;
+  flex: 1;
+}
+.pwa-btn-install:hover { filter: brightness(1.08); }
+
+.pwa-btn-later {
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  flex: 1;
+}
+.pwa-btn-later:hover { background: var(--bg-card-hover); }
+
+.pwa-banner-close {
+  position: absolute;
+  top: 8px;
+  inset-inline-end: 10px;
+  width: 26px;
+  height: 26px;
+  font-size: 19px;
+  line-height: 1;
+  color: var(--text-muted);
+  border-radius: 6px;
+}
+.pwa-banner-close:hover { color: var(--text-primary); background: var(--bg-card-hover); }
+
+/* From tablet up it is a card in the corner rather than a full-width bar:
+ * there is no thumb to reach it with and a bar across a 27" screen reads as
+ * a system notification rather than as part of the portal. */
+@media (min-width: 720px) {
+  .pwa-banner {
+    left: auto;
+    right: max(20px, env(safe-area-inset-right));
+    bottom: calc(20px + env(safe-area-inset-bottom));
+    width: 380px;
+  }
+  .pwa-btn-install, .pwa-btn-later { flex: 0 0 auto; }
+}

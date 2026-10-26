@@ -11,6 +11,7 @@
     "totalTransactions": "Total Transactions"
   },
   "tabs": {
+    "overview": "Overview",
     "members": "Active Members",
     "pending": "Pending Approvals",
     "requests": "Investment Requests",

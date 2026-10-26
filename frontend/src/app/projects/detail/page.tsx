@@ -14,6 +14,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import ProtectedLayout from '@/components/layout/ProtectedLayout';
 import ProjectDocuments from '@/components/projects/ProjectDocuments';
+import LaunchPanel from '@/components/projects/LaunchPanel';
 import EnquiryModal from '@/components/enquiry/EnquiryModal';
 import { PersonAvatar, Person } from '@/components/projects/MemberSelect';
 import { prettyCategory } from '@/components/projects/ProjectCard';
@@ -66,8 +67,11 @@ function PeopleList({ people }: { people?: Person[] | null }) {
   );
 }
 
-const TABS = ['Overview', 'Details', 'People', 'Documents'] as const;
-type Tab = typeof TABS[number];
+const MEMBER_TABS = ['Overview', 'Details', 'People', 'Documents'] as const;
+// Launching and announcing are admin work, so the tab that does it is only
+// built for an admin. The endpoints behind it are admin-only regardless.
+const ADMIN_TABS = [...MEMBER_TABS, 'Lifecycle'] as const;
+type Tab = typeof ADMIN_TABS[number];
 
 function ProjectDetailInner() {
   const searchParams = useSearchParams();
@@ -171,6 +175,12 @@ function ProjectDetailInner() {
                 <span className={`pj-badge ${STATUS_CLASS[project.status] || 'pj-badge-draft'}`}>
                   {project.status}
                 </span>
+                {/* The promotional badge, and deliberately NOT in the status
+                    pill beside it: "published" and "newly launched" are two
+                    different facts and the page says both. */}
+                {project.newlyLaunched && (
+                  <span className="pj-newly pj-newly-inline">Newly Launched</span>
+                )}
                 <span style={{ fontSize: 12.5, color: 'rgba(232,234,246,0.85)' }}>
                   {prettyCategory(project.category)}
                   {project.location ? ` · ${project.location}` : ''}
@@ -190,7 +200,7 @@ function ProjectDetailInner() {
         <div className="pj-detail-layout">
           <div>
             <div className="pj-tabs" role="tablist">
-              {TABS.map((name) => (
+              {(canManage ? ADMIN_TABS : MEMBER_TABS).map((name) => (
                 <button
                   key={name}
                   type="button"
@@ -311,6 +321,19 @@ function ProjectDetailInner() {
                 canManage={canManage}
                 bannerDocId={project.bannerDocId}
                 onSetBanner={canManage ? setBanner : undefined}
+                onChanged={load}
+              />
+            )}
+
+            {/* Admin only — the tab is not even built for a member, and every
+                endpoint behind it is `requireAdmin` on the server. `onChanged`
+                reloads the project so the banner's badge and status pill match
+                what the panel just did. */}
+            {tab === 'Lifecycle' && canManage && (
+              <LaunchPanel
+                projectId={project.id}
+                projectName={project.title}
+                bannerUrl={project.bannerUrl}
                 onChanged={load}
               />
             )}

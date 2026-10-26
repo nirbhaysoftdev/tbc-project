@@ -147,5 +147,18 @@
     "skipToContent": "الانتقال إلى المحتوى",
     "loading": "جارٍ تحميل المحتوى"
   },
-  "listSeparator": "، "
+  "listSeparator": "، ",
+  "install": {
+    "title": "ثبّت تطبيق TBC",
+    "sub": "أضف Trillion Business Community إلى الشاشة الرئيسية. يُفتح بملء الشاشة، ويُبقيك مسجّل الدخول، ويجعل البوابة على بُعد لمسة واحدة.",
+    "install": "تثبيت",
+    "notNow": "ليس الآن",
+    "gotIt": "حسنًا",
+    "iosOther": "هذا المتصفّح لا يمكنه إضافة التطبيقات إلى الشاشة الرئيسية. افتح البوابة في Safari أولاً، ثم:",
+    "iosStep1": "اضغط على زر المشاركة",
+    "iosStep2": "اختر «Add to Home Screen»",
+    "iosStep3": "اضغط «Add». سيظهر TBC مع بقية تطبيقاتك.",
+    "macStep1": "في Safari، افتح قائمة File",
+    "macStep2": "اختر «Add to Dock»"
+  }
 }

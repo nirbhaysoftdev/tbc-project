@@ -1160,6 +1160,314 @@
   .pj-head { align-items: flex-start; }
 }
 
+/* ── Project lifecycle: launch, announcements, Newly Launched ──────────────── */
+
+/* The promotional badge. Gold, because it is a promotion and not a status —
+ * the status pill beside it is the one that says DRAFT or ACTIVE, and the two
+ * must not be mistaken for each other. */
+.pj-newly {
+  position: absolute;
+  top: 10px;
+  inset-inline-start: 10px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(200, 168, 75, 0.95), rgba(226, 198, 110, 0.95));
+  color: #141414;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+}
+
+/* On the detail banner it sits in the flow beside the status pill instead of
+ * being pinned to a corner. */
+.pj-newly-inline {
+  position: static;
+  box-shadow: none;
+}
+
+.pj-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+/* A sub-line under a fact value: "30 days left", "expired 4 June". */
+.pj-fact-sub { font-size: 12px; color: var(--text-muted); }
+
+.pj-req { color: #ef8686; }
+
+/* Small status pills for the lifecycle panel and the history. */
+.pj-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.pj-pill-ok   { background: rgba(46, 204, 113, 0.14); color: #5ad68c; }
+.pj-pill-wait { background: rgba(58, 111, 255, 0.14); color: #7fa0ff; }
+.pj-pill-warn { background: rgba(255, 190, 50, 0.14); color: #ffcf66; }
+.pj-pill-bad  { background: rgba(224, 82, 82, 0.14);  color: #ef8686; }
+.pj-pill-mute { background: rgba(255, 255, 255, 0.06); color: var(--text-muted); }
+
+.pj-pill-type { text-transform: uppercase; letter-spacing: 0.08em; }
+.pj-pill-initial_launch  { background: rgba(200, 168, 75, 0.16); color: var(--accent-gold); }
+.pj-pill-major_update    { background: rgba(160, 140, 255, 0.16); color: #b79cff; }
+.pj-pill-promo_restart   { background: rgba(95, 212, 208, 0.14); color: #5fd4d0; }
+
+/* An explanatory block: what is unknown about a pre-feature project, or why
+ * an action is unavailable. */
+.pj-callout {
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  background: rgba(58, 111, 255, 0.07);
+  border: 1px solid rgba(58, 111, 255, 0.2);
+}
+
+.pj-callout strong { color: var(--text-primary); }
+
+.pj-callout-warn {
+  background: rgba(255, 190, 50, 0.07);
+  border-color: rgba(255, 190, 50, 0.22);
+}
+
+/* ── Announcement history ── */
+.pj-timeline { display: flex; flex-direction: column; gap: 12px; }
+
+.pj-tl-item {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.pj-tl-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.pj-tl-when,
+.pj-tl-who { font-size: 11.5px; color: var(--text-muted); margin-inline-start: 8px; }
+
+.pj-tl-title {
+  font-size: 14px;
+  font-weight: 650;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+
+/* `pre-wrap`: the announcement body is plain text the admin typed, newlines
+ * and all, and it is rendered as text — never as markup. */
+.pj-tl-message {
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.pj-tl-detail { color: var(--text-muted); margin-top: 8px; }
+
+.pj-tl-meta { font-size: 11.5px; color: var(--text-muted); margin-top: 10px; line-height: 1.6; }
+
+.pj-tl-note { font-size: 11px; color: var(--text-muted); opacity: 0.8; margin-top: 3px; }
+
+.pj-tl-errors {
+  margin-top: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(224, 82, 82, 0.08);
+  border: 1px solid rgba(224, 82, 82, 0.2);
+  font-size: 11.5px;
+  color: #ef8686;
+  overflow-wrap: anywhere;
+}
+
+.pj-tl-item .pj-btn { margin-top: 12px; }
+
+/* ── The composer and the confirm dialog ── */
+.pj-composer {
+  width: min(680px, 95vw);
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+}
+
+.pj-confirm { width: min(520px, 94vw); padding: 22px; }
+
+.pj-confirm-text { font-size: 13.5px; line-height: 1.7; color: var(--text-secondary); margin: 0; }
+
+.pj-composer-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 20px 22px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.pj-composer-subject {
+  font-size: 16px;
+  font-weight: 650;
+  color: var(--text-primary);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.pj-composer-banner { height: 150px; overflow: hidden; background: rgba(255, 255, 255, 0.03); }
+
+.pj-composer-banner img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* The scrolling middle, so the heading and the Send button stay put while a
+ * long announcement is written. */
+.pj-composer-body {
+  padding: 18px 22px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.pj-composer-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 22px;
+  border-top: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.pj-confirm .pj-composer-foot {
+  padding: 0;
+  border-top: 0;
+  background: none;
+}
+
+/* ── Previews ── */
+.pj-preview-pane { display: flex; flex-direction: column; gap: 8px; }
+
+.pj-preview-label {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.pj-preview-mail,
+.pj-preview-post {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.22);
+  font-size: 12.5px;
+  line-height: 1.65;
+  color: var(--text-secondary);
+}
+
+.pj-preview-subject {
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+
+.pj-preview-subject span {
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-inline-end: 6px;
+}
+
+.pj-preview-mail-body,
+.pj-preview-post { padding: 12px; }
+
+/* `pre-wrap` on the paragraphs: what the admin typed is what the preview
+ * shows, including the line breaks the email will carry. */
+.pj-preview-mail-body p,
+.pj-preview-post p {
+  margin: 0 0 10px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.pj-preview-mail-body p:last-child,
+.pj-preview-post p:last-child { margin-bottom: 0; }
+
+.pj-preview-greeting { color: var(--text-muted); }
+
+.pj-preview-whatsnew {
+  margin: 10px 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(200, 168, 75, 0.08);
+  border: 1px solid rgba(200, 168, 75, 0.22);
+}
+
+.pj-preview-whatsnew-label {
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  color: var(--accent-gold);
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.pj-preview-cta { color: var(--accent-gold); font-weight: 600; }
+
+.pj-preview-post-title {
+  font-size: 13.5px;
+  font-weight: 650;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+
+.pj-preview-url {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 400;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 640px) {
+  /* The composer becomes the whole screen rather than a card with nothing
+   * usable inside it. */
+  .pj-composer { width: 100vw; max-height: 100vh; border-radius: 0; }
+  .pj-composer-head,
+  .pj-composer-body,
+  .pj-composer-foot { padding-inline: 16px; }
+  .pj-composer-foot .pj-btn { flex: 1; justify-content: center; }
+  .pj-actions .pj-btn { flex: 1 1 auto; justify-content: center; }
+  .pj-tl-head { flex-direction: column; }
+}
+
 /* Honour a reader's preference for less motion: the hover lifts are decoration. */
 @media (prefers-reduced-motion: reduce) {
   .pj-card,

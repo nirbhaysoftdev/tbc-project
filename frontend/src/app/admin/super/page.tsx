@@ -16,6 +16,9 @@
 //   Projects      every project in the portal, with the forced delete that the
 //                 ordinary one on the project form cannot do.
 //   Notifications where new-member application alerts are emailed.
+//   API keys     credentials for machine callers of the event feed. Here
+//                rather than in the admin panel because a key is a standing
+//                grant to read member data with no session attached.
 
 import { useCallback, useEffect, useState } from 'react';
 import ProtectedLayout from '@/components/layout/ProtectedLayout';
@@ -24,6 +27,7 @@ import { openDocument } from '@/lib/openDocument';
 import { useAuth } from '@/lib/auth';
 import SuperProjectsTab from '@/components/admin/SuperProjectsTab';
 import SignupNotifyTab from '@/components/admin/SignupNotifyTab';
+import ApiKeysTab from '@/components/admin/ApiKeysTab';
 
 type Role = 'MEMBER' | 'ADMIN' | 'SUPER_ADMIN';
 
@@ -109,7 +113,7 @@ const LABEL: React.CSSProperties = {
 function SuperAdminContent() {
   const { user: me } = useAuth();
 
-  const [tab, setTab] = useState<'users' | 'projects' | 'notifications'>('users');
+  const [tab, setTab] = useState<'users' | 'projects' | 'notifications' | 'apikeys'>('users');
 
   const [rows,    setRows]    = useState<UserRow[]>([]);
   const [search,  setSearch]  = useState('');
@@ -329,7 +333,7 @@ function SuperAdminContent() {
       <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid var(--border)',
                     marginBottom: 18 }}>
         {([['users', 'Accounts'], ['projects', 'Projects'],
-           ['notifications', 'Notifications']] as const).map(([key, label]) => (
+           ['notifications', 'Notifications'], ['apikeys', 'API keys']] as const).map(([key, label]) => (
           <button key={key} onClick={() => setTab(key)}
             style={{
               padding: '9px 16px', fontSize: 13, cursor: 'pointer', background: 'none',
@@ -696,6 +700,7 @@ function SuperAdminContent() {
 
       {tab === 'projects'      && <SuperProjectsTab />}
       {tab === 'notifications' && <SignupNotifyTab />}
+      {tab === 'apikeys'       && <ApiKeysTab />}
     </div>
   );
 }

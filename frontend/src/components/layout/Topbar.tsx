@@ -1,6 +1,5 @@
 'use client';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import { useSidebar } from '../../lib/sidebar';
 import { useAuth } from '@/lib/auth';
 import { useTranslation } from 'react-i18next';
@@ -9,19 +8,16 @@ import NotifBadge from './NotifBadge';
 import LanguageSelector from '@/components/i18n/LanguageSelector';
 import { isAdminRole } from '@/lib/roles';
 
-// `href` is the shared route and never changes with language; `key` is what
-// gets translated. Switching language must not change the URL (§16).
-const NAV_ITEMS = [
-  { key: 'dashboard',    href: '/dashboard' },
-  { key: 'portfolio',    href: '/portfolio' },
-  { key: 'transactions', href: '/transactions' },
-  { key: 'cards',        href: '/cards' },
-  { key: 'settings',     href: '/settings' },
-];
+// There is deliberately NO nav list here any more.
+//
+// It used to repeat Dashboard / Portfolio / Transactions / Cards / Settings,
+// every one of which is in the sidebar. For an ADMIN it was worse than
+// redundant: the sidebar hides the member wallet pages from admins, so the
+// topbar was offering links to pages the rest of the portal says they do not
+// have. One navigation, one answer - see components/layout/Sidebar.tsx.
 
 export default function Topbar() {
   const { t } = useTranslation(['nav', 'common']);
-  const pathname = usePathname();
   const { setOpen } = useSidebar();
   const { alerts } = useAdminAlerts();
   const { user } = useAuth();
@@ -48,16 +44,6 @@ export default function Topbar() {
           <span className="topbar-sub">{t('common:brand.sub')}</span>
         </div>
       </div>
-
-      {/* Nav */}
-      <nav className="topbar-nav">
-        {NAV_ITEMS.map(({ key, href }) => (
-          <Link key={href} href={href}
-            className={`topbar-nav-item ${pathname === href ? 'active' : ''}`}>
-            {t(`nav:main.${key}`)}
-          </Link>
-        ))}
-      </nav>
 
       {/* Actions */}
       <div className="topbar-actions">
@@ -86,18 +72,9 @@ export default function Topbar() {
             ? <Link href="/admin" className="topbar-icon-btn" style={{ position: 'relative' }} title={title}>{bell}</Link>
             : <button className="topbar-icon-btn" style={{ position: 'relative' }} title={title}>{bell}</button>;
         })()}
-        <button className="topbar-icon-btn">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5">
-            <rect x="3" y="3" width="18" height="18" rx="2"/>
-            <path d="M3 9h18M9 21V9"/>
-          </svg>
-        </button>
-        <button className="topbar-icon-btn">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5">
-            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-            <polyline points="22,6 12,13 2,6"/>
-          </svg>
-        </button>
+        {/* The grid and envelope buttons that used to sit here did nothing:
+            no handler, no href, no destination. A control that cannot be used
+            is not decoration, it is a promise the portal does not keep. */}
       </div>
     </header>
   );

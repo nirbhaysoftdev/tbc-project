@@ -196,7 +196,10 @@ export default function ProjectForm({
       if (editing) {
         const res = await projectsAPI.update(initial.id, payload);
         await uploadPending(initial.id);
-        setNotice('Saved.');
+        // The server's own wording, which says out loud that saving does not
+        // announce anything — the distinction the lifecycle panel's Announce
+        // Major Update action depends on (§12).
+        setNotice(res.data.message || 'Project updated successfully. No announcement was sent.');
         onSaved?.(res.data.project);
       } else {
         const res = await projectsAPI.create(payload);

@@ -123,6 +123,35 @@ export const adminAPI = {
   // Activity logs (emails, member/investment requests, profit, withdrawals)
   getLogs:         (params?: Record<string, string>) => api.get('/admin/logs', { params }),
   getLogTypes:     ()                      => api.get('/admin/logs/types'),
+
+  /**
+   * The merged event feed: new signups, withdrawal requests and enquiries, in
+   * one time-ordered list with each event's live status.
+   *
+   * Not the activity log. The log is what happened; this is where it stands
+   * now - a signup event reports today's status, not the status it had when
+   * the row was written.
+   *
+   * Params: kind (SIGNUP,WITHDRAWAL,ENQUIRY), status, memberId, q, since,
+   * until, page, limit. To poll, send back the `latestAt` you were last given
+   * as `since`; it is an exclusive bound, so nothing arrives twice. A null
+   * `latestAt` means the set was empty - keep the cursor you had.
+   */
+  /**
+   * The Overview's figures: assets by industry, capital in, profit out,
+   * projects, transactions, and a time series for the chosen window.
+   *
+   * Params: range=all|month|quarter|year|custom, from, to, granularity.
+   * `total` figures are as of now and include undated opening balances;
+   * `inRange` and the series are the dated ledger only. The response echoes
+   * the window it actually used under `range`.
+   */
+  getAnalytics:    (params?: Record<string, string>) => api.get('/admin/analytics', { params }),
+
+  getEvents:       (params?: Record<string, string>) => api.get('/admin/events', { params }),
+  // Counts only, for a badge: three COUNT(*)s and no payloads. `needsAttention`
+  // ignores `since`, so it stays truthful between polls.
+  getEventCounts:  (params?: Record<string, string>) => api.get('/admin/events/counts', { params }),
 };
 
 // ── Super admin ───────────────────────────────
@@ -245,6 +274,29 @@ export const superAdminAPI = {
 // ── Investment / Profit Engine (admin) ────────
 // Projects come from the Deal Room. `projectId` is always optional: capital
 // booked with no project is a supported, permanent case.
+// ── API keys (machine access) ─────────────────
+// Credentials for server-to-server callers of the event feed. Super admin only;
+// gate the screen with isSuperAdminRole() rather than relying on the 403.
+//
+// `create` and `rotate` are the ONLY responses that ever contain the key. Show
+// it once, with a copy button, and tell the user it cannot be recovered - there
+// is no endpoint that can read it back. Never write it to localStorage.
+export const apiKeysAPI = {
+  list:   (includeRevoked = true) =>
+    api.get('/super-admin/api-keys', { params: { includeRevoked: String(includeRevoked) } }),
+  // scopes: 'events:read' | 'events:counts' | 'events:sensitive'.
+  // expiresInDays: omit for the server default (365), null for no expiry.
+  create: (body: { name: string; scopes: string[]; expiresInDays?: number | null }) =>
+    api.post('/super-admin/api-keys', body),
+  update: (id: string, body: { name?: string; scopes?: string[]; expiresInDays?: number | null }) =>
+    api.put(`/super-admin/api-keys/${id}`, body),
+  // Returns a NEW key; the old one keeps working until it is revoked, so the
+  // consumer can deploy without a window where neither key is right.
+  rotate: (id: string) => api.post(`/super-admin/api-keys/${id}/rotate`),
+  // Revoke, not delete. Takes effect on the key's next request.
+  revoke: (id: string) => api.delete(`/super-admin/api-keys/${id}`),
+};
+
 export const investmentAPI = {
   listProjects:         ()                      => api.get('/admin/investment-projects'),
   listInvestments:      (params?: Record<string, string>) => api.get('/admin/investments', { params }),
@@ -407,6 +459,35 @@ export const projectsAPI = {
   // professional fields only - never an email or a phone number.
   searchPeople:     (q: string, limit = 10) =>
     api.get('/projects/people/search', { params: { q, limit: String(limit) } }),
+
+  // ── Project lifecycle (admin) ──
+  // Four actions, each on its own endpoint so an ordinary save can never
+  // trigger one. All admin-only on the server, which re-checks both the role
+  // and the project's launch state - the buttons being hidden is not what
+  // makes this safe.
+  //
+  // `getLifecycle` returns the announcement history, the live launch state and
+  // everything the composer needs to render itself, in one call.
+  getLifecycle:     (id: string)              => api.get(`/projects/${id}/announcements`),
+  launch:           (id: string, data: object = {}) => api.post(`/projects/${id}/launch`, data),
+  // Records "launched before we tracked launches" for a project that predates
+  // the module. Sends nothing and invents no date.
+  classifyLaunch:   (id: string)              =>
+    api.post(`/projects/${id}/launch-classify`, { decision: 'previously_launched' }),
+  // The only way to announce a project that has already launched. There is no
+  // plain "re-announce": a post-launch message has to say what changed, so the
+  // summary is required.
+  //
+  // `idempotencyKey` is generated once per composer session and resent
+  // unchanged on a retry, so a failed request can be tried again without
+  // mailing the community twice. A new composer session is a new key, which is
+  // what makes a DELIBERATE second update possible.
+  majorUpdate:      (id: string, data: object) => api.post(`/projects/${id}/announcements/major-update`, data),
+  restartPromo:     (id: string, reason: string) => api.post(`/projects/${id}/promo-restart`, { reason }),
+  // Re-queues only the recipients that failed. Addresses already accepted by
+  // the mail server are not eligible, so nobody gets a second copy.
+  retryAnnouncement:(id: string, announcementId: string) =>
+    api.post(`/projects/${id}/announcements/${announcementId}/retry`, {}),
 
   // ── Deal-room media (images / PDFs / video) ──
   // A listing returns a short-lived stream URL per item. Those URLs are the only

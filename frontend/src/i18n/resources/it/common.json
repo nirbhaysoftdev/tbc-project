@@ -139,5 +139,18 @@
     "skipToContent": "Vai al contenuto",
     "loading": "Caricamento del contenuto"
   },
-  "listSeparator": ", "
+  "listSeparator": ", ",
+  "install": {
+    "title": "Installa l'app TBC",
+    "sub": "Aggiungi Trillion Business Community alla schermata Home. Si apre a schermo intero, mantiene l'accesso e tiene il portale a portata di tocco.",
+    "install": "Installa",
+    "notNow": "Non ora",
+    "gotIt": "Ho capito",
+    "iosOther": "Questo browser non può aggiungere app alla schermata Home. Apri prima il portale in Safari, poi:",
+    "iosStep1": "Tocca il pulsante Condividi",
+    "iosStep2": "Scegli “Aggiungi a Home”",
+    "iosStep3": "Tocca “Aggiungi”. TBC compare con le altre app.",
+    "macStep1": "In Safari, apri il menu File",
+    "macStep2": "Scegli “Aggiungi al Dock”"
+  }
 }

@@ -9,11 +9,18 @@ import { COUNTRIES, DEFAULT_COUNTRY } from '@/lib/countries';
 import InvestmentsTab from '@/components/admin/InvestmentsTab';
 import InvestmentRequestsTab from '@/components/admin/InvestmentRequestsTab';
 import EnquirySettingsTab from '@/components/admin/EnquirySettingsTab';
+import OverviewTab from '@/components/admin/OverviewTab';
 import NotifBadge from '@/components/layout/NotifBadge';
 import { openDocument } from '@/lib/openDocument';
 import { useAdminAlerts } from '@/lib/adminAlerts';
 import { useAuth } from '@/lib/auth';
 import { isSuperAdminRole } from '@/lib/roles';
+import { useHashTab } from '@/lib/useHashTab';
+
+// The tabs, in the order they are shown. Also what the sidebar links into:
+// /admin#pending opens Approvals, so a deep link and a click land identically.
+const ADMIN_TABS = ['overview', 'members', 'pending', 'requests', 'investments', 'enquiries'] as const;
+type AdminTab = typeof ADMIN_TABS[number];
 
 function AdminContent() {
   const { t } = useTranslation(['admin', 'common']);
@@ -26,8 +33,11 @@ function AdminContent() {
   const [stats,   setStats]   = useState<any>(null);
   const [members, setMembers] = useState<any[]>([]);
   const [pending, setPending] = useState<any[]>([]);
-  const [activeTab, setActiveTab] =
-    useState<'members' | 'pending' | 'requests' | 'investments' | 'enquiries'>('members');
+  // Overview first and by default: the panel now opens on what the portal is
+  // worth and what moved, rather than on a member list that answers a question
+  // nobody asked on arrival. The tab lives in the URL hash so the sidebar can
+  // link to one and Back steps between them.
+  const [activeTab, setActiveTab] = useHashTab<AdminTab>(ADMIN_TABS, 'overview');
   const { alerts, refresh: refreshAlerts } = useAdminAlerts();
   const [search,  setSearch]  = useState('');
   const [loading, setLoading] = useState(true);
@@ -219,26 +229,10 @@ function AdminContent() {
           {isSuper && (
             <button className="export-btn" onClick={handleExport}>{t('admin:exportCsv')}</button>
           )}
-         <a href="/admin/withdrawals" style={{
-         padding: '8px 16px',
-       background: 'rgba(224,82,82,0.12)',
-       border: '1px solid rgba(224,82,82,0.3)',
-       borderRadius: 'var(--radius-sm)',
-      color: 'var(--red)',
-      fontSize: 13,
-      fontWeight: 600,
-       display: 'flex',
-      alignItems: 'center',
-      gap: 6,
-      textDecoration: 'none',
-      }}>
-
-    <svg viewBox="0 0 24 24" width="13" height="13" fill="none"
-      stroke="currentColor" strokeWidth="2">
-      <path d="M12 5v14M5 12l7-7 7 7"/>
-    </svg>
-    {t('admin:withdrawalRequests')}
-  </a>
+         {/* The "Withdrawal Requests" link that used to sit here is gone: the
+            sidebar has a Withdrawals row, with the pending count on it, which
+            this button did not have. A second door to the same room is just a
+            second thing to keep in step. */}
 
 
           <button
@@ -251,30 +245,14 @@ function AdminContent() {
         </div>
       </div>
 
-      {/* ── Stats Grid ── */}
-      <div className="admin-grid">
-        {[
-          { key: 'activeMembers',     label: t('admin:stats.activeMembers'),     value: formatNumber(stats?.totalMembers || 0) },
-          { key: 'pendingApprovals',  label: t('admin:stats.pendingApprovals'),  value: formatNumber(stats?.pendingApprovals || 0), highlight: (stats?.pendingApprovals || 0) > 0 },
-          { key: 'totalAum',          label: t('admin:stats.totalAum'),          value: formatEur(stats?.totalAUM || 0) },
-          { key: 'totalProfitPaid',   label: t('admin:stats.totalProfitPaid'),   value: formatEur(stats?.totalProfitDistributed || 0) },
-          { key: 'totalTransactions', label: t('admin:stats.totalTransactions'), value: formatNumber(stats?.totalTransactions || 0) },
-        ].map(s => (
-          // Keyed by the stable key, not the translated label.
-          <div key={s.key} className="admin-stat-card"
-            style={(s as any).highlight ? { borderColor: 'rgba(200,168,75,0.4)', background: 'rgba(200,168,75,0.06)' } : {}}>
-            <p className="admin-stat-label">{s.label}</p>
-            <p className="admin-stat-value ltr-embed"
-              style={(s as any).highlight ? { color: 'var(--accent-gold)' } : {}}>
-              {s.value}
-            </p>
-          </div>
-        ))}
-      </div>
+      {/* The five flat stat cards that used to sit here are gone: the Overview
+          tab below carries the same figures as KPI tiles, with the period they
+          cover and the caveats they need. Two copies of one number is how the
+          two drift. */}
 
       {/* ── Tab Switcher ── */}
       <div style={{ display: 'flex', gap: 4, marginBottom: 16, borderBottom: '1px solid var(--border)', paddingBottom: 0 }}>
-        {(['members', 'pending', 'requests', 'investments', 'enquiries'] as const).map(tab => (
+        {ADMIN_TABS.map(tab => (
           <button key={tab}
             onClick={() => setActiveTab(tab)}
             style={{
@@ -291,6 +269,9 @@ function AdminContent() {
           </button>
         ))}
       </div>
+
+      {/* ── Overview Tab ── */}
+      {activeTab === 'overview' && <OverviewTab />}
 
       {/* ── Active Members Tab ── */}
       {activeTab === 'members' && (

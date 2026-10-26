@@ -10,9 +10,15 @@
     "settings": "Impostazioni",
     "adminPanel": "Pannello admin",
     "activityLogs": "Registro attività",
-    "withdrawalRequests": "Richieste di prelievo",
+    "withdrawalRequests": "Prelievi",
     "myProfile": "Il mio profilo",
-    "walletShort": "Portafoglio (SalBank)"
+    "walletShort": "Portafoglio (SalBank)",
+    "adminOverview": "Panoramica",
+    "adminMembers": "Membri",
+    "adminApprovals": "Approvazioni",
+    "adminRequests": "Richieste di investimento",
+    "adminEnquiries": "Richieste",
+    "superAdmin": "Super Admin"
   },
   "community": {
     "feed": "Feed",
@@ -38,5 +44,16 @@
     "summary": "{{members}} nuovo/i membro/i, {{investments}} richiesta/e di investimento, {{withdrawals}} richiesta/e di prelievo",
     "adminQueue": "{{members}} nuovo/i membro/i, {{investments}} richiesta/e di investimento",
     "withdrawalQueue": "{{count}} richiesta/e di prelievo in attesa di approvazione"
+  },
+  "groups": {
+    "administration": "Amministrazione",
+    "portfolio": "Portafoglio",
+    "community": "Community",
+    "explore": "Esplora",
+    "account": "Account"
+  },
+  "role": {
+    "admin": "Admin",
+    "superAdmin": "Super admin"
   }
 }

@@ -23,6 +23,11 @@ export interface ProjectSummary {
   establishedAt?: string | null;
   updatedAt?: string | null;
   mediaCount?: number;
+  // The 30-day promotional badge, computed server-side from the stored expiry.
+  // A boolean and not a date: the browser's clock is not the authority on
+  // whether a promotion is still running.
+  newlyLaunched?: boolean;
+  newlyLaunchedDaysLeft?: number;
   owner?: { id: string; name: string; profilePhoto?: string | null } | null;
 }
 
@@ -68,6 +73,11 @@ export default function ProjectCard({
     // Same pattern as the deal room's own detail page.
     <Link href={`/projects/detail?id=${project.id}`} className={`pj-card ${view}`}>
       <div className="pj-card-banner">
+        {project.newlyLaunched && (
+          <span className="pj-newly" title="Launched within the last 30 days">
+            Newly Launched
+          </span>
+        )}
         {banner ? (
           <img
             src={banner}

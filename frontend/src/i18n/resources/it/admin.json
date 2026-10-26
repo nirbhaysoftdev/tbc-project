@@ -11,6 +11,7 @@
     "totalTransactions": "Transazioni totali"
   },
   "tabs": {
+    "overview": "Panoramica",
     "members": "Membri attivi",
     "pending": "Approvazioni in attesa",
     "requests": "Richieste di investimento",

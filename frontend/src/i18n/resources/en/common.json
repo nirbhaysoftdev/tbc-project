@@ -139,5 +139,18 @@
     "skipToContent": "Skip to content",
     "loading": "Content is loading"
   },
-  "listSeparator": ", "
+  "listSeparator": ", ",
+  "install": {
+    "title": "Install the TBC app",
+    "sub": "Add Trillion Business Community to your home screen. It opens full screen, keeps you signed in and puts the portal one tap away.",
+    "install": "Install",
+    "notNow": "Not now",
+    "gotIt": "Got it",
+    "iosOther": "This browser cannot add apps to the home screen. Open the portal in Safari first, then:",
+    "iosStep1": "Tap the Share button",
+    "iosStep2": "Choose “Add to Home Screen”",
+    "iosStep3": "Tap “Add”. TBC appears with your other apps.",
+    "macStep1": "In Safari, open the File menu",
+    "macStep2": "Choose “Add to Dock”"
+  }
 }

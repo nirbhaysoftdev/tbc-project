@@ -34,6 +34,17 @@ const ACTIVITY = {
   CAPITAL_RETURNED:           { category: 'INVESTMENT', label: 'Capital returned' },
   PROJECT_CREATED:            { category: 'INVESTMENT', label: 'Project created' },
 
+  // ── Project lifecycle ──
+  // The official launch and every announcement that follows it. Kept in the
+  // PROJECT category rather than INVESTMENT: these are communication events
+  // about a project, not movements of capital, and an admin asking "when did
+  // we announce this and who did it?" wants them on their own.
+  PROJECT_LAUNCHED:           { category: 'PROJECT',    label: 'Project launched' },
+  PROJECT_MAJOR_UPDATE:       { category: 'PROJECT',    label: 'Project major update announced' },
+  PROJECT_PROMO_RESTARTED:    { category: 'PROJECT',    label: 'Newly Launched period restarted' },
+  PROJECT_LAUNCH_CLASSIFIED:  { category: 'PROJECT',    label: 'Project launch history recorded' },
+  PROJECT_ANNOUNCEMENT_RETRIED:{ category: 'PROJECT',   label: 'Announcement delivery retried' },
+
   // ── Profit ──
   PROFIT_GIVEN:               { category: 'PROFIT',     label: 'Profit given (one-time)' },
   PROFIT_CONFIG_SET:          { category: 'PROFIT',     label: 'Monthly profit configured' },
@@ -52,9 +63,11 @@ const ACTIVITY = {
   // ── System ──
   STATEMENT_SENT:             { category: 'SYSTEM',     label: 'Statement sent' },
   DATA_EXPORTED:              { category: 'SYSTEM',     label: 'Data exported' },
-  // Both are written by code that predates them being catalogued here, so the
-  // rows already exist with category SYSTEM. Listing them is what gives the
-  // Logs page a filter for "who changed where our mail goes?".
+  // All three are written by code that predates them being catalogued here, so
+  // the rows already exist with category SYSTEM. Listing them is what gives
+  // the Logs page a filter for "who enquired?" and "who changed where our mail
+  // goes?".
+  ENQUIRY_SENT:               { category: 'SYSTEM',     label: 'Enquiry sent' },
   ENQUIRY_RECIPIENT_CHANGED:  { category: 'SYSTEM',     label: 'Enquiry recipients changed' },
   SIGNUP_NOTIFY_CHANGED:      { category: 'SYSTEM',     label: 'New-signup recipients changed' },
 
@@ -80,9 +93,16 @@ const ACTIVITY = {
   COMMENT_DELETED:            { category: 'SUPER_ADMIN', label: 'Comment deleted by super admin' },
   ENQUIRY_DELETED:            { category: 'SUPER_ADMIN', label: 'Enquiry deleted' },
   TRANSACTION_REVERSED:       { category: 'SUPER_ADMIN', label: 'Transaction reversed' },
+  // Machine credentials. In the SUPER_ADMIN category because issuing one is a
+  // standing grant to read member data without a session, and "who gave out
+  // that key?" is exactly the question this category exists to answer.
+  API_KEY_CREATED:            { category: 'SUPER_ADMIN', label: 'API key issued' },
+  API_KEY_UPDATED:            { category: 'SUPER_ADMIN', label: 'API key changed' },
+  API_KEY_ROTATED:            { category: 'SUPER_ADMIN', label: 'API key rotated' },
+  API_KEY_REVOKED:            { category: 'SUPER_ADMIN', label: 'API key revoked' },
 };
 
-const CATEGORIES = ['EMAIL', 'MEMBER', 'INVESTMENT', 'PROFIT', 'WITHDRAWAL', 'WALLET', 'SYSTEM', 'SUPER_ADMIN'];
+const CATEGORIES = ['EMAIL', 'MEMBER', 'INVESTMENT', 'PROJECT', 'PROFIT', 'WITHDRAWAL', 'WALLET', 'SYSTEM', 'SUPER_ADMIN'];
 
 /**
  * Append one line to the activity feed. Fire and forget - callers must not

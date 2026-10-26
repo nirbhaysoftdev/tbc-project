@@ -1,0 +1,418 @@
+/* src/styles/analytics.css
+ *
+ * The admin Overview. Every rule is scoped under `.an-` so this sheet cannot
+ * reach the rest of the panel, the same way projects.css scopes `.pj-`.
+ *
+ * The chart chrome follows one rule throughout: marks carry the colour,
+ * everything else recedes. Grid lines are hairline and solid (never dashed),
+ * cards have generous padding, and no large block is saturated - the only
+ * strongly coloured things on this screen are small: a donut ring, two 2px
+ * lines, a meter fill and the thin rule on a KPI tile.
+ */
+
+.an-root {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ── Filters: one row, above everything they affect ───────────────────────── */
+
+.an-filters {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.an-segmented {
+  display: inline-flex;
+  padding: 3px;
+  gap: 2px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.an-seg {
+  padding: 7px 14px;
+  border: none;
+  border-radius: 999px;
+  background: none;
+  color: var(--text-muted);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.an-seg:hover { color: var(--text-primary); }
+
+.an-seg.is-on {
+  background: var(--bg-active);
+  color: var(--text-primary);
+}
+
+.an-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.an-field-inline { flex-direction: row; align-items: center; gap: 8px; }
+
+.an-field input,
+.an-field select {
+  padding: 7px 10px;
+  border-radius: 9px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-primary);
+  font-size: 12.5px;
+  font-family: inherit;
+  letter-spacing: normal;
+  text-transform: none;
+  font-weight: 500;
+}
+
+.an-field input:focus,
+.an-field select:focus { outline: none; border-color: var(--accent-blue); }
+
+/* A native select draws its own list in the OS's light grey; force the options
+ * dark so the menu matches the portal (same fix as .pj-select). */
+.an-field select option { background: #0f1428; color: var(--text-primary); }
+
+.an-dates { display: flex; gap: 10px; }
+
+.an-loading { font-size: 12px; color: var(--text-muted); }
+
+.an-error {
+  background: rgba(224, 82, 82, 0.1);
+  border: 1px solid rgba(224, 82, 82, 0.3);
+  color: var(--red);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 12.5px;
+}
+
+.an-note {
+  background: rgba(58, 111, 255, 0.07);
+  border: 1px solid rgba(58, 111, 255, 0.2);
+  color: var(--text-secondary);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 12.5px;
+}
+
+/* ── KPI row ──────────────────────────────────────────────────────────────── */
+
+.an-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px;
+}
+
+.an-kpi {
+  position: relative;
+  overflow: hidden;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 16px 18px;
+}
+
+/* The identity colour, as a 3px rule on the reading edge - not on the number,
+ * which wears text ink like every other figure on the page. */
+.an-kpi-rule {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: 3px;
+}
+
+.an-kpi-label {
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.an-kpi-value {
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+.an-kpi-foot {
+  margin-top: 7px;
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.an-kpi-hint {
+  margin-top: 3px;
+  font-size: 10.5px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+/* ── Cards ────────────────────────────────────────────────────────────────── */
+
+.an-row { display: grid; gap: 16px; }
+.an-row-split { grid-template-columns: minmax(0, 1.9fr) minmax(0, 1fr); }
+
+.an-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 18px 20px 20px;
+  min-width: 0;
+}
+
+.an-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.an-card-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.an-card-sub {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  line-height: 1.55;
+  max-width: 62ch;
+}
+
+/* Inline legend beside a title: a swatch plus its name, so a reader never has
+ * to match a colour from memory. */
+.an-legend-inline {
+  display: flex;
+  gap: 14px;
+  flex-shrink: 0;
+  font-size: 11.5px;
+  color: var(--text-secondary);
+}
+
+.an-legend-inline span { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.an-legend-inline i { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
+
+/* ── Donut ────────────────────────────────────────────────────────────────── */
+
+.an-split {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: 24px;
+  align-items: center;
+}
+
+.an-donut-canvas { position: relative; width: 190px; height: 190px; }
+
+.an-donut-empty {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 14px solid rgba(255, 255, 255, 0.05);
+}
+
+/* The hole is where the headline goes - it is the number the ring is about. */
+.an-donut-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  text-align: center;
+  padding: 0 28px;
+}
+
+.an-donut-total {
+  font-size: 23px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+.an-donut-caption {
+  margin-top: 2px;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+/* The legend and the table view at once. Capped rather than filling the card:
+ * a name on the far left and its value on the far right, with a hand's width
+ * of nothing between them, is a row the eye has to track across. */
+.an-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  max-width: 520px;
+}
+
+.an-legend-row {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto auto 44px;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  font-size: 12.5px;
+}
+
+.an-legend-row:last-of-type { border-bottom: none; }
+
+.an-swatch { width: 10px; height: 10px; border-radius: 3px; }
+
+.an-legend-name {
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.an-legend-meta { font-size: 10.5px; color: var(--text-muted); white-space: nowrap; }
+.an-legend-value { color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.an-legend-share {
+  color: var(--text-muted);
+  font-size: 11px;
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+
+.an-footnote {
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.55;
+}
+
+/* ── Charts ───────────────────────────────────────────────────────────────── */
+
+.an-chart-canvas { position: relative; height: 260px; }
+.an-chart-canvas-short { height: 210px; }
+
+.an-empty {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  padding: 24px 0;
+}
+
+/* ── Meter: one ratio against a limit ─────────────────────────────────────── */
+
+.an-hero {
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+  margin-bottom: 12px;
+}
+
+.an-meter {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+.an-meter-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  /* Same hue as capital, one step along: a meter is a magnitude, not an
+   * identity, so it stays in one hue rather than taking a second slot. */
+  background: linear-gradient(90deg, #2a78d6, #3987e5);
+}
+
+.an-meter-foot {
+  margin-top: 9px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.an-meter-foot strong { color: var(--text-primary); font-weight: 700; }
+
+/* ── Definition rows ──────────────────────────────────────────────────────── */
+
+.an-defs {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 16px;
+}
+
+.an-defs-top { border-top: 1px solid var(--border); padding-top: 14px; }
+
+.an-defs dt {
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+.an-defs dd { font-size: 16px; font-weight: 700; color: var(--text-primary); }
+
+/* ── Table ────────────────────────────────────────────────────────────────── */
+
+.an-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+
+.an-table th {
+  text-align: start;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: 700;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.an-table td {
+  padding: 9px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  color: var(--text-secondary);
+}
+
+.an-table tr:last-child td { border-bottom: none; }
+.an-table .an-num { text-align: end; font-variant-numeric: tabular-nums; color: var(--text-primary); }
+
+/* ── Narrow screens ───────────────────────────────────────────────────────── */
+
+@media (max-width: 1100px) {
+  .an-row-split { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 720px) {
+  .an-split { grid-template-columns: 1fr; justify-items: center; }
+  .an-legend { width: 100%; }
+  .an-card { padding: 16px; }
+  .an-kpi-value { font-size: 22px; }
+  .an-filters { gap: 10px; }
+  .an-segmented { width: 100%; overflow-x: auto; }
+}

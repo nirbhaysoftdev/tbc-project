@@ -112,6 +112,70 @@ enum ProjectStatus {
   CANCELLED
 }
 
+// Where a project sits in its OFFICIAL launch history, which is a different
+// question from `ProjectStatus` (is it published?).
+//
+//   NEVER_LAUNCHED  no official launch has ever been recorded. Every new
+//                   project starts here, as did every DRAFT and CANCELLED
+//                   project when this module was migrated in.
+//   PRE_FEATURE     the project was already published before this module
+//                   existed, so it was "launched" in the informal sense but
+//                   no launch date was ever recorded. The migration put every
+//                   ACTIVE/FUNDED/CLOSED project here rather than inventing a
+//                   date, and the admin panel asks for a decision: run an
+//                   official launch, or classify it as previously launched.
+//   LAUNCHED        an official launch is recorded. `launchedAt` is the launch
+//                   timestamp, EXCEPT for a PRE_FEATURE project an admin
+//                   classified as previously launched: there it stays null,
+//                   because the real date is not known and fabricating one is
+//                   worse than admitting it (requirement §8).
+enum ProjectLaunchState {
+  NEVER_LAUNCHED
+  PRE_FEATURE
+  LAUNCHED
+}
+
+// A project is launched ONCE, and after that the only way to communicate about
+// it is a major update. There is deliberately no "re-announce": a plain
+// reminder with nothing new to say is not a thing this portal sends, so the
+// only post-launch announcement is one that has to explain what changed.
+//
+// PROMO_RESTART is in the same table as the two announcement types on purpose:
+// §9 asks the project history to show promotional-period changes alongside the
+// announcements, and a restart sends nothing, so it is an announcement row
+// whose email state is NOT_APPLICABLE.
+enum ProjectAnnouncementType {
+  INITIAL_LAUNCH
+  MAJOR_UPDATE
+  PROMO_RESTART
+}
+
+// The roll-up of one announcement's recipient rows.
+//
+// There is deliberately no DELIVERED: SMTP tells us an address was ACCEPTED by
+// the mail server, never that a human received it. `SENT` means accepted, and
+// the UI says so in those words (§10 "report the most accurate status
+// available rather than claiming confirmed delivery").
+enum AnnouncementEmailState {
+  PENDING
+  PROCESSING
+  COMPLETED
+  PARTIAL
+  FAILED
+  NOT_APPLICABLE
+}
+
+// One recipient's state. The rows ARE the outbox: they are written in the same
+// transaction as the announcement, so an announcement can never exist without
+// its send list and a crash mid-send loses nothing.
+enum AnnouncementRecipientStatus {
+  QUEUED
+  SENDING
+  SENT
+  FAILED
+  DEAD
+}
+
 // Delivery state of a Connect Now / Enquire Now message. A row is written
 // BEFORE the email is attempted, so a failed send leaves evidence instead of
 // vanishing - the enquiry is the record, the email is the delivery.
@@ -137,71 +201,78 @@ enum InvestmentStatus {
 // ─── CORE USER ────────────────────────────────────────────────────────────────
 
 model User {
-  id            String         @id @default(uuid())
+  id            String       @id @default(uuid())
   name          String
-  email         String         @unique
+  email         String       @unique
   passwordHash  String?
-  role          Role           @default(MEMBER)
+  role          Role         @default(MEMBER)
   profilePhoto  String?
-  status        UserStatus     @default(PENDING)
-  kycStatus     KycStatus      @default(NOT_SUBMITTED)
-  walletEnabled Boolean        @default(false)
+  status        UserStatus   @default(PENDING)
+  kycStatus     KycStatus    @default(NOT_SUBMITTED)
+  walletEnabled Boolean      @default(false)
   accountType   AccountType?
-  emailVerified Boolean        @default(false)
+  emailVerified Boolean      @default(false)
   // Preferred UI language, validated against the allowlist in
   // services/i18n/languages.js before it is ever written. Null means "never
   // chosen", which is what lets browser detection still apply on a new device.
   // Nullable and additive on purpose: no existing row changes meaning.
   locale        String?
-  googleId      String?        @unique
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  googleId      String?      @unique
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
 
   // Soft delete (super admin). A row with deletedAt set is invisible to every
   // member-facing query and cannot log in; the ledger keeps its references.
   // Purging the row outright is a separate, explicitly confirmed action.
-  deletedAt     DateTime?
-  deletedById   String?
+  deletedAt   DateTime?
+  deletedById String?
 
   // Wallet (optional - not all community members have a wallet)
-  wallet              Wallet?
-  transactions        Transaction[]
-  withdrawRequests    WithdrawRequest[]
-  walletInvestments   WalletInvestment[]
-  profitConfigs       ProfitConfig[]
-  profitRecords       ProfitRecord[]
+  wallet            Wallet?
+  transactions      Transaction[]
+  withdrawRequests  WithdrawRequest[]
+  walletInvestments WalletInvestment[]
+  profitConfigs     ProfitConfig[]
+  profitRecords     ProfitRecord[]
 
   // Community
-  profile             Profile?
-  membership          Membership?
-  posts               Post[]
-  comments            Comment[]
-  likes               Like[]
-  sentMessages        Message[]            @relation("SentMessages")
-  receivedMessages    Message[]            @relation("ReceivedMessages")
-  eventRegistrations  EventRegistration[]
-  notifications       Notification[]
+  profile            Profile?
+  membership         Membership?
+  posts              Post[]
+  comments           Comment[]
+  likes              Like[]
+  sentMessages       Message[]           @relation("SentMessages")
+  receivedMessages   Message[]           @relation("ReceivedMessages")
+  eventRegistrations EventRegistration[]
+  notifications      Notification[]
 
   // Deal Room
-  projectsOwned       Project[]            @relation("ProjectOwner")
-  projectsManaged     Project[]            @relation("ProjectManager")
-  companiesCreated    Company[]            @relation("CompanyCreator")
-  enquiries           Enquiry[]            @relation("MemberEnquiries")
-  investments         Investment[]
-  investmentRequests  InvestmentRequest[]
+  projectsOwned             Project[]                      @relation("ProjectOwner")
+  projectsManaged           Project[]                      @relation("ProjectManager")
+  projectsLaunched          Project[]                      @relation("ProjectLauncher")
+  projectAnnouncements      ProjectAnnouncement[]          @relation("AnnouncementAdmin")
+  projectAnnouncementEmails ProjectAnnouncementRecipient[]
+  companiesCreated          Company[]                      @relation("CompanyCreator")
+  enquiries                 Enquiry[]                      @relation("MemberEnquiries")
+  investments               Investment[]
+  investmentRequests        InvestmentRequest[]
 
   // MMS - KYC & KPI
-  kycDocuments        KycDocument[]
-  kpiLogs             UserKpiLog[]
-  kpiSummary          UserKpiSummary?
+  kycDocuments KycDocument[]
+  kpiLogs      UserKpiLog[]
+  kpiSummary   UserKpiSummary?
 
   // Admin
-  adminLogs           AdminLog[]           @relation("AdminLogs")
-  auditedLogs         AdminLog[]           @relation("AuditedUser")
+  adminLogs   AdminLog[] @relation("AdminLogs")
+  auditedLogs AdminLog[] @relation("AuditedUser")
 
   // Activity feed
-  activityActed       ActivityLog[]        @relation("ActivityActor")
-  activityTargeted    ActivityLog[]        @relation("ActivityTarget")
+  activityActed    ActivityLog[] @relation("ActivityActor")
+  activityTargeted ActivityLog[] @relation("ActivityTarget")
+
+  // Machine access
+  apiKeysCreated ApiKey[] @relation("ApiKeysCreated")
+  apiKeysRevoked ApiKey[] @relation("ApiKeysRevoked")
 
   @@index([deletedAt])
   @@map("users")
@@ -210,16 +281,16 @@ model User {
 // ─── PROFILE ──────────────────────────────────────────────────────────────────
 
 model Profile {
-  id        String   @id @default(uuid())
-  userId    String   @unique
+  id              String   @id @default(uuid())
+  userId          String   @unique
   bio             String?
   company         String?
   industry        String?
   country         String?
   city            String?
   phone           String?
-  phoneCountry    String?  // ISO code, e.g. "IT"
-  phoneDialCode   String?  // e.g. "+39"
+  phoneCountry    String? // ISO code, e.g. "IT"
+  phoneDialCode   String? // e.g. "+39"
   linkedIn        String?
   website         String?
   interests       String[]
@@ -227,10 +298,10 @@ model Profile {
   experienceYears Int?
 
   // Professional
-  cvUrl           String?
-  residentIdUrl   String?
-  passportUrl     String?
-  billingAddress  String?
+  cvUrl          String?
+  residentIdUrl  String?
+  passportUrl    String?
+  billingAddress String?
 
   // Business
   tradeLicenseUrl String?
@@ -248,14 +319,14 @@ model Profile {
 // ─── EMAIL OTP ────────────────────────────────────────────────────────────────
 
 model EmailOtp {
-  id         String   @id @default(uuid())
+  id         String    @id @default(uuid())
   email      String
   codeHash   String
-  purpose    String   @default("SIGNUP") // SIGNUP | LOGIN | RESET
-  attempts   Int      @default(0)
+  purpose    String    @default("SIGNUP") // SIGNUP | LOGIN | RESET
+  attempts   Int       @default(0)
   consumedAt DateTime?
   expiresAt  DateTime
-  createdAt  DateTime @default(now())
+  createdAt  DateTime  @default(now())
 
   @@index([email, purpose])
   @@map("email_otps")
@@ -264,10 +335,10 @@ model EmailOtp {
 // ─── MEMBERSHIP ───────────────────────────────────────────────────────────────
 
 model Membership {
-  id        String         @id @default(uuid())
-  userId    String         @unique
-  status    String         @default("ACTIVE") // ACTIVE, SUSPENDED, EXPIRED
-  joinedAt  DateTime       @default(now())
+  id        String    @id @default(uuid())
+  userId    String    @unique
+  status    String    @default("ACTIVE") // ACTIVE, SUSPENDED, EXPIRED
+  joinedAt  DateTime  @default(now())
   renewedAt DateTime?
   expiresAt DateTime?
 
@@ -335,18 +406,18 @@ model Transaction {
 // Live capital is `amount - returnedAmount`, so an admin capital return can be
 // partial without destroying the original record.
 model WalletInvestment {
-  id               String                 @id @default(uuid())
-  userId           String
-  projectId        String?
-  requestId        String?                @unique
-  amount           Float
-  returnedAmount   Float                  @default(0)
-  investedAt       DateTime
-  status           WalletInvestmentStatus @default(ACTIVE)
-  rejectionReason  String?
-  createdBy        String?
-  createdAt        DateTime               @default(now())
-  updatedAt        DateTime               @updatedAt
+  id              String                 @id @default(uuid())
+  userId          String
+  projectId       String?
+  requestId       String?                @unique
+  amount          Float
+  returnedAmount  Float                  @default(0)
+  investedAt      DateTime
+  status          WalletInvestmentStatus @default(ACTIVE)
+  rejectionReason String?
+  createdBy       String?
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
 
   user    User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   project Project?           @relation(fields: [projectId], references: [id])
@@ -393,7 +464,7 @@ model ProfitConfig {
   userId           String
   projectId        String?
   profitType       ProfitType @default(MONTHLY_PERCENT)
-  rate             Float      // percent, e.g. 2 = 2%
+  rate             Float // percent, e.g. 2 = 2%
   monthlyProfitDay Int        @default(15)
   effectiveFrom    DateTime   @default(now())
   active           Boolean    @default(true)
@@ -416,17 +487,17 @@ model ProfitConfig {
 // as distinct, so a unique index over a nullable projectId would let the
 // monthly job double-pay the same project-less cycle.
 model ProfitRecord {
-  id                String           @id @default(uuid())
-  userId            String
-  projectId         String?
-  scopeKey          String
-  type              ProfitRecordType
-  period            String
-  capitalSnapshot   Float
-  rate              Float?
-  amount            Float
-  createdBy         String?
-  generatedAt       DateTime         @default(now())
+  id              String           @id @default(uuid())
+  userId          String
+  projectId       String?
+  scopeKey        String
+  type            ProfitRecordType
+  period          String
+  capitalSnapshot Float
+  rate            Float?
+  amount          Float
+  createdBy       String?
+  generatedAt     DateTime         @default(now())
 
   user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   project Project? @relation(fields: [projectId], references: [id])
@@ -459,21 +530,21 @@ model WithdrawRequest {
 // ─── COMMUNITY FEED ───────────────────────────────────────────────────────────
 
 model Post {
-  id          String   @id @default(uuid())
-  authorId    String
-  type        PostType @default(INSIGHT)
-  title       String?
-  content     String
-  location    String?
+  id         String    @id @default(uuid())
+  authorId   String
+  type       PostType  @default(INSIGHT)
+  title      String?
+  content    String
+  location   String?
   // Deal-specific
-  dealAmount  Float?
-  dealIRR     Float?
-  dealSpots   Int?
+  dealAmount Float?
+  dealIRR    Float?
+  dealSpots  Int?
   // Event-specific
-  eventDate   DateTime?
-  imageUrl    String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  eventDate  DateTime?
+  imageUrl   String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 
   author   User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
   comments Comment[]
@@ -552,7 +623,7 @@ model Message {
   read       Boolean  @default(false)
   createdAt  DateTime @default(now())
 
-  sender   User @relation("SentMessages",     fields: [senderId],   references: [id], onDelete: Cascade)
+  sender   User @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
   receiver User @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
 
   @@map("messages")
@@ -563,7 +634,7 @@ model Message {
 model Notification {
   id        String   @id @default(uuid())
   userId    String
-  type      String   // NEW_POST, NEW_MESSAGE, DEAL_UPDATE, EVENT_REMINDER, PROFIT_DISTRIBUTED
+  type      String // NEW_POST, NEW_MESSAGE, DEAL_UPDATE, EVENT_REMINDER, PROFIT_DISTRIBUTED
   title     String
   message   String
   read      Boolean  @default(false)
@@ -625,14 +696,36 @@ model Project {
   url              String?
   contact          String?
 
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
+  // ── Official launch & promotion ────────────────────────────────────────────
+  // Additive and nullable: a project that predates this module keeps working
+  // with all of it null, and nothing here is written by an ordinary edit.
+  //
+  // `launchedAt` is server time at the moment an admin confirmed the launch.
+  // It is written ONCE and never touched again - not by an edit, not by a
+  // re-announcement, not by a major update, not by a promotional restart.
+  launchedAt         DateTime?
+  launchedById       String?
+  launchState        ProjectLaunchState @default(NEVER_LAUNCHED)
+  // When the "Newly Launched" badge stops showing. The badge is derived from
+  // this column on every read, so it expires on its own with no scheduled job
+  // to go wrong, and a server clock is the only authority involved.
+  newlyLaunchedUntil DateTime?
+  // The CURRENT promotional window, which is the original launch window until
+  // an admin deliberately restarts it. Kept separate from `launchedAt` so a
+  // restart never rewrites launch history (§7).
+  promoStartedAt     DateTime?
+  promoRestartCount  Int                @default(0)
 
-  owner       User              @relation("ProjectOwner", fields: [ownerId], references: [id])
-  manager     User?             @relation("ProjectManager", fields: [managerId], references: [id])
-  documents   ProjectDocument[]
-  investments Investment[]
-  milestones  Milestone[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  owner         User                  @relation("ProjectOwner", fields: [ownerId], references: [id])
+  manager       User?                 @relation("ProjectManager", fields: [managerId], references: [id])
+  launchedBy    User?                 @relation("ProjectLauncher", fields: [launchedById], references: [id])
+  announcements ProjectAnnouncement[]
+  documents     ProjectDocument[]
+  investments   Investment[]
+  milestones    Milestone[]
 
   // Wallet capital/profit ledger attached to this project
   walletInvestments  WalletInvestment[]
@@ -646,6 +739,8 @@ model Project {
   @@index([managerId])
   @@index([category])
   @@index([status])
+  @@index([launchState])
+  @@index([newlyLaunchedUntil])
   @@map("projects")
 }
 
@@ -660,7 +755,7 @@ model ProjectDocument {
   projectId  String
   name       String
   fileUrl    String
-  type       String   // PITCH_DECK, FINANCIALS, LEGAL, RISK_ASSESSMENT, OTHER
+  type       String // PITCH_DECK, FINANCIALS, LEGAL, RISK_ASSESSMENT, OTHER
   kind       String   @default("PDF") // IMAGE | PDF | VIDEO - drives the viewer
   mimeType   String?
   sizeBytes  Int?
@@ -671,6 +766,119 @@ model ProjectDocument {
 
   @@index([projectId])
   @@map("project_documents")
+}
+
+// ─── PROJECT LAUNCH & ANNOUNCEMENTS ───────────────────────────────────────────
+// The announcement history for one project: its official launch, every major
+// update announced since, and every promotional-period restart. §9 asks for
+// one history an admin can read, so all three live here and the page renders
+// them as one timeline.
+//
+// IDEMPOTENCY. `idempotencyKey` is unique, and every write path creates the
+// row with one. A retried HTTP request therefore collides on the index and is
+// answered with the announcement that already exists, instead of mailing the
+// whole community twice. The keys are:
+//
+//   INITIAL_LAUNCH   `launch:<projectId>`  - deterministic, so a project can
+//                    only ever have one initial launch, even from two admins
+//                    clicking at the same moment.
+//   MAJOR_UPDATE     a key the admin's browser generates once per composer
+//                    session and reuses when a failed request is retried. A
+//                    DELIBERATE second update is a new composer session and so
+//                    a new key, which is what tells a retry apart from a new
+//                    announcement.
+//   PROMO_RESTART    `promo:<projectId>:<n>` where n is the restart count.
+model ProjectAnnouncement {
+  id             String                  @id @default(uuid())
+  projectId      String
+  type           ProjectAnnouncementType
+  idempotencyKey String                  @unique
+
+  // What was actually sent. Stored rather than re-derived, so the history
+  // shows the words the community received even after the project is edited.
+  title          String
+  message        String
+  // Major updates only: the optional longer explanation and the category.
+  detail         String?
+  updateCategory String?
+
+  // Which audience this went to. One value today - every active member - but
+  // stored per announcement so a narrower audience later does not make the
+  // existing history ambiguous. See services/projectLaunch.js AUDIENCES.
+  audience String @default("ALL_ACTIVE_MEMBERS")
+
+  adminId   String?
+  // Denormalised so a history line stays readable after the admin's account is
+  // gone, exactly as ActivityLog does it.
+  adminName String?
+
+  // The community announcement this created: a feed Post. Null until it is
+  // made, and the one place the retry path looks to decide whether the
+  // announcement was already published.
+  postId        String?
+  // How many per-member Notification rows were written.
+  notifiedCount Int     @default(0)
+
+  recipientCount Int                    @default(0)
+  emailState     AnnouncementEmailState @default(PENDING)
+
+  // Promotional-period change carried by this row. Set on PROMO_RESTART, and
+  // also on INITIAL_LAUNCH, which starts the first period. Never set by a
+  // major update - announcing a change may not touch the badge (§6).
+  promoStartedAt DateTime?
+  promoEndsAt    DateTime?
+  promoReason    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project    Project                        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  admin      User?                          @relation("AnnouncementAdmin", fields: [adminId], references: [id], onDelete: SetNull)
+  recipients ProjectAnnouncementRecipient[]
+
+  @@index([projectId, createdAt])
+  @@map("project_announcements")
+}
+
+// One announcement, one recipient, one row - the recipient-level delivery
+// record §10 asks for, and the queue the worker consumes.
+//
+// Written inside the same transaction as the announcement (the transactional
+// outbox pattern), so there is no window where an announcement exists with no
+// send list, and none where mail is queued for an announcement that was rolled
+// back. The worker claims rows with a conditional UPDATE, exactly as the
+// translation worker does, so two API processes behind pm2 cannot send the same
+// email twice. See services/announcementWorker.js.
+model ProjectAnnouncementRecipient {
+  id             String  @id @default(uuid())
+  announcementId String
+  userId         String?
+  // Snapshotted: the address the mail was actually queued for. A member who
+  // later changes their email does not rewrite what was sent.
+  email          String
+  name           String?
+
+  status      AnnouncementRecipientStatus @default(QUEUED)
+  attempts    Int                         @default(0)
+  maxAttempts Int                         @default(5)
+  lastError   String?
+  // Backoff deadline: the worker only claims rows whose runAfter has passed.
+  runAfter    DateTime                    @default(now())
+  lockedAt    DateTime?
+  lockedBy    String?
+  // When the mail server ACCEPTED it. Not a delivery confirmation - SMTP does
+  // not provide one, and the UI never claims otherwise.
+  sentAt      DateTime?
+  messageId   String?
+
+  announcement ProjectAnnouncement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  user         User?               @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  // The guarantee that a retry cannot mail the same person twice for the same
+  // announcement, whatever goes wrong above it.
+  @@unique([announcementId, email])
+  @@index([status, runAfter])
+  @@map("project_announcement_recipients")
 }
 
 // ─── COMPANY PROFILES ─────────────────────────────────────────────────────────
@@ -691,16 +899,16 @@ model ProjectDocument {
 //   - presentation videos can be an upload OR an embedded link, so there is a
 //     `videoLinks` column as well as video documents.
 model Company {
-  id            String        @id @default(uuid())
-  name          String
-  category      String
-  status        CompanyStatus @default(ACTIVE)
+  id       String        @id @default(uuid())
+  name     String
+  category String
+  status   CompanyStatus @default(ACTIVE)
 
   // Card text. `description` is the short line the listing shows;
   // `detailsHtml` is the WYSIWYG body, sanitised on write
   // (services/richText.js) because it is rendered as HTML.
-  description   String?
-  detailsHtml   String?
+  description String?
+  detailsHtml String?
 
   // Always euros, like every other figure in the portal.
   valuation     Float?
@@ -709,17 +917,17 @@ model Company {
   // Logo and banner are CompanyDocument rows, referenced by id rather than by
   // relation: a document cascades on delete, and a dangling id falls back to
   // "no logo", which is the right behaviour for a deleted image.
-  logoDocId     String?
-  bannerDocId   String?
+  logoDocId   String?
+  bannerDocId String?
 
   // Owners: the display list, and the member ids the filter queries.
-  owners        Json?
-  ownerIds      String[]      @default([])
+  owners   Json?
+  ownerIds String[] @default([])
 
   // A company can operate in several places; the listing filters on `has`.
-  locations     String[]      @default([])
+  locations String[] @default([])
 
-  teamMembers   Json?
+  teamMembers Json?
 
   websiteUrl    String?
   contactPerson String?
@@ -732,12 +940,12 @@ model Company {
   // Embedded presentation videos: [{ url, title }]. Only YouTube and Vimeo
   // URLs are accepted, normalised to their embed form on write - an arbitrary
   // URL in an iframe is someone else's page running inside the portal.
-  videoLinks    Json?
+  videoLinks Json?
 
   // Who created the profile. Not "the owner": ownership is the list above.
-  createdById   String?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   createdBy User?             @relation("CompanyCreator", fields: [createdById], references: [id], onDelete: SetNull)
   documents CompanyDocument[]
@@ -762,7 +970,7 @@ model CompanyDocument {
   id         String   @id @default(uuid())
   companyId  String
   name       String
-  fileUrl    String   // basename inside storage/company-media, never sent out
+  fileUrl    String // basename inside storage/company-media, never sent out
   // Which viewer the client opens: IMAGE | PDF | DOC | VIDEO.
   kind       String   @default("PDF")
   // What the file is FOR: LOGO | BANNER | GALLERY | DOCUMENT | VIDEO | OTHER.
@@ -863,7 +1071,7 @@ model AdminLog {
   details   Json?
   timestamp DateTime @default(now())
 
-  admin      User  @relation("AdminLogs",   fields: [adminId],  references: [id])
+  admin      User  @relation("AdminLogs", fields: [adminId], references: [id])
   targetUser User? @relation("AuditedUser", fields: [targetId], references: [id])
 
   @@map("admin_logs")
@@ -891,7 +1099,7 @@ model ActivityLog {
   metadata    Json?
   createdAt   DateTime @default(now())
 
-  actor  User? @relation("ActivityActor",  fields: [actorId],  references: [id], onDelete: SetNull)
+  actor  User? @relation("ActivityActor", fields: [actorId], references: [id], onDelete: SetNull)
   target User? @relation("ActivityTarget", fields: [targetId], references: [id], onDelete: SetNull)
 
   @@index([createdAt])
@@ -915,7 +1123,7 @@ model SystemConfig {
 model KycDocument {
   id           String   @id @default(uuid())
   userId       String
-  documentType String   // id_proof | business_proof
+  documentType String // id_proof | business_proof
   documentUrl  String
   status       String   @default("pending") // pending | approved | rejected
   uploadedAt   DateTime @default(now())
@@ -930,7 +1138,7 @@ model KycDocument {
 model UserKpiLog {
   id         String   @id @default(uuid())
   userId     String
-  actionType String   // login | investment | referral | event_participation
+  actionType String // login | investment | referral | event_participation
   score      Int
   metadata   Json?
   createdAt  DateTime @default(now())
@@ -1080,4 +1288,48 @@ model ContentVersion {
 
   @@id([entityType, entityId])
   @@map("content_versions")
+}
+
+/// One machine caller's credential for the read-only API (services/apiKeys.js).
+///
+/// The key itself is NOT in this table and cannot be recovered from it: only a
+/// SHA-256 digest is stored, and the plaintext is returned exactly once, by the
+/// request that created it. `keyPrefix` is the first few characters, kept so a
+/// key can be named and recognised in the panel without being readable.
+model ApiKey {
+  id        String   @id @default(uuid())
+  /// What this key is for - "Marketing site poller". What you revoke by.
+  name      String
+  /// SHA-256 of the full key. Unique, so a presented key is one indexed lookup.
+  keyHash   String   @unique
+  /// First 16 characters, e.g. "tbc_live_8Fk2Qa" - for display only.
+  keyPrefix String
+  /// events:read, events:counts, events:sensitive. Deny by default: a scope
+  /// that is not listed here is refused.
+  scopes    String[]
+
+  createdById String?
+  /// Throttled to one write a minute, so a busy key is not a write per request.
+  lastUsedAt  DateTime?
+  lastUsedIp  String?
+
+  /// Null means it never expires, which is a deliberate choice rather than a
+  /// default - the create endpoint fills in a date unless told not to.
+  expiresAt DateTime?
+
+  /// Revocation is a timestamp, not a delete: the row is the record of what
+  /// this key could reach and when it stopped working.
+  revokedAt     DateTime?
+  revokedById   String?
+  /// Set on the new key of a rotation, pointing at the one it replaced.
+  rotatedFromId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  createdBy User? @relation("ApiKeysCreated", fields: [createdById], references: [id], onDelete: SetNull)
+  revokedBy User? @relation("ApiKeysRevoked", fields: [revokedById], references: [id], onDelete: SetNull)
+
+  @@index([revokedAt])
+  @@map("api_keys")
 }

@@ -265,18 +265,23 @@ const googleAuth = async (req, res) => {
         include: { wallet: true },
       });
 
+      // `normEmail` and `memberType` belong to register() and do not exist
+      // here: referring to them threw a ReferenceError that the catch below
+      // turned into "Invalid Google credential", AFTER the account row had
+      // been created and BEFORE either email was sent. A Google signup was
+      // created, nobody was told, and the applicant saw a failure.
       logActivity({
-      type:        'MEMBER_REGISTERED',
-      title:       `New member request: ${user.name}`,
-      description: `${normEmail} · ${memberType}`,
-      actorId:     user.id,
-      actorName:   user.name,
-      targetId:    user.id,
-      targetName:  user.name,
-      metadata:    { email: normEmail, memberType, signupMethod: 'email' },
-    });
+        type:        'MEMBER_REGISTERED',
+        title:       `New member request: ${user.name}`,
+        description: `${email} · google`,
+        actorId:     user.id,
+        actorName:   user.name,
+        targetId:    user.id,
+        targetName:  user.name,
+        metadata:    { email, signupMethod: 'google' },
+      });
 
-    sendWelcomePendingEmail(user).catch((e) => console.error('welcome email failed:', e.message));
+      sendWelcomePendingEmail(user).catch((e) => console.error('welcome email failed:', e.message));
       sendAdminNewSignupNotification({ ...user, signupMethod: 'google' })
         .catch((e) => console.error('admin notify failed:', e.message));
     } else if (!user.googleId) {

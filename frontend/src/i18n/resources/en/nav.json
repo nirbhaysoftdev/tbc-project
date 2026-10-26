@@ -10,9 +10,15 @@
     "settings": "Settings",
     "adminPanel": "Admin Panel",
     "activityLogs": "Activity Logs",
-    "withdrawalRequests": "Withdrawal Req.",
+    "withdrawalRequests": "Withdrawals",
     "myProfile": "My Profile",
-    "walletShort": "Wallet (SalBank)"
+    "walletShort": "Wallet (SalBank)",
+    "adminOverview": "Overview",
+    "adminMembers": "Members",
+    "adminApprovals": "Approvals",
+    "adminRequests": "Investment Requests",
+    "adminEnquiries": "Enquiries",
+    "superAdmin": "Super Admin"
   },
   "community": {
     "feed": "Feed",
@@ -38,5 +44,16 @@
     "summary": "{{members}} new member(s), {{investments}} investment request(s), {{withdrawals}} withdrawal request(s)",
     "adminQueue": "{{members}} new member(s), {{investments}} investment request(s)",
     "withdrawalQueue": "{{count}} withdrawal request(s) awaiting approval"
+  },
+  "groups": {
+    "administration": "Administration",
+    "portfolio": "Portfolio",
+    "community": "Community",
+    "explore": "Explore",
+    "account": "Account"
+  },
+  "role": {
+    "admin": "Admin",
+    "superAdmin": "Super admin"
   }
 }

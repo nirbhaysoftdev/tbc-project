@@ -11,6 +11,7 @@ const { sanitizeRichText, richTextToPlain } = require('../services/richText');
 const { normalizePeopleFields } = require('../services/projectPeople');
 const { stripPrivateContact, stripPrivateContactMany } = require('../services/contactPrivacy');
 const { isAdmin, LIVE_USER } = require('../utils/roles');
+const { badgeFor, launchSummary } = require('../services/projectLaunch');
 
 // ── Shared shaping ────────────────────────────
 // `valuation` is the showcase figure and is always euros; `targetAmount` is the
@@ -153,9 +154,17 @@ const getProjects = async (req, res) => {
       prisma.project.count({ where }),
     ]);
 
+    // One `now` for the whole page, so two cards in the same response can
+    // never disagree about whether a badge is still showing.
+    const now = new Date();
+
     const enriched = projects.map(p => ({
       ...p,
       valuationEur:    displayValuation(p),
+      // The "Newly Launched" badge, derived from the stored expiry rather than
+      // sent as a raw date for the browser to judge: a client clock that is
+      // days out would otherwise show the badge on the wrong projects.
+      ...badgeFor(p, now),
       bannerUrl:       bannerFor(p, req.user.id),
       mediaCount:      p._count.documents,
       fundingPct:      p.targetAmount > 0 ? Math.round((p.raisedAmount / p.targetAmount) * 100) : 0,
@@ -301,6 +310,7 @@ const getProject = async (req, res) => {
       include: {
         owner:   { select: memberCardSelect() },
         manager: { select: memberCardSelect() },
+        launchedBy: { select: memberCardSelect() },
         // Media metadata only. The stored path never leaves the server, and
         // viewable URLs come from GET /projects/:id/media, which mints a
         // short-lived ticket per document. See projectMediaController.
@@ -350,6 +360,14 @@ const getProject = async (req, res) => {
       myCapital:     project.walletInvestments.reduce((s, i) => s + Math.max(0, i.amount - (i.returnedAmount || 0)), 0),
       myPendingRequest: project.investmentRequests[0] || null,
       canManage:     isManager,
+      // The badge every member sees...
+      ...badgeFor(project),
+      // ...and the full lifecycle block only an admin does. It carries the
+      // eligibility rules the lifecycle panel renders its buttons from, which
+      // a member has no use for and no business reading. The endpoints check
+      // the same rules again regardless (§2).
+      launch:        isAdmin(req.user.role) ? launchSummary(project) : undefined,
+      launchedBy:    isAdmin(req.user.role) ? project.launchedBy || null : undefined,
       walletInvestments: undefined,
       investmentRequests: undefined,
       _count:        undefined,
@@ -540,6 +558,14 @@ const updateProject = async (req, res) => {
       return res.status(403).json({ error: 'Not authorized' });
     }
 
+    // `data` is built from a whitelist, and NONE of the launch columns are on
+    // it: not `launchedAt`, not `launchedById`, not `launchState`, not
+    // `newlyLaunchedUntil`, not `promoStartedAt`. That is what makes §4's
+    // "preserve the original launch timestamp" and "preserve the current Newly
+    // Launched expiry" structural rather than a promise - an edit cannot touch
+    // them even if the request body asks it to, and editing never announces
+    // anything. The lifecycle actions live on their own endpoints
+    // (controllers/projectAnnouncementController.js).
     const b = req.body;
     const data = {};
     const has = (k) => b[k] !== undefined;
@@ -629,7 +655,19 @@ const updateProject = async (req, res) => {
       primaryObjective: updated.primaryObjective,
     });
 
-    res.json({ project: { ...updated, valuationEur: displayValuation(updated) } });
+    // The lifecycle block comes back with the save so the panel's state and
+    // the eligibility behind its buttons stay in step with an edit that
+    // changed the status - without the UI having to guess what the new rules
+    // are. No announcement is created here, deliberately (§4.5, §4.6).
+    res.json({
+      message: 'Project updated successfully. No announcement was sent.',
+      project: {
+        ...updated,
+        valuationEur: displayValuation(updated),
+        ...badgeFor(updated),
+        launch: launchSummary(updated),
+      },
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error' });
@@ -693,6 +731,17 @@ const deleteProject = async (req, res) => {
     const documents = await prisma.projectDocument.findMany({
       where:  { projectId: project.id },
       select: { fileUrl: true },
+    });
+
+    // Announcement notifications carry the project id in `data` rather than a
+    // foreign key, so nothing cascades them: deleting the project would leave
+    // every member holding a notification whose link 404s. Cleared first,
+    // because after the delete there is nothing left to identify them by.
+    await prisma.notification.deleteMany({
+      where: {
+        type: { in: ['PROJECT_LAUNCHED', 'PROJECT_UPDATE'] },
+        data: { path: ['projectId'], equals: project.id },
+      },
     });
 
     await prisma.project.delete({ where: { id: req.params.id } });

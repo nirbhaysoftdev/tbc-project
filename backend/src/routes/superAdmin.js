@@ -19,6 +19,7 @@ const router  = express.Router();
 const { authenticate, requireSuperAdmin } = require('../middleware/auth');
 const ctrl   = require('../controllers/superAdminController');
 const assets = require('../controllers/superAdminAssetsController');
+const apiKeys = require('../controllers/apiKeyController');
 const { limitFor } = require('../services/uploadLimits');
 
 // ── Impersonation status ──────────────────────
@@ -124,5 +125,21 @@ router.delete('/enquiries/:id', assets.deleteEnquiry);
 // ── Ledger ────────────────────────────────────
 // Books the mirror-image entry. No endpoint anywhere edits a balance directly.
 router.post('/transactions/:id/reverse', assets.reverseTransaction);
+
+// ── API keys ──────────────────────────────────
+// Machine credentials for the read-only API (services/apiKeys.js). Super admin
+// only, like everything else in this file: a key is a standing grant to read
+// member data without a session, so issuing one is not an ADMIN-level action.
+//
+// `create` and `rotate` are the only two places a key is ever readable, and
+// only in their own response. There is deliberately no GET that returns one.
+router.get('/api-keys',             apiKeys.listKeys);
+router.post('/api-keys',            apiKeys.createKey);
+router.put('/api-keys/:id',         apiKeys.updateKey);
+// Additive: the old key keeps working until it is revoked, so a consumer can
+// deploy the new one without a window where neither is right.
+router.post('/api-keys/:id/rotate', apiKeys.rotateKey);
+// Revoke, not delete - the row is the record of what the key could reach.
+router.delete('/api-keys/:id',      apiKeys.revokeKey);
 
 module.exports = router;

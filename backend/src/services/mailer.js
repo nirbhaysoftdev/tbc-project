@@ -74,6 +74,19 @@ function getTransport() {
     SMTP_PASSWORD,
   } = process.env;
 
+  // A transport that renders the message and returns it instead of sending
+  // it. Set SMTP_TRANSPORT=json to run the real templates - the attachments,
+  // the escaping, the whole shell - with nothing leaving the machine. That is
+  // what the announcement tests send through, so they assert on the actual
+  // email rather than on a stub that could agree with a broken template.
+  //
+  // Absent in production, where SMTP_TRANSPORT is simply not set. It is also
+  // useful locally: the API boots and queues mail with no credentials.
+  if (process.env.SMTP_TRANSPORT === 'json') {
+    cachedTransport = nodemailer.createTransport({ jsonTransport: true });
+    return cachedTransport;
+  }
+
   if (!SMTP_HOST || !SMTP_USER || !SMTP_PASSWORD) {
     throw new Error('SMTP credentials missing. Set SMTP_HOST, SMTP_USER, SMTP_PASSWORD in .env');
   }
@@ -1180,8 +1193,160 @@ async function sendEnquiryRecipientChangedEmails({ added = [], removed = [], cur
   return results;
 }
 
+// ── Project lifecycle announcements ────────────
+// Two announcements share one template: a project's initial launch, and a
+// major update to a project that has already launched. They differ in the
+// subject, the heading and one block, so building them separately would mean
+// two copies of the same responsive table drifting apart.
+//
+// SAFETY. Every value interpolated below is admin-typed free text, so all of
+// it goes through escapeHtml. The announcement body is a plain-text textarea,
+// which is why newlines become <br> AFTER escaping - doing it before would let
+// a typed "<br>" through as markup (§13).
+const BANNER_MAX_BYTES = 2 * 1024 * 1024;
+
+/**
+ * The project banner, as an inline CID attachment.
+ *
+ * It CANNOT be a stream URL. Media URLs carry a ticket scoped to one viewer
+ * and valid for an hour, so a member opening the mail tomorrow would see a
+ * broken image, and putting a ticket in an email body would leak it through
+ * every mail server on the way. An attachment renders offline and leaks
+ * nothing.
+ *
+ * Skipped above BANNER_MAX_BYTES: the same bytes are attached once per
+ * recipient, and a 10 MB banner to a few thousand members is not an email, it
+ * is an outage. The rest of the announcement sends unchanged without it.
+ */
+function bannerAttachment(bannerPath) {
+  if (!bannerPath) return { attachments: [], cid: null };
+  try {
+    const stat = fs.statSync(bannerPath);
+    if (!stat.isFile() || stat.size > BANNER_MAX_BYTES) return { attachments: [], cid: null };
+    const cid = 'tbc-project-banner';
+    return {
+      attachments: [{ filename: path.basename(bannerPath), path: bannerPath, cid }],
+      cid,
+    };
+  } catch {
+    // A missing or unreadable file is not a reason to fail the announcement.
+    return { attachments: [], cid: null };
+  }
+}
+
+/** Plain text -> escaped HTML paragraphs, safe for an email body. */
+const asParagraphs = (text) =>
+  escapeHtml(String(text || '').trim())
+    .split(/\n{2,}/)
+    .filter(Boolean)
+    .map((para) => `<div style="margin:0 0 14px;">${para.replace(/\n/g, '<br />')}</div>`)
+    .join('');
+
+function projectAnnouncementHtml({
+  kind, memberName, project, announcement, projectUrl, bannerCid, launchedAt,
+}) {
+  const name = escapeHtml(project.title);
+  const greeting = memberName
+    ? `Hello ${escapeHtml(String(memberName).split(/\s+/)[0])},`
+    : 'Hello,';
+
+  const isUpdate = kind === 'MAJOR_UPDATE';
+  const heading = isUpdate ? `Project update – ${name}` : `New project launched – ${name}`;
+
+  // max-width + width:100% is the whole responsiveness story for the banner:
+  // it fills a phone and stops at the shell's 560px on a desktop client.
+  const bannerHtml = bannerCid
+    ? `<img src="cid:${bannerCid}" alt="" width="480"
+          style="display:block;width:100%;max-width:480px;height:auto;border-radius:12px;border:0;outline:none;margin:0 auto 20px;" />`
+    : '';
+
+  const factRows = [
+    detailRow('Project', name),
+    project.category ? detailRow('Category', escapeHtml(String(project.category).replace(/_/g, ' '))) : '',
+    project.location ? detailRow('Location', escapeHtml(project.location)) : '',
+    launchedAt ? detailRow('Official launch date', escapeHtml(longDate(launchedAt))) : '',
+    isUpdate && announcement.updateCategory
+      ? detailRow('Update type', escapeHtml(announcement.updateCategory))
+      : '',
+  ].filter(Boolean).join('');
+
+  // "What's New?" is the admin-provided summary and the whole point of a major
+  // update, so it gets its own framed block rather than reading as body copy.
+  const whatsNew = isUpdate
+    ? `<div style="margin:4px 0 20px;padding:16px 18px;border-radius:12px;background:rgba(200,168,75,0.08);border:1px solid rgba(200,168,75,0.25);">
+         <div style="font-size:11px;letter-spacing:1.5px;color:#c8a84b;font-weight:700;margin-bottom:10px;">WHAT'S NEW?</div>
+         <div style="font-size:14px;line-height:1.7;color:#e6e8ee;">${asParagraphs(announcement.message)}</div>
+       </div>
+       ${announcement.detail
+         ? `<div style="font-size:14px;line-height:1.7;color:#aab0c0;margin-bottom:20px;">${asParagraphs(announcement.detail)}</div>`
+         : ''}`
+    : `<div style="font-size:14px;line-height:1.7;color:#e6e8ee;margin-bottom:20px;">${asParagraphs(announcement.message)}</div>`;
+
+  const body = `
+    ${bannerHtml}
+    ${whatsNew}
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom:24px;">
+      ${factRows}
+    </table>
+    <div style="text-align:center;">
+      ${goldButton(projectUrl, isUpdate ? 'View Updated Project' : 'View Project')}
+    </div>`;
+
+  return shell({
+    title: heading,
+    intro: `${greeting} ${isUpdate
+      ? `There is an important update to <strong style="color:#e6e8ee;">${name}</strong> on the TBC Portal.`
+      : `<strong style="color:#e6e8ee;">${name}</strong> has been launched on the TBC Portal.`}`,
+    bodyHtml: body,
+    footerNote: 'You are receiving this because you are an active member of the Trillion Business Community.',
+  });
+}
+
+/** The plain-text alternative. Some clients show it; all of them index it. */
+function projectAnnouncementText({ memberName, project, announcement, projectUrl, kind }) {
+  const lines = [
+    memberName ? `Hello ${String(memberName).split(/\s+/)[0]},` : 'Hello,',
+    '',
+    kind === 'MAJOR_UPDATE' ? `What's New? ${announcement.title}` : announcement.title,
+    '',
+    String(announcement.message || '').trim(),
+  ];
+  if (announcement.detail) lines.push('', String(announcement.detail).trim());
+  lines.push('', `View the project: ${projectUrl}`, '', 'Trillion Business Community Team');
+  return lines.join('\n');
+}
+
+/**
+ * Send one announcement to ONE member.
+ *
+ * Deliberately per-recipient and not a bcc blast: §3 asks for the member's own
+ * name in the greeting, and §10 forbids exposing one member's address to
+ * another. One address per message is also what makes a recipient-level
+ * delivery record meaningful - a bcc list has one outcome for everybody.
+ */
+async function sendProjectAnnouncementEmail({
+  kind, to, memberName, project, announcement, projectUrl, bannerPath, launchedAt,
+}) {
+  const { attachments, cid } = bannerAttachment(bannerPath);
+
+  const subject = kind === 'MAJOR_UPDATE'
+    ? `Project Update – ${project.title}: ${announcement.title}`
+    : `New Project Launched – ${project.title}`;
+
+  return sendMail({
+    to,
+    subject,
+    html: projectAnnouncementHtml({
+      kind, memberName, project, announcement, projectUrl, bannerCid: cid, launchedAt,
+    }),
+    text: projectAnnouncementText({ memberName, project, announcement, projectUrl, kind }),
+    attachments,
+  });
+}
+
 module.exports = {
   sendMail,
+  sendProjectAnnouncementEmail,
   sendEnquiryEmail,
   sendEnquiryRecipientChangedEmails,
   sendOtpEmail,

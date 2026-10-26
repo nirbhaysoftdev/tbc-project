@@ -12,6 +12,8 @@ const authRoutes        = require('./routes/auth');
 const dashboardRoutes   = require('./routes/dashboard');
 const transactionRoutes = require('./routes/transactions');
 const adminRoutes       = require('./routes/admin');
+const adminEventsRoutes = require('./routes/adminEvents');
+const adminAnalyticsRoutes = require('./routes/adminAnalytics');
 const investmentRoutes  = require('./routes/investments');
 const superAdminRoutes  = require('./routes/superAdmin');
 const profileRoutes     = require('./routes/profile');
@@ -80,6 +82,16 @@ app.use('/api/i18n',         i18nRoutes);
 app.use('/api/files',        filesRoutes);
 app.use('/api/dashboard',    dashboardRoutes);
 app.use('/api/transactions', transactionRoutes);
+// BEFORE adminRoutes, and that order is load-bearing. routes/admin.js gates
+// its whole router with `router.use(authenticate, requireAdmin)`, which runs
+// for every request that enters it - including paths it does not define. The
+// event feed accepts an API key instead of a session, so mounted after
+// adminRoutes it would be answered with 401 "No token provided" before its own
+// gate was ever reached.
+app.use('/api/admin',        adminEventsRoutes);
+// The Overview's figures. Its own router for the same reason - and above
+// adminRoutes purely to keep the three /api/admin mounts together.
+app.use('/api/admin',        adminAnalyticsRoutes);
 app.use('/api/admin',        adminRoutes);
 app.use('/api/admin',        investmentRoutes);
 app.use('/api/super-admin',  superAdminRoutes);
@@ -112,6 +124,7 @@ app.use((err, req, res, next) => {
 // ── Start server ──────────────────────────────
 const prisma = require('./utils/prismaClient');
 const translationWorker = require('./services/i18n/worker');
+const announcementWorker = require('./services/announcementWorker');
 
 app.listen(PORT, async () => {
   console.log(`\n🚀 TBC API running on http://localhost:${PORT}`);
@@ -130,6 +143,15 @@ app.listen(PORT, async () => {
       translationWorker.start();
     } catch (err) {
       console.error(`   ✗  translation worker not started - ${err.message}`);
+    }
+
+    // The announcement sender, on the same terms: its queue is a table, so a
+    // failure to start it delays announcement emails but loses none of them,
+    // and the API - including launching a project - works without it.
+    try {
+      announcementWorker.start();
+    } catch (err) {
+      console.error(`   ✗  announcement worker not started - ${err.message}`);
     }
   } catch (err) {
     console.error(`   ✗  PostgreSQL NOT connected - ${err.message}`);

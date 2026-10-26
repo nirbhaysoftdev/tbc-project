@@ -31,6 +31,10 @@ const CATEGORY_STYLE: Record<string, { color: string; bg: string; label: string 
   EMAIL:      { color: '#7fb0ff', bg: 'rgba(58,111,255,0.12)',  label: 'Emails' },
   MEMBER:     { color: '#c8a84b', bg: 'rgba(200,168,75,0.12)',  label: 'Members' },
   INVESTMENT: { color: '#4cd98a', bg: 'rgba(76,217,138,0.12)',  label: 'Investments' },
+  // Launches, major updates and promotional restarts — the communication
+  // history of a project, which is a different question from the capital that
+  // moved through it.
+  PROJECT:    { color: '#5fd4d0', bg: 'rgba(95,212,208,0.12)',  label: 'Projects' },
   PROFIT:     { color: '#a0e86f', bg: 'rgba(160,232,111,0.12)', label: 'Profit' },
   WITHDRAWAL: { color: '#ffbe32', bg: 'rgba(255,190,50,0.12)',  label: 'Withdrawals' },
   WALLET:     { color: '#b79cff', bg: 'rgba(160,140,255,0.14)', label: 'Wallet' },

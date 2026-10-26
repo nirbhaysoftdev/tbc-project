@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Offline · Trillion Business Community</title>
+<!--
+  Shown by the service worker when a page cannot be reached at all. It is a
+  plain file on purpose: the moment it is needed there is no network, so it
+  cannot depend on a JS chunk, a font or a stylesheet that is not already here.
+  Nothing on this page is member data.
+-->
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    padding: 24px calc(24px + env(safe-area-inset-right)) 24px calc(24px + env(safe-area-inset-left));
+    background: #0b1022;
+    color: #e8eaf6;
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    text-align: center;
+  }
+  .wrap { max-width: 360px; }
+  img { width: 92px; height: 92px; margin: 0 auto 20px; display: block; }
+  h1 { font-size: 18px; font-weight: 600; margin-bottom: 10px; }
+  p { font-size: 14px; line-height: 1.65; color: #8c9ab5; margin-bottom: 22px; }
+  button {
+    border: none; cursor: pointer; font: inherit; font-weight: 600;
+    background: #3a6fff; color: #fff;
+    padding: 11px 22px; border-radius: 10px;
+  }
+  button:active { transform: translateY(1px); }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <img src="/icons/icon-192.png" width="92" height="92" alt="" />
+    <h1>You are offline</h1>
+    <p>
+      The portal could not be reached. Your session is still signed in — this
+      is a connection problem, not a sign-out. Reconnect and try again.
+    </p>
+    <button type="button" onclick="location.reload()">Try again</button>
+  </div>
+  <script>
+    // Reload by itself the moment the device is back, so the member does not
+    // have to notice that it came back.
+    addEventListener('online', function () { location.reload(); });
+  </script>
+</body>
+</html>
