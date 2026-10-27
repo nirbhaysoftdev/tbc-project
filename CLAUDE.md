@@ -622,14 +622,22 @@ GET /api/admin/analytics?range=all|month|quarter|year|custom&from=&to=&granulari
 | `transactions` | `COMPLETED` only, count and volume, plus a per-category split |
 | `series` | One bucket per period, each holding all of the above that are dated |
 
-**`assets.total` is two halves: `portfolio` + `wallets.value`.** A valuation is
-what a company or project would fetch; a wallet balance is money the portal is
-holding for a member. No row feeds both, so the two add up without
-double-counting. `wallets.value` is composed exactly as
-`services/walletService.js` composes one member's balance — opening balance +
-live `wallet_investments`, profit net of `withdrawnProfit` and
-`pendingWithdrawal` — so it is the sum of the balances members themselves see,
-and money reserved for a withdrawal is already out of it.
+**`assets.total` is two halves: `portfolio` + `wallets.value`, and nothing
+else.** A valuation is what a company or project would fetch; a wallet balance
+is money the portal is holding for a member. No row feeds both, so the two add
+up without double-counting.
+
+`wallets.value` is deliberately the simplest thing it can be: `SUM(wallets.
+totalBalance)`. That column is `walletService`'s own derived balance, which
+`syncWallet` rewrites inside the same transaction as every ledger write, so the
+figure is the sum of the balances members themselves see and the Overview does
+not re-derive it. It is **not** decomposed into capital and profit — there is no
+`wallets.capital` or `wallets.profit` in the payload, and the screen shows one
+wallet number. The consequence to know: a ledger row written straight to the
+database without calling `syncWallet` does not move this figure. Every real
+flow calls it (`investmentEngine`, `withdrawController`, `adminController`,
+`superAdminController`, `superAdminAssetsController`); a hand-run SQL INSERT
+does not.
 
 **`investment` is still not an asset line.** It is the inflow that produced
 part of the wallet half; adding it on top of `wallets.value` counts the same
@@ -653,10 +661,12 @@ Stamping an opening balance with `createdAt` would invent history and drop a
 member's whole balance into the week their row was made. The KPI tiles show
 both figures and name the caveat.
 
-Nothing is cached or denormalised. Every figure is derived per request from the
-same tables `services/walletService.js` uses, so the Overview cannot drift from
-a member's own wallet — which is exactly what a rollup table would eventually
-do.
+Every figure other than the wallet half is derived per request from the same
+tables `services/walletService.js` uses, so the Overview cannot drift from a
+member's own wallet — which is exactly what a rollup table would eventually do.
+The wallet half reads `wallets.totalBalance`, which is the one cache in the
+ledger and is maintained transactionally by `syncWallet`; see the assets note
+above for what that means in practice.
 
 Buckets are chosen from the width of the window (month→day, quarter→week,
 year→month, all→month/quarter) unless `granularity` says otherwise, capped at

@@ -19,6 +19,7 @@ const crypto = require('crypto');
 
 const prisma = require('../src/utils/prismaClient');
 const analytics = require('../src/services/adminAnalytics');
+const walletService = require('../src/services/walletService');
 
 if (!process.env.JWT_SECRET) throw new Error('JWT_SECRET must be set to run these tests');
 
@@ -246,8 +247,6 @@ test('what members hold in their wallets is part of the assets total', async () 
 
   const after = await overviewFor();
   assert.equal(after.assets.wallets.value - before.assets.wallets.value, 41000);
-  assert.equal(after.assets.wallets.capital - before.assets.wallets.capital, 40000);
-  assert.equal(after.assets.wallets.profit - before.assets.wallets.profit, 1000);
   assert.equal(after.assets.wallets.count - before.assets.wallets.count, 1);
   assert.equal(after.assets.total - before.assets.total, 41000);
 
@@ -263,8 +262,6 @@ test('the assets total is the two halves and nothing else', async () => {
     data.assets.portfolio,
     data.assets.companies.value + data.assets.projects.value,
   );
-  // A wallet asset is the member's own balance formula, not the raw columns.
-  assert.equal(data.assets.wallets.value, data.assets.wallets.capital + data.assets.wallets.profit);
 });
 
 test('money on its way out of a wallet is not an asset', async () => {
@@ -279,25 +276,40 @@ test('money on its way out of a wallet is not an asset', async () => {
 
   const after = await overviewFor();
   assert.equal(after.assets.wallets.value - before.assets.wallets.value, 13500);
-  assert.equal(after.assets.wallets.profit - before.assets.wallets.profit, 3500);
 });
 
 test('a live project investment is a wallet asset, the returned part is not', async () => {
   const project = await makeProject({ status: 'DRAFT', valuation: null, category: tag('walletledger') });
-  const user = await makeWalletMember({ investmentAmount: 0, profitAmount: 0 });
+  const user = await makeWalletMember({ investmentAmount: 0, profitAmount: 0, totalBalance: 0 });
   const before = await overviewFor();
 
+  // syncWallet is what every real flow calls in the same transaction as the
+  // ledger write; the asset figure is the balance it leaves behind.
   const row = await prisma.walletInvestment.create({
     data: { userId: user.id, projectId: project.id, amount: 8000, investedAt: new Date(), status: 'ACTIVE' },
   });
+  await walletService.syncWallet(user.id);
   const mid = await overviewFor();
-  assert.equal(mid.assets.wallets.capital - before.assets.wallets.capital, 8000);
+  assert.equal(mid.assets.wallets.value - before.assets.wallets.value, 8000);
   assert.equal(mid.assets.total - before.assets.total, 8000, 'a DRAFT project is no valuation');
 
   await prisma.walletInvestment.update({ where: { id: row.id }, data: { returnedAmount: 3000 } });
+  await walletService.syncWallet(user.id);
 
   const after = await overviewFor();
-  assert.equal(after.assets.wallets.capital - before.assets.wallets.capital, 5000);
+  assert.equal(after.assets.wallets.value - before.assets.wallets.value, 5000);
+});
+
+test('the wallet half is the balance every member sees, summed', async () => {
+  const wallets = await prisma.wallet.findMany({ select: { userId: true } });
+  const breakdowns = await walletService.getWalletBreakdownsFor(wallets.map((w) => w.userId));
+  const summed = walletService.money(
+    [...breakdowns.values()].reduce((s, b) => s + b.totalBalance, 0),
+  );
+
+  const data = await overviewFor();
+  assert.equal(data.assets.wallets.value, summed);
+  assert.equal(data.assets.wallets.count, wallets.length);
 });
 
 // ─── The dated / undated split ───────────────────────────────────────────────

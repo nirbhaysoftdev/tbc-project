@@ -251,10 +251,8 @@ export default function OverviewTab() {
 
                   <p className="an-footnote">
                     Member wallets hold a further {formatEur(assets.wallets.value)} across{' '}
-                    {assets.wallets.count} wallet{assets.wallets.count === 1 ? '' : 's'}
-                    {' '}({formatEur(assets.wallets.capital)} capital ·{' '}
-                    {formatEur(assets.wallets.profit)} available profit), counted in the
-                    assets total but not in this table.
+                    {assets.wallets.count} wallet{assets.wallets.count === 1 ? '' : 's'}, counted
+                    in the assets total but not in this table.
                   </p>
 
                   {(assets.companies.unvalued > 0 || assets.projects.unvalued > 0) && (

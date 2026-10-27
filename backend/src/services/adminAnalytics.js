@@ -30,8 +30,10 @@
 //              ACTIVE and nothing else: a DRAFT carries a figure typed while
 //              drafting, and FUNDED/CLOSED/ARCHIVED are excluded by decision -
 //              see ASSET_PROJECT_STATUS below.
-//   wallets    what members' wallets are worth - the same figure every member
-//              sees as their own balance, summed (capital + available profit)
+//   wallets    the balance of every member's wallet, summed. Read straight
+//              off `wallets.totalBalance`, which walletService.syncWallet
+//              rewrites inside the same transaction as every ledger move, so
+//              it is the same number the member sees on their own wallet.
 //
 //   total = portfolio + wallets
 //
@@ -189,13 +191,12 @@ const inWindow = ({ from, to }) => {
 // different kinds of asset, and an admin asking "how much of our value is real
 // estate?" still wants to know which half is which.
 //
-// The wallet half is composed exactly as services/walletService.js composes one
-// member's balance - opening balance + live project ledger, profit net of what
-// has been withdrawn and what is reserved for a pending withdrawal - so the
-// figure here is the sum of the balances members themselves see. Reserved
-// money is on its way out and is excluded, as it is from a member's own total.
+// The wallet half is one sum: `wallets.totalBalance` across every wallet. That
+// column is walletService's own derived balance, rewritten by syncWallet inside
+// the same transaction as every ledger write, so this is the sum of the figures
+// members themselves see and cannot disagree with them.
 async function assetsByIndustry() {
-  const [companies, projects, wallets, investments, profit] = await Promise.all([
+  const [companies, projects, wallets] = await Promise.all([
     prisma.company.findMany({
       where:  { status: { in: ASSET_COMPANY_STATUS } },
       select: { id: true, name: true, category: true, valuation: true },
@@ -207,13 +208,8 @@ async function assetsByIndustry() {
 
     prisma.wallet.aggregate({
       _count: { _all: true },
-      _sum: { investmentAmount: true, profitAmount: true, withdrawnProfit: true, pendingWithdrawal: true },
+      _sum: { totalBalance: true },
     }),
-    prisma.walletInvestment.findMany({
-      where:  { status: 'ACTIVE' },
-      select: { amount: true, returnedAmount: true },
-    }),
-    prisma.profitRecord.aggregate({ _sum: { amount: true } }),
   ]);
 
   // Industries are free text on both models, so they are grouped
@@ -256,18 +252,9 @@ async function assetsByIndustry() {
 
   const portfolio = money(companyValue + projectValue);
 
-  // The wallet half, composed the way walletService composes one member's.
-  const walletCapital = money(
-    (wallets._sum.investmentAmount || 0)
-    + investments.reduce((sum, inv) => sum + liveCapital(inv), 0),
-  );
-  const walletProfit = money(
-    (wallets._sum.profitAmount || 0)
-    + (profit._sum.amount || 0)
-    - (wallets._sum.withdrawnProfit || 0)
-    - (wallets._sum.pendingWithdrawal || 0),
-  );
-  const walletValue = money(walletCapital + walletProfit);
+  // The wallet half: the sum of the balances members themselves see. No
+  // decomposition into capital and profit - the balance is the figure.
+  const walletValue = money(wallets._sum.totalBalance || 0);
 
   const total = money(portfolio + walletValue);
 
@@ -291,8 +278,6 @@ async function assetsByIndustry() {
     portfolio,
     wallets: {
       count: wallets._count._all,
-      capital: walletCapital,
-      profit: walletProfit,
       value: walletValue,
     },
     companies: {
