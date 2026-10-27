@@ -129,24 +129,50 @@ test('the Overview is admin-only', async () => {
 
 // ─── Assets ──────────────────────────────────────────────────────────────────
 
-test('assets count live companies and projects, and nothing else', async () => {
+test('assets count ACTIVE companies and projects, and nothing else', async () => {
   const before = await overviewFor();
 
   await makeCompany({ status: 'ACTIVE', valuation: 500000, category: tag('live') });
   await makeProject({ status: 'ACTIVE', valuation: 300000, category: tag('live') });
-  await makeProject({ status: 'FUNDED', valuation: 200000, category: tag('live') });
 
-  // None of these are live, so none of them are assets.
+  // None of these are ACTIVE, so none of them are assets. DRAFT is the one
+  // that matters most: it carries whatever figure an admin typed while
+  // drafting, which was never a claim about what the portal holds.
   await makeCompany({ status: 'DRAFT', valuation: 999999, category: tag('live') });
   await makeCompany({ status: 'ARCHIVED', valuation: 999999, category: tag('live') });
+  await makeCompany({ status: 'INACTIVE', valuation: 999999, category: tag('live') });
   await makeProject({ status: 'DRAFT', valuation: 999999, category: tag('live') });
   await makeProject({ status: 'CANCELLED', valuation: 999999, category: tag('live') });
+  await makeProject({ status: 'CLOSED', valuation: 999999, category: tag('live') });
+  // FUNDED is excluded by decision, not by oversight - see
+  // ASSET_PROJECT_STATUS in services/adminAnalytics.js.
+  await makeProject({ status: 'FUNDED', valuation: 200000, category: tag('live') });
 
   const after = await overviewFor();
-  assert.equal(after.assets.total - before.assets.total, 1000000);
-  assert.equal(industry(after, tag('live')).total, 1000000);
+  assert.equal(after.assets.total - before.assets.total, 800000);
+  assert.equal(industry(after, tag('live')).total, 800000);
   assert.equal(industry(after, tag('live')).companies, 1);
-  assert.equal(industry(after, tag('live')).projects, 2);
+  assert.equal(industry(after, tag('live')).projects, 1);
+});
+
+test('a FUNDED project is off the asset line but still on the funding meter', async () => {
+  const before = await overviewFor();
+
+  await makeProject({
+    status: 'FUNDED', valuation: 750000, category: tag('funded'),
+    targetAmount: 400000, raisedAmount: 400000,
+  });
+
+  const after = await overviewFor();
+  // Not an asset...
+  assert.equal(after.assets.total, before.assets.total);
+  assert.equal(after.assets.projects.value, before.assets.projects.value);
+  // ...and its industry is not invented on the strength of a figure we ignore.
+  assert.deepEqual(industry(after, tag('funded')), { total: 0, companies: 0, projects: 0 });
+  // ...but the money it really raised is still reported.
+  assert.equal(after.projects.raised - before.projects.raised, 400000);
+  assert.equal(after.projects.target - before.projects.target, 400000);
+  assert.equal(after.projects.funded - before.projects.funded, 1);
 });
 
 test('an unvalued record is counted, never treated as worth zero', async () => {

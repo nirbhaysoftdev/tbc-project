@@ -26,7 +26,10 @@
 // WHAT `assets` HOLDS. Everything the portal holds today, in two parts that
 // are reported separately because they are measured differently:
 //
-//   portfolio  what live companies and projects are *worth* (`valuation`)
+//   portfolio  what ACTIVE companies and projects are *worth* (`valuation`).
+//              ACTIVE and nothing else: a DRAFT carries a figure typed while
+//              drafting, and FUNDED/CLOSED/ARCHIVED are excluded by decision -
+//              see ASSET_PROJECT_STATUS below.
 //   wallets    what members' wallets are worth - the same figure every member
 //              sees as their own balance, summed (capital + available profit)
 //
@@ -50,7 +53,29 @@ const money = (n) => Math.round((n + Number.EPSILON) * 100) / 100;
 /** Live capital of one investment row: the part that has not been returned. */
 const liveCapital = (inv) => Math.max(0, inv.amount - (inv.returnedAmount || 0));
 
-/** A project or company that counts towards the portfolio's value today. */
+/**
+ * Whose VALUATION counts towards the portfolio: ACTIVE only, for both models.
+ *
+ * DRAFT is the point of this being a whitelist - an unpublished project or
+ * company carries a valuation an admin typed while drafting it, and nothing
+ * says that figure was ever meant to be real. ARCHIVED, INACTIVE, CLOSED and
+ * CANCELLED are excluded for the same reason from the other end: the portal
+ * does not hold them any more.
+ *
+ * FUNDED is excluded DELIBERATELY, by decision rather than by oversight. A
+ * fully-raised project is arguably still an asset the portal holds, so if the
+ * Overview should count it again, this is the one line to change - and the
+ * meter below keeps counting it either way.
+ */
+const ASSET_PROJECT_STATUS = ['ACTIVE'];
+const ASSET_COMPANY_STATUS = ['ACTIVE'];
+
+/**
+ * Whose FUNDING PROGRESS is still live, for the raised-against-target meter.
+ * A different question from the one above: a FUNDED project's raised amount is
+ * real money that was really raised, and dropping it would make the meter
+ * report less than members have actually put in.
+ */
 const LIVE_PROJECT_STATUS = ['ACTIVE', 'FUNDED'];
 const LIVE_COMPANY_STATUS = ['ACTIVE'];
 
@@ -157,7 +182,7 @@ const inWindow = ({ from, to }) => {
 
 // ── Assets ────────────────────────────────────
 //
-// What the portal's live companies and projects are valued at, split by the
+// What the portal's ACTIVE companies and projects are valued at, split by the
 // industry they are filed under, plus what sits in members' wallets.
 //
 // Companies and projects are kept apart inside each industry: they are
@@ -172,11 +197,11 @@ const inWindow = ({ from, to }) => {
 async function assetsByIndustry() {
   const [companies, projects, wallets, investments, profit] = await Promise.all([
     prisma.company.findMany({
-      where:  { status: { in: LIVE_COMPANY_STATUS } },
+      where:  { status: { in: ASSET_COMPANY_STATUS } },
       select: { id: true, name: true, category: true, valuation: true },
     }),
     prisma.project.findMany({
-      where:  { status: { in: LIVE_PROJECT_STATUS } },
+      where:  { status: { in: ASSET_PROJECT_STATUS } },
       select: { id: true, title: true, category: true, valuation: true, targetAmount: true, raisedAmount: true },
     }),
 
@@ -462,6 +487,7 @@ async function overview({ from, to, granularity }) {
 
 module.exports = {
   RANGES, GRANULARITIES, MAX_BUCKETS,
+  ASSET_PROJECT_STATUS, ASSET_COMPANY_STATUS,
   LIVE_PROJECT_STATUS, LIVE_COMPANY_STATUS,
   resolveRange, bucketKey, assetsByIndustry, projectTotals, overview,
 };
