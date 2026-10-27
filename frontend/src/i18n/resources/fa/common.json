@@ -76,7 +76,11 @@
     "notSubmitted": "ارسال نشده",
     "underReview": "در حال بررسی"
   },
-  "role": { "member": "عضو", "admin": "مدیر", "administrator": "مدیر سیستم" },
+  "role": {
+    "member": "عضو",
+    "admin": "مدیر",
+    "administrator": "مدیر سیستم"
+  },
   "label": {
     "name": "نام",
     "email": "ایمیل",
@@ -105,7 +109,10 @@
     "of": "از {{total}}",
     "showing": "نمایش {{from}}–{{to}} از {{total}}",
     "rowsPerPage": "ردیف در هر صفحه",
-    "noMore": "موردی باقی نمانده"
+    "noMore": "موردی باقی نمانده",
+    "shownOf": "نمایش {{shown}} از {{total}}",
+    "loadMore": "نمایش بیشتر",
+    "loadingMore": "در حال بارگذاری…"
   },
   "time": {
     "justNow": "همین حالا",

@@ -109,7 +109,10 @@
     "of": "из {{total}}",
     "showing": "Показано {{from}}–{{to}} из {{total}}",
     "rowsPerPage": "Строк на странице",
-    "noMore": "Больше элементов нет"
+    "noMore": "Больше элементов нет",
+    "shownOf": "Показано {{shown}} из {{total}}",
+    "loadMore": "Показать ещё",
+    "loadingMore": "Загрузка…"
   },
   "time": {
     "justNow": "только что",

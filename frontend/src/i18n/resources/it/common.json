@@ -109,7 +109,10 @@
     "of": "di {{total}}",
     "showing": "Da {{from}} a {{to}} di {{total}}",
     "rowsPerPage": "Righe per pagina",
-    "noMore": "Nessun altro elemento"
+    "noMore": "Nessun altro elemento",
+    "shownOf": "Visualizzati {{shown}} di {{total}}",
+    "loadMore": "Carica altri",
+    "loadingMore": "Caricamento…"
   },
   "time": {
     "justNow": "proprio ora",

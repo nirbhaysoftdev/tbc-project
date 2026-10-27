@@ -76,7 +76,11 @@
     "notSubmitted": "لم يُرسل",
     "underReview": "قيد المراجعة"
   },
-  "role": { "member": "عضو", "admin": "مسؤول", "administrator": "مسؤول النظام" },
+  "role": {
+    "member": "عضو",
+    "admin": "مسؤول",
+    "administrator": "مسؤول النظام"
+  },
   "label": {
     "name": "الاسم",
     "email": "البريد الإلكتروني",
@@ -105,7 +109,10 @@
     "of": "من {{total}}",
     "showing": "عرض {{from}}–{{to}} من {{total}}",
     "rowsPerPage": "عدد الصفوف في الصفحة",
-    "noMore": "لا توجد عناصر أخرى"
+    "noMore": "لا توجد عناصر أخرى",
+    "shownOf": "عرض {{shown}} من {{total}}",
+    "loadMore": "تحميل المزيد",
+    "loadingMore": "جارٍ التحميل…"
   },
   "time": {
     "justNow": "الآن",

@@ -7,9 +7,11 @@
 // Completing is the only step that creates money. The requested amount and the
 // actual amount received are tracked separately, and everything downstream uses
 // the actual amount.
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { investmentRequestAPI, formatEur, formatDate, formatNumber } from '@/lib/api';
 import { useTranslation } from 'react-i18next';
+import { usePagedList } from '@/lib/usePagedList';
+import LoadMore from '@/components/layout/LoadMore';
 
 type Status = 'PENDING' | 'APPROVED' | 'COMPLETED' | 'REJECTED' | 'CANCELLED';
 
@@ -32,9 +34,7 @@ const todayIso = () => new Date().toISOString().slice(0, 10);
 
 export default function InvestmentRequestsTab({ onCompleted }: { onCompleted?: () => void }) {
   const { t } = useTranslation(['admin', 'common']);
-  const [requests, setRequests] = useState<any[]>([]);
   const [statusFilter, setStatusFilter] = useState<Status | ''>('');
-  const [loading, setLoading] = useState(true);
 
   const [active, setActive] = useState<any | null>(null);
   const [detail, setDetail] = useState<any | null>(null);
@@ -43,15 +43,21 @@ export default function InvestmentRequestsTab({ onCompleted }: { onCompleted?: (
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
-  const load = () => {
-    setLoading(true);
-    return investmentRequestAPI
-      .list(statusFilter ? { status: statusFilter } : undefined)
-      .then(r => setRequests(r.data.requests || []))
-      .finally(() => setLoading(false));
-  };
+  // The endpoint pages (50 by default) and always did; the tab used to render
+  // the first page as if it were every request.
+  const list = usePagedList<any>({
+    key: `requests:${statusFilter}`,
+    limit: 25,
+    load: ({ page, limit }) => investmentRequestAPI
+      .list({ ...(statusFilter ? { status: statusFilter } : {}), page: String(page), limit: String(limit) })
+      .then(r => ({ items: r.data.requests || [], total: r.data.pagination?.total ?? (r.data.requests || []).length })),
+  });
+  const requests = list.items;
+  const loading = list.loading;
 
-  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [statusFilter]);
+  // A status change can move a request out of the current filter, so an action
+  // re-reads the list from page one.
+  const load = async () => { list.reload(); };
 
   const openRequest = async (request: any) => {
     setActive(request);
@@ -153,6 +159,8 @@ export default function InvestmentRequestsTab({ onCompleted }: { onCompleted?: (
           </tbody>
         </table>
       </div>
+      <LoadMore shown={requests.length} total={list.total}
+        hasMore={list.hasMore} loading={list.loadingMore} onMore={list.loadMore} />
 
       {active && (
         <div className="modal-overlay" onClick={close}>

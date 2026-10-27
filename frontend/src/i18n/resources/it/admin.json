@@ -43,7 +43,9 @@
     "empty": "Ancora nessun membro",
     "emptySearch": "Nessun membro corrisponde a questa ricerca.",
     "openingBalance": "Saldo iniziale",
-    "frozenNotice": "Questo membro è bloccato e non può accedere."
+    "frozenNotice": "Questo membro è bloccato e non può accedere.",
+    "totalCount": "{{count}} membri",
+    "matchingCount": "{{count}} corrispondenti"
   },
   "pending": {
     "columns": {

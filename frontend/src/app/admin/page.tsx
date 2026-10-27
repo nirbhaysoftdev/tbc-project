@@ -16,6 +16,8 @@ import { useAdminAlerts } from '@/lib/adminAlerts';
 import { useAuth } from '@/lib/auth';
 import { isSuperAdminRole } from '@/lib/roles';
 import { useHashTab } from '@/lib/useHashTab';
+import { usePagedList } from '@/lib/usePagedList';
+import LoadMore from '@/components/layout/LoadMore';
 
 // The tabs, in the order they are shown. Also what the sidebar links into:
 // /admin#pending opens Approvals, so a deep link and a click land identically.
@@ -31,8 +33,6 @@ function AdminContent() {
   // src/lib/roles.ts.
   const isSuper = isSuperAdminRole(user?.role);
   const [stats,   setStats]   = useState<any>(null);
-  const [members, setMembers] = useState<any[]>([]);
-  const [pending, setPending] = useState<any[]>([]);
   // Overview first and by default: the panel now opens on what the portal is
   // worth and what moved, rather than on a member list that answers a question
   // nobody asked on arrival. The tab lives in the URL hash so the sidebar can
@@ -41,6 +41,48 @@ function AdminContent() {
   const { alerts, refresh: refreshAlerts } = useAdminAlerts();
   const [search,  setSearch]  = useState('');
   const [loading, setLoading] = useState(true);
+
+  // Rows per request. Both member endpoints have always paged — 20 by default
+  // — and the panel used to render whatever the first response contained with
+  // nothing on screen saying there was more, so a portal with 40 members
+  // showed 20 and looked complete.
+  const PAGE_SIZE = 25;
+
+  // The search box re-keys the member list, so it is debounced: a key per
+  // keystroke is a request per keystroke, most of which usePagedList would
+  // then drop as stale.
+  const [searchQuery, setSearchQuery] = useState('');
+  useEffect(() => {
+    const handle = setTimeout(() => setSearchQuery(search.trim()), 300);
+    return () => clearTimeout(handle);
+  }, [search]);
+
+  const membersList = usePagedList<any>({
+    key: `members:${searchQuery}`,
+    limit: PAGE_SIZE,
+    load: ({ page, limit }) => adminAPI
+      .getMembers({ ...(searchQuery ? { search: searchQuery } : {}), page: String(page), limit: String(limit) })
+      .then(r => ({ items: r.data.members || [], total: r.data.pagination?.total ?? (r.data.members || []).length })),
+  });
+  const pendingList = usePagedList<any>({
+    key: 'pending',
+    limit: PAGE_SIZE,
+    load: ({ page, limit }) => adminAPI
+      .getPending({ page: String(page), limit: String(limit) })
+      .then(r => ({ items: r.data.users || [], total: r.data.pagination?.total ?? (r.data.users || []).length })),
+  });
+  const members = membersList.items;
+  const pending = pendingList.items;
+
+  // The investment wizard's member dropdown is a plain <select>, so it needs
+  // the whole roster rather than the page the list happens to be showing: it
+  // used to be handed the same array as the table, which meant member 21 could
+  // not be chosen at all. Fetched once, and only when that tab is opened.
+  const [roster, setRoster] = useState<any[]>([]);
+  useEffect(() => {
+    if (activeTab !== 'investments' || roster.length > 0) return;
+    adminAPI.getMembers({ limit: '1000' }).then(r => setRoster(r.data.members || [])).catch(() => {});
+  }, [activeTab, roster.length]);
 
   // Modals
   const [showApprove,  setShowApprove]  = useState(false);
@@ -83,25 +125,24 @@ function AdminContent() {
     setAddFiles({});
   };
 
-  const loadAll = () => Promise.all([
-    adminAPI.getStats().then(r => setStats(r.data)),
-    adminAPI.getMembers().then(r => setMembers(r.data.members)),
-    adminAPI.getPending().then(r => setPending(r.data.users)),
-  ]).finally(() => { setLoading(false); refreshAlerts(); });
+  // The two lists fetch themselves; this is the rest of the first paint.
+  const loadAll = () => adminAPI.getStats()
+    .then(r => setStats(r.data))
+    .finally(() => { setLoading(false); refreshAlerts(); });
 
   useEffect(() => { loadAll(); }, []);
 
+  // An action changed a row, so both lists go back to page one: a member who
+  // was just activated moves between them.
   const refreshMembers = () => {
-    adminAPI.getMembers({ search }).then(r => setMembers(r.data.members));
-    adminAPI.getPending().then(r => setPending(r.data.users));
+    membersList.reload();
+    pendingList.reload();
     adminAPI.getStats().then(r => setStats(r.data));
+    setRoster([]);
     refreshAlerts();
   };
 
-  const handleSearch = (val: string) => {
-    setSearch(val);
-    adminAPI.getMembers({ search: val }).then(r => setMembers(r.data.members));
-  };
+  const handleSearch = (val: string) => setSearch(val);
 
   const handleApproveOrReject = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -280,6 +321,15 @@ function AdminContent() {
             <input className="filter-input" placeholder={t('admin:members.searchPlaceholder')}
               value={search} onChange={e => handleSearch(e.target.value)}
               style={{ flex:1, maxWidth:320 }} />
+            {/* How many members there are, which the list itself cannot say:
+                it holds the pages fetched so far, not the set. */}
+            {!membersList.loading && (
+              <span style={{ fontSize:12, fontWeight:600, color:'var(--text-secondary)' }}>
+                {searchQuery
+                  ? t('admin:members.matchingCount', { count: membersList.total })
+                  : t('admin:members.totalCount', { count: membersList.total })}
+              </span>
+            )}
           </div>
 
           <div className="tx-table-wrap">
@@ -296,7 +346,9 @@ function AdminContent() {
                 </tr>
               </thead>
               <tbody>
-                {members.length === 0 ? (
+                {membersList.loading ? (
+                  <tr><td colSpan={7} style={{ textAlign:'center', padding:32, color:'var(--text-muted)' }}>{t('common:state.loading')}</td></tr>
+                ) : members.length === 0 ? (
                   <tr><td colSpan={7} style={{ textAlign:'center', padding:32, color:'var(--text-muted)' }}>{t('admin:members.noneFound')}</td></tr>
                 ) : members.map((m: any) => {
                   const docsComplete = (m.kycDocuments || []).some((d: any) => d.status === 'approved') || m.kycStatus === 'APPROVED';
@@ -346,11 +398,15 @@ function AdminContent() {
               </tbody>
             </table>
           </div>
+          <LoadMore shown={members.length} total={membersList.total}
+            hasMore={membersList.hasMore} loading={membersList.loadingMore}
+            onMore={membersList.loadMore} />
         </>
       )}
 
       {/* ── Pending Approvals Tab ── */}
       {activeTab === 'pending' && (
+        <>
         <div className="tx-table-wrap">
           <table className="tx-table">
             <thead>
@@ -365,7 +421,11 @@ function AdminContent() {
               </tr>
             </thead>
             <tbody>
-              {pending.length === 0 ? (
+              {pendingList.loading ? (
+                <tr><td colSpan={7} style={{ textAlign:'center', padding:32, color:'var(--text-muted)' }}>
+                  {t('common:state.loading')}
+                </td></tr>
+              ) : pending.length === 0 ? (
                 <tr><td colSpan={7} style={{ textAlign:'center', padding:32, color:'var(--text-muted)' }}>
                   {t('admin:pending.noneFound')}
                 </td></tr>
@@ -446,11 +506,15 @@ function AdminContent() {
             </tbody>
           </table>
         </div>
+        <LoadMore shown={pending.length} total={pendingList.total}
+          hasMore={pendingList.hasMore} loading={pendingList.loadingMore}
+          onMore={pendingList.loadMore} />
+        </>
       )}
 
       {/* ── Investment Requests Tab ── */}
       {activeTab === 'requests' && (
-        <InvestmentRequestsTab onCompleted={loadAll} />
+        <InvestmentRequestsTab onCompleted={refreshMembers} />
       )}
 
       {/* ── Project Investments Tab ── */}
@@ -459,7 +523,7 @@ function AdminContent() {
       {activeTab === 'enquiries' && <EnquirySettingsTab />}
 
       {activeTab === 'investments' && (
-        <InvestmentsTab members={members} />
+        <InvestmentsTab members={roster} />
       )}
 
       {/* ── Pending Applicant Details Modal ── */}

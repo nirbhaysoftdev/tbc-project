@@ -109,7 +109,10 @@
     "of": "of {{total}}",
     "showing": "Showing {{from}}–{{to}} of {{total}}",
     "rowsPerPage": "Rows per page",
-    "noMore": "No more items"
+    "noMore": "No more items",
+    "shownOf": "Showing {{shown}} of {{total}}",
+    "loadMore": "Load more",
+    "loadingMore": "Loading more…"
   },
   "time": {
     "justNow": "just now",

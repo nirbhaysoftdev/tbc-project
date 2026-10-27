@@ -21,6 +21,8 @@ import { enquiriesAPI, formatDateTime } from '@/lib/api';
 import '@/styles/projects.css';
 import { useAuth } from '@/lib/auth';
 import { isSuperAdminRole } from '@/lib/roles';
+import { usePagedList } from '@/lib/usePagedList';
+import LoadMore from '@/components/layout/LoadMore';
 
 interface Recipient {
   emails: string[];
@@ -64,10 +66,7 @@ export default function EnquirySettingsTab() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
 
-  const [rows, setRows] = useState<EnquiryRow[]>([]);
-  const [total, setTotal] = useState(0);
   const [statusFilter, setStatusFilter] = useState('');
-  const [loadingRows, setLoadingRows] = useState(true);
   const [expanded, setExpanded] = useState<string | null>(null);
 
   const loadRecipient = useCallback(() => {
@@ -76,18 +75,21 @@ export default function EnquirySettingsTab() {
       .catch(() => setError('Could not load the enquiry recipients.'));
   }, []);
 
-  const loadRows = useCallback(() => {
-    setLoadingRows(true);
-    const params: Record<string, string> = { limit: '25' };
-    if (statusFilter) params.status = statusFilter;
-    enquiriesAPI.list(params)
-      .then((r) => { setRows(r.data.enquiries || []); setTotal(r.data.pagination?.total ?? 0); })
-      .catch(() => setRows([]))
-      .finally(() => setLoadingRows(false));
-  }, [statusFilter]);
+  // The log pages: it used to show the newest 25 and nothing on screen said
+  // the other 300 existed. The count above the list is the server's total, so
+  // it describes the whole filtered record rather than what has loaded.
+  const enquiries = usePagedList<EnquiryRow>({
+    key: `enquiries:${statusFilter}`,
+    limit: 25,
+    load: ({ page, limit }) => enquiriesAPI
+      .list({ ...(statusFilter ? { status: statusFilter } : {}), page: String(page), limit: String(limit) })
+      .then((r) => ({ items: r.data.enquiries || [], total: r.data.pagination?.total ?? 0 })),
+  });
+  const rows = enquiries.items;
+  const total = enquiries.total;
+  const loadingRows = enquiries.loading;
 
   useEffect(() => { loadRecipient(); }, [loadRecipient]);
-  useEffect(() => { loadRows(); }, [loadRows]);
 
   const isEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 
@@ -368,6 +370,9 @@ export default function EnquirySettingsTab() {
                 </div>
               );
             })}
+            <LoadMore shown={rows.length} total={total}
+              hasMore={enquiries.hasMore} loading={enquiries.loadingMore}
+              onMore={enquiries.loadMore} />
           </div>
         )}
       </div>

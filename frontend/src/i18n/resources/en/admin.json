@@ -43,7 +43,9 @@
     "enableWallet": "Enable Wallet",
     "openRow": "Open {{name}}'s details",
     "openingBalance": "Opening balance",
-    "frozenNotice": "This member is frozen and cannot sign in."
+    "frozenNotice": "This member is frozen and cannot sign in.",
+    "totalCount": "{{count}} members",
+    "matchingCount": "{{count}} matching"
   },
   "pending": {
     "columns": {

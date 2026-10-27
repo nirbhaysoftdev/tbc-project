@@ -2,5 +2,9 @@
   "_comment": "Intentionally empty. The admin console is maintained in English and Italian only; see ../README.md. Every key here falls back to en/admin.json, so the console renders in English while the surrounding chrome stays localised and right-to-left.",
   "tabs": {
     "enquiries": "الاستفسارات"
+  },
+  "members": {
+    "totalCount": "{{count}} عضو",
+    "matchingCount": "{{count}} نتيجة مطابقة"
   }
 }

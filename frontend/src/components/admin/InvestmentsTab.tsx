@@ -8,30 +8,54 @@ import { useEffect, useState } from 'react';
 import { investmentAPI, formatEur, formatDate, formatNumber } from '@/lib/api';
 import InvestmentWizard from './InvestmentWizard';
 import { useTranslation } from 'react-i18next';
+import { usePagedList } from '@/lib/usePagedList';
+import LoadMore from '@/components/layout/LoadMore';
 
 interface Member { id: string; name: string; email: string; }
 
 export default function InvestmentsTab({ members }: { members: Member[] }) {
   const { t } = useTranslation(['admin', 'common']);
   const [projects, setProjects] = useState<any[]>([]);
-  const [investments, setInvestments] = useState<any[]>([]);
-  const [profitRecords, setProfitRecords] = useState<any[]>([]);
   const [projectFilter, setProjectFilter] = useState('');
   const [loading, setLoading] = useState(true);
   const [showWizard, setShowWizard] = useState(false);
   const [view, setView] = useState<'investments' | 'profit'>('investments');
 
-  const load = () => {
-    setLoading(true);
-    const params = projectFilter ? { projectId: projectFilter } : undefined;
-    return Promise.all([
-      investmentAPI.listProjects().then(r => setProjects(r.data.projects || [])),
-      investmentAPI.listInvestments(params).then(r => setInvestments(r.data.investments || [])),
-      investmentAPI.listProfitRecords(params).then(r => setProfitRecords(r.data.records || [])),
-    ]).finally(() => setLoading(false));
-  };
+  const loadProjects = () => investmentAPI.listProjects()
+    .then(r => setProjects(r.data.projects || []))
+    .finally(() => setLoading(false));
 
-  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [projectFilter]);
+  useEffect(() => { loadProjects(); }, []);
+
+  // Both ledgers page (the endpoints default to 50) and both used to be
+  // rendered one page deep with nothing saying so. The project cards above
+  // filter them, so the filter is part of the key.
+  const invParams = (page: number, limit: number) => ({
+    ...(projectFilter ? { projectId: projectFilter } : {}),
+    page: String(page), limit: String(limit),
+  });
+  const investmentsList = usePagedList<any>({
+    key: `investments:${projectFilter}`,
+    limit: 25,
+    load: ({ page, limit }) => investmentAPI.listInvestments(invParams(page, limit))
+      .then(r => ({ items: r.data.investments || [], total: r.data.pagination?.total ?? (r.data.investments || []).length })),
+  });
+  const profitList = usePagedList<any>({
+    key: `profit:${projectFilter}`,
+    limit: 25,
+    load: ({ page, limit }) => investmentAPI.listProfitRecords(invParams(page, limit))
+      .then(r => ({ items: r.data.records || [], total: r.data.pagination?.total ?? (r.data.records || []).length })),
+  });
+  const investments = investmentsList.items;
+  const profitRecords = profitList.items;
+
+  // Booking capital or profit changes a project's raised figure as well as the
+  // ledger it was written to.
+  const load = () => {
+    loadProjects();
+    investmentsList.reload();
+    profitList.reload();
+  };
 
   const statusBadgeClass = (status: string) =>
     status === 'ACTIVE' ? 'badge-completed' :
@@ -116,7 +140,7 @@ export default function InvestmentsTab({ members }: { members: Member[] }) {
             <tbody>
               {investments.length === 0 ? (
                 <tr><td colSpan={5} style={{ textAlign:'center', padding:32, color:'var(--text-muted)' }}>
-                  {loading ? t('common:state.loading') : t('admin:investments.noneRecorded')}
+                  {investmentsList.loading ? t('common:state.loading') : t('admin:investments.noneRecorded')}
                 </td></tr>
               ) : investments.map((inv: any) => (
                 <tr key={inv.id}>
@@ -141,6 +165,9 @@ export default function InvestmentsTab({ members }: { members: Member[] }) {
               ))}
             </tbody>
           </table>
+          <LoadMore shown={investments.length} total={investmentsList.total}
+            hasMore={investmentsList.hasMore} loading={investmentsList.loadingMore}
+            onMore={investmentsList.loadMore} />
         </div>
       )}
 
@@ -162,7 +189,7 @@ export default function InvestmentsTab({ members }: { members: Member[] }) {
             <tbody>
               {profitRecords.length === 0 ? (
                 <tr><td colSpan={8} style={{ textAlign:'center', padding:32, color:'var(--text-muted)' }}>
-                  {loading ? t('common:state.loading') : t('admin:investments.noProfitRecords')}
+                  {profitList.loading ? t('common:state.loading') : t('admin:investments.noProfitRecords')}
                 </td></tr>
               ) : profitRecords.map((rec: any) => (
                 <tr key={rec.id}>
@@ -182,6 +209,9 @@ export default function InvestmentsTab({ members }: { members: Member[] }) {
               ))}
             </tbody>
           </table>
+          <LoadMore shown={profitRecords.length} total={profitList.total}
+            hasMore={profitList.hasMore} loading={profitList.loadingMore}
+            onMore={profitList.loadMore} />
         </div>
       )}
 
