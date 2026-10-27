@@ -22,6 +22,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import ProtectedLayout from '@/components/layout/ProtectedLayout';
+import { writeToken } from '@/lib/tokenStore';
 import { superAdminAPI, formatDateTime } from '@/lib/api';
 import { openDocument } from '@/lib/openDocument';
 import { useAuth } from '@/lib/auth';
@@ -300,7 +301,7 @@ function SuperAdminContent() {
       // Deliberately explicit rather than silently swapping the stored token:
       // the token belongs to the member, and the operator should know their
       // own session is being set aside.
-      window.localStorage.setItem('tbc_token', res.data.token);
+      writeToken(res.data.token);
       window.location.href = '/community';
     } catch (err: any) {
       setError(err?.response?.data?.error || 'Could not start impersonation.');

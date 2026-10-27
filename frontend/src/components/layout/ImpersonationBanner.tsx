@@ -16,7 +16,7 @@
 // the server knows that.
 
 import { useEffect, useState } from 'react';
-import Cookies from 'js-cookie';
+import { readToken, clearToken } from '@/lib/tokenStore';
 import { superAdminAPI } from '@/lib/api';
 
 /**
@@ -30,7 +30,7 @@ import { superAdminAPI } from '@/lib/api';
  */
 function tokenClaimsImpersonation(): boolean {
   try {
-    const token = Cookies.get('tbc_token') || localStorage.getItem('tbc_token');
+    const token = readToken();
     if (!token) return false;
     const payload = token.split('.')[1];
     if (!payload) return false;
@@ -69,10 +69,7 @@ export default function ImpersonationBanner() {
     // so ending the session means signing back in as yourself. Clearing it
     // here rather than restoring a saved one is deliberate: keeping a second
     // live token around to swap back to is a worse thing to own.
-    try {
-      localStorage.removeItem('tbc_token');
-      document.cookie = 'tbc_token=; Max-Age=0; path=/';
-    } catch { /* storage blocked; the redirect still applies */ }
+    clearToken();
     window.location.href = '/login';
   };
 

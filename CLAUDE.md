@@ -111,7 +111,7 @@ Never run `db:reset` (drops the database) or `db:migrate` (that is
 
 | Variable | Why it matters |
 |---|---|
-| `FRONTEND_URL` | The media stream sends `Content-Security-Policy: frame-ancestors 'self' $FRONTEND_URL` and defaults to `http://localhost:3000`. Wrong in production and **every PDF, Word and image viewer renders nothing** while the rest of the portal looks healthy. |
+| `FRONTEND_URL` | **A comma-separated list of every origin the portal is served from**, not one URL. The bundle calls the API at one absolute address, so a member who opened a hostname that is not on this list has every request blocked by CORS with no response body — which the UI can only report as a failed login, on one device, while the same credentials work everywhere else. Redirect to one canonical host in nginx as well; this list is what stops a mismatch being total. It is also the media stream's `Content-Security-Policy: frame-ancestors` source, and defaults to `http://localhost:3000`. Wrong in production and **every PDF, Word and image viewer renders nothing** while the rest of the portal looks healthy. |
 | `SMTP_*` | OTP, approvals, invoices and Connect Now enquiries all go through `services/mailer.js`. |
 | `DEFAULT_ENQUIRY_EMAIL` | Fallback recipient for enquiries when no address is configured in Admin → Enquiries. Optional; the code falls back to `codehands12@gmail.com`. |
 | `ADMIN_NOTIFY_EMAIL` | Fallback recipient for new-signup alerts when no address is set in Admin → Super Admin → Notifications. Optional, and unlike enquiries there is **no hardcoded default**: with neither the setting nor this variable, applications arrive with nobody told. The screen says so in red. |
@@ -787,7 +787,20 @@ Application → Service workers → Unregister, then reload.
 
 ### Sessions in the installed app
 
-Nothing changes: the JWT lives in the `tbc_token` cookie and `localStorage`,
+**Every read and write of the token goes through `lib/tokenStore.ts`.** Not a
+style preference: in Samsung Internet's Secret mode, Safari Private Browsing
+and anything with "block all cookies" set, touching `localStorage` *throws*
+rather than returning null. An unguarded `setItem` in `login()` turned a
+successful sign-in — token issued, 200 from the API — into the form's
+catch-all "Login failed, please try again", and an unguarded read in the axios
+interceptor failed requests before they were sent. The store guards both
+stores independently, falls back to memory for the tab when neither works, and
+`hasPersistentStore()` reports which happened. The login form now also
+distinguishes "no response at all" (connection, blocked origin, blocked
+storage) from a rejected password, because the two had one message between
+them.
+
+Nothing else changes: the JWT lives in the `tbc_token` cookie and `localStorage`,
 and an installed app shares the browser's storage on Android and desktop.
 **iOS is the exception** — a home-screen web app has its own storage
 container, so a member signs in once inside the app even if they were signed

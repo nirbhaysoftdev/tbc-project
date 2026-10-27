@@ -46,8 +46,16 @@ export default function LoginPage() {
       router.push(routeAfterAuth(u));
     } catch (err: any) {
       // A server-sent message is already localised by the API's own
-      // Accept-Language handling; only our client-side fallback needs t().
-      setError(err.response?.data?.error || t('auth:login.failed'));
+      // Accept-Language handling; only our client-side fallbacks need t().
+      //
+      // NO `err.response` AT ALL IS A DIFFERENT FAILURE and has to say so: the
+      // request never completed, so this is a connection, a blocked origin or
+      // a browser refusing site data - never a wrong password. Showing
+      // "Login failed" for it sent a member hunting for a typo in a password
+      // that was correct.
+      if (err?.response?.data?.error) setError(err.response.data.error);
+      else if (!err?.response) setError(t('auth:login.unreachable'));
+      else setError(t('auth:login.failed'));
     } finally {
       setLoading(false);
     }

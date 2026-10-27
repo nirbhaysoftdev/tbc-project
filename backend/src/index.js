@@ -38,8 +38,33 @@ const PORT = process.env.PORT || 4000;
 app.use(helmet());
 
 // ── CORS ──────────────────────────────────────
+// FRONTEND_URL may hold SEVERAL origins, comma-separated, and should name
+// every hostname the portal is actually reachable at.
+//
+// It is one value in production and that is the point of the list: a second
+// hostname that serves the same site - `www.` beside the apex, a staging
+// name, a bare IP - is a DIFFERENT ORIGIN to a browser. The portal's bundle
+// calls the API at one absolute URL, so a member who opened the `www.`
+// address has every single request blocked by CORS, with no response body for
+// the UI to explain itself with. It reads as "login failed" on one device
+// while the same credentials work everywhere else. A redirect to one
+// canonical host is the real fix; this list is so the failure mode cannot be
+// total while that is wrong.
+const ALLOWED_ORIGINS = (process.env.FRONTEND_URL || 'http://localhost:3000')
+  .split(',')
+  .map((o) => o.trim().replace(/\/+$/, ''))
+  .filter(Boolean);
+
+/** The origin to echo back, or null for "not allowed". */
+function allowedOrigin(origin) {
+  if (!origin) return null;
+  return ALLOWED_ORIGINS.includes(origin.replace(/\/+$/, '')) ? origin : null;
+}
+
 app.use(cors({
-  origin:      process.env.FRONTEND_URL || 'http://localhost:3000',
+  // A request with no Origin at all (curl, a server-to-server call, an app
+  // webview) is not a browser enforcing anything, so it is left alone.
+  origin: (origin, callback) => callback(null, !origin || Boolean(allowedOrigin(origin))),
   credentials: true,
 }));
 
@@ -57,7 +82,10 @@ app.use(languageMiddleware);
 // NOT express.static: identity documents live beside profile photos, so every
 // request is authorised against the database. See routes/uploads.js.
 app.use('/uploads', (req, res, next) => {
-  res.header('Access-Control-Allow-Origin', process.env.FRONTEND_URL || 'http://localhost:3000');
+  // Echo the caller's own origin when it is one of ours; a fixed value here
+  // would be wrong for every hostname but the first in the list.
+  res.header('Access-Control-Allow-Origin', allowedOrigin(req.headers.origin) || ALLOWED_ORIGINS[0]);
+  res.header('Vary', 'Origin');
   res.header('Access-Control-Allow-Methods', 'GET');
   next();
 }, uploadsRoutes);

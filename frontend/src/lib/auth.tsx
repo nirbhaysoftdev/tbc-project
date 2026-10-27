@@ -1,7 +1,7 @@
 'use client';
 // src/lib/auth.tsx
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import Cookies from 'js-cookie';
+import { readToken, writeToken, clearToken } from './tokenStore';
 import { authAPI, profileAPI } from './api';
 import { useI18n } from '@/i18n/I18nProvider';
 import type { LanguageCode } from '@/i18n/languages';
@@ -51,27 +51,20 @@ interface AuthCtx {
 const AuthContext = createContext<AuthCtx | null>(null);
 
 /**
- * The stored credential, from either place it is written.
+ * The stored credential, from wherever it was written.
  *
- * `login()` writes both a cookie and localStorage, and the axios interceptor
- * reads both. This read has to agree with them: checking only localStorage
- * meant a session surviving in the cookie alone looked like no session at all.
+ * Distinct from `user`, which only becomes set once /auth/me has answered.
+ * Every store access goes through lib/tokenStore, which treats a browser with
+ * cookies and storage blocked as a session that lives in memory rather than
+ * as a sign-in that failed.
  */
 function storedToken(): string | null {
-  try {
-    return Cookies.get('tbc_token')
-      || (typeof localStorage !== 'undefined' ? localStorage.getItem('tbc_token') : null)
-      || null;
-  } catch {
-    // Private mode, or storage blocked. Treated as "no credential".
-    return null;
-  }
+  return readToken();
 }
 
 function clearStoredToken() {
   try {
-    localStorage.removeItem('tbc_token');
-    Cookies.remove('tbc_token');
+    clearToken();
   } catch { /* nothing to clear */ }
 }
 
@@ -153,8 +146,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string) => {
     const res = await authAPI.login(email, password);
     const { token, user: u } = res.data;
-    localStorage.setItem('tbc_token', token);
-    Cookies.set('tbc_token', token, { expires: 7 });
+    // Never throws: a browser with storage blocked keeps the token in memory
+    // for this tab rather than turning a successful sign-in into an error.
+    writeToken(token);
     setUser(u);
     setHasToken(true);
     setAuthError(false);
@@ -162,8 +156,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const applyToken = async (token: string, u?: User) => {
-    localStorage.setItem('tbc_token', token);
-    Cookies.set('tbc_token', token, { expires: 7 });
+    writeToken(token);
     setHasToken(true);
     setAuthError(false);
     if (u) setUser(u);

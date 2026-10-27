@@ -1,6 +1,6 @@
 // src/lib/api.ts
 import axios from 'axios';
-import Cookies from 'js-cookie';
+import { readToken } from '@/lib/tokenStore';
 import i18n from '@/i18n';
 import { DEFAULT_LANGUAGE, normalizeLanguage } from '@/i18n/languages';
 import { formatCurrency } from '@/i18n/format';
@@ -14,7 +14,10 @@ const api = axios.create({
 
 // Attach JWT token and the active language on every request.
 api.interceptors.request.use((config) => {
-  const token = Cookies.get('tbc_token') || (typeof localStorage !== 'undefined' ? localStorage.getItem('tbc_token') : null);
+  // Via tokenStore, because touching `localStorage` directly THROWS where a
+  // browser has site data blocked - and a throw here fails the request before
+  // it is sent, which looks like the server being down.
+  const token = readToken();
   if (token) config.headers.Authorization = `Bearer ${token}`;
 
   const lang = normalizeLanguage(i18n.language) || DEFAULT_LANGUAGE;
