@@ -13,6 +13,8 @@ const ACTIVITY = {
   // ── Email ──
   EMAIL_SENT:                 { category: 'EMAIL',      label: 'Email sent' },
   EMAIL_FAILED:               { category: 'EMAIL',      label: 'Email failed' },
+  EMAIL_BROADCAST_SENT:       { category: 'EMAIL',      label: 'Email broadcast sent' },
+  EMAIL_BROADCAST_RETRIED:    { category: 'EMAIL',      label: 'Email broadcast delivery retried' },
 
   // ── Membership ──
   MEMBER_REGISTERED:          { category: 'MEMBER',     label: 'Member request (signup)' },

@@ -14,11 +14,14 @@
 // matches the page it opens over without inventing a palette.
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { projectsAPI, mediaSrc } from '@/lib/api';
+import RecipientSelector, { RecipientSelection } from './RecipientSelector';
 
 interface Option { value: string; label: string }
 
 export interface ComposerOptions {
   audiences: Option[];
+  audienceModes: Option[];
+  maxSelection: number;
   updateCategories: Option[];
   defaults: {
     launchTitle: string;
@@ -68,6 +71,9 @@ export default function AnnouncementComposer({
   const [detail, setDetail] = useState('');
   const [category, setCategory] = useState('');
   const [audience, setAudience] = useState(options.audiences[0]?.value || 'ALL_ACTIVE_MEMBERS');
+  // Everyone, until the admin says otherwise. See RecipientSelector for why
+  // the mode is sent rather than a resolved list of ids.
+  const [recipients, setRecipients] = useState<RecipientSelection>({ mode: 'ALL', userIds: [] });
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
 
@@ -98,7 +104,10 @@ export default function AnnouncementComposer({
     [projectName, title],
   );
 
-  const canSend = Boolean(title.trim() && message.trim());
+  // An INCLUDE send with nobody ticked is not a narrower send, it is no send
+  // at all. The server answers it with a 400; the button does not offer it.
+  const canSend = Boolean(title.trim() && message.trim())
+    && !(recipients.mode === 'INCLUDE' && recipients.userIds.length === 0);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -114,6 +123,8 @@ export default function AnnouncementComposer({
         detail: detail.trim() || undefined,
         updateCategory: category || undefined,
         audience,
+        audienceMode: recipients.mode,
+        recipientIds: recipients.userIds,
       });
       // The server's own wording, so the admin is never told the mail has
       // arrived when the server only queued it.
@@ -209,19 +220,27 @@ export default function AnnouncementComposer({
               placeholder="Any further context. Left out of the email if empty." />
           </div>
 
-          <div className="pj-field">
-            <label className="pj-label" htmlFor="ac-audience">Recipients</label>
-            <select id="ac-audience" className="pj-select" value={audience}
-              onChange={(e) => setAudience(e.target.value)}>
-              {options.audiences.map((a) => (
-                <option key={a.value} value={a.value}>{a.label}</option>
-              ))}
-            </select>
-            <div className="pj-hint">
-              Pending, frozen and rejected accounts are never included. Each member is
-              emailed individually, so no address is shown to anyone else.
+          {/* More than one audience is a future possibility, so the chooser is
+              only drawn when there is actually a choice to make. */}
+          {options.audiences.length > 1 && (
+            <div className="pj-field">
+              <label className="pj-label" htmlFor="ac-audience">Audience</label>
+              <select id="ac-audience" className="pj-select" value={audience}
+                onChange={(e) => setAudience(e.target.value)}>
+                {options.audiences.map((a) => (
+                  <option key={a.value} value={a.value}>{a.label}</option>
+                ))}
+              </select>
             </div>
-          </div>
+          )}
+
+          <RecipientSelector
+            projectId={projectId}
+            audience={audience}
+            value={recipients}
+            onChange={setRecipients}
+            disabled={sending}
+          />
 
           {/* ── The two previews §6 asks for ── */}
           <div className="pj-preview-pane">

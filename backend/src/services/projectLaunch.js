@@ -156,7 +156,85 @@ function launchSummary(project, now = new Date()) {
 }
 
 /**
- * The recipients for one audience, as outbox rows.
+ * How many members an admin may tick in one go.
+ *
+ * A cap and not a limit on the audience: ALL and EXCLUDE can still reach every
+ * member. It bounds the array that goes into `audienceUserIds` so a crafted
+ * request cannot write an unbounded column, and 5,000 is well past the size of
+ * a community anybody could tick by hand.
+ */
+const MAX_SELECTION = 5000;
+
+const AUDIENCE_MODES = {
+  ALL: 'Everyone in the audience',
+  INCLUDE: 'Only the members I select',
+  EXCLUDE: 'Everyone except the members I select',
+};
+
+/**
+ * Coerce a client-supplied recipient selection into something storable.
+ *
+ * Deny-by-default on the mode: anything unrecognised is ALL, which is the
+ * audience unchanged, because the one thing a malformed selection must never
+ * do is silently narrow who an announcement reached. An empty id list is
+ * likewise ALL — "exclude nobody" and "everyone" are the same send, and
+ * storing EXCLUDE with no ids would make the history claim a narrowing that
+ * did not happen.
+ */
+function normalizeSelection(input) {
+  const raw = input || {};
+  const mode = Object.prototype.hasOwnProperty.call(AUDIENCE_MODES, raw.mode) ? raw.mode : 'ALL';
+  if (mode === 'ALL') return { mode: 'ALL', userIds: [] };
+
+  const seen = new Set();
+  for (const value of Array.isArray(raw.userIds) ? raw.userIds : []) {
+    const id = typeof value === 'string' ? value.trim() : '';
+    if (id && id.length <= 64) seen.add(id);
+    if (seen.size >= MAX_SELECTION) break;
+  }
+  const userIds = [...seen];
+  if (userIds.length === 0) return { mode: 'ALL', userIds: [] };
+  return { mode, userIds };
+}
+
+/** Apply a normalised selection to a list of rows carrying `userId`. */
+function applySelection(rows, selection) {
+  const { mode, userIds } = normalizeSelection(selection);
+  if (mode === 'ALL') return rows;
+  const set = new Set(userIds);
+  return mode === 'INCLUDE'
+    ? rows.filter((row) => row.userId && set.has(row.userId))
+    : rows.filter((row) => !row.userId || !set.has(row.userId));
+}
+
+/**
+ * Every member in an audience, in the shape the recipient picker needs.
+ *
+ * Admin-facing only, and mounted behind `requireAdmin`: it carries email
+ * addresses, which `services/memberVisibility.js` exists to keep out of every
+ * member-facing payload. An admin already sees these on the members screen.
+ */
+async function audienceMembers(audience = DEFAULT_AUDIENCE) {
+  const spec = AUDIENCES[audience] || AUDIENCES[DEFAULT_AUDIENCE];
+  const users = await prisma.user.findMany({
+    where: spec.where,
+    select: { id: true, name: true, email: true, role: true, profilePhoto: true },
+    orderBy: [{ name: 'asc' }, { createdAt: 'asc' }],
+  });
+  return users
+    .filter((user) => (user.email || '').trim())
+    .map((user) => ({
+      id: user.id,
+      name: user.name || user.email,
+      email: user.email,
+      role: user.role,
+      profilePhoto: user.profilePhoto || null,
+    }));
+}
+
+/**
+ * The recipients for one audience, as outbox rows, after the admin's
+ * selection has been applied.
  *
  * Addresses are snapshotted here and never read from the User row again: the
  * history has to say where the mail actually went, and a member who changes
@@ -166,8 +244,11 @@ function launchSummary(project, now = new Date()) {
  * is not supposed to happen (`users.email` is unique) but a single member must
  * receive one copy whatever the data says, and the unique index on
  * (announcementId, email) would reject the second row anyway.
+ *
+ * `audienceSize` is the figure BEFORE the selection — the denominator the
+ * panel shows beside the recipient count.
  */
-async function resolveRecipients(audience = DEFAULT_AUDIENCE) {
+async function resolveAudience(audience = DEFAULT_AUDIENCE, selection = null) {
   const spec = AUDIENCES[audience] || AUDIENCES[DEFAULT_AUDIENCE];
   const users = await prisma.user.findMany({
     where: spec.where,
@@ -176,15 +257,22 @@ async function resolveRecipients(audience = DEFAULT_AUDIENCE) {
   });
 
   const seen = new Set();
-  const rows = [];
+  const all = [];
   for (const user of users) {
     const email = (user.email || '').trim();
     if (!email) continue;
     const key = email.toLowerCase();
     if (seen.has(key)) continue;
     seen.add(key);
-    rows.push({ userId: user.id, email, name: user.name || null });
+    all.push({ userId: user.id, email, name: user.name || null });
   }
+
+  return { rows: applySelection(all, selection), audienceSize: all.length };
+}
+
+/** The outbox rows alone. The shape every existing caller expects. */
+async function resolveRecipients(audience = DEFAULT_AUDIENCE, selection = null) {
+  const { rows } = await resolveAudience(audience, selection);
   return rows;
 }
 
@@ -226,6 +314,8 @@ async function createAnnouncement({
   detail = null,
   updateCategory = null,
   audience = DEFAULT_AUDIENCE,
+  /** `{ mode, userIds }` — which members of that audience are actually mailed. */
+  selection = null,
   admin,
   /** Applied to the project row inside the same transaction. */
   projectData = null,
@@ -237,9 +327,10 @@ async function createAnnouncement({
   });
   if (existing) return { announcement: existing, created: false };
 
-  const recipients = SENDING_TYPES.includes(type)
-    ? await resolveRecipients(audience)
-    : [];
+  const picked = normalizeSelection(selection);
+  const { rows: recipients, audienceSize } = SENDING_TYPES.includes(type)
+    ? await resolveAudience(audience, picked)
+    : { rows: [], audienceSize: 0 };
 
   try {
     const announcement = await prisma.$transaction(async (tx) => {
@@ -257,6 +348,9 @@ async function createAnnouncement({
           detail,
           updateCategory,
           audience,
+          audienceMode: picked.mode,
+          audienceUserIds: picked.userIds,
+          audienceSize,
           adminId: admin?.id || null,
           adminName: admin?.name || null,
           recipientCount: recipients.length,
@@ -342,11 +436,20 @@ async function publishCommunityAnnouncement(announcement, project) {
       data: { postId: post.id },
     });
 
+    // The in-portal notification goes to exactly the members the email went
+    // to. Notifying somebody the admin deliberately left off the send list
+    // would hand them the announcement by another door.
+    //
+    // The feed post above is NOT narrowed: who may see a project is decided by
+    // the project's status, not by who was told about it, and a post hidden
+    // from part of the community is not something this module can express. The
+    // composer says so where the selection is made.
     const audience = AUDIENCES[announcement.audience] || AUDIENCES[DEFAULT_AUDIENCE];
-    const members = await prisma.user.findMany({
-      where: audience.where,
-      select: { id: true },
-    });
+    const members = applySelection(
+      (await prisma.user.findMany({ where: audience.where, select: { id: true } }))
+        .map((row) => ({ userId: row.id })),
+      { mode: announcement.audienceMode, userIds: announcement.audienceUserIds || [] },
+    ).map((row) => ({ id: row.userId }));
 
     const link = projectLink(project.id);
     let notified = 0;
@@ -410,7 +513,13 @@ module.exports = {
   DEFAULT_AUDIENCE,
   UPDATE_CATEGORIES,
   SENDING_TYPES,
+  AUDIENCE_MODES,
+  MAX_SELECTION,
   isAudience,
+  normalizeSelection,
+  applySelection,
+  audienceMembers,
+  resolveAudience,
   promoEndFrom,
   projectUrl,
   projectLink,

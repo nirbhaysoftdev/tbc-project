@@ -156,6 +156,15 @@ enum ProjectAnnouncementType {
 // the mail server, never that a human received it. `SENT` means accepted, and
 // the UI says so in those words (§10 "report the most accurate status
 // available rather than claiming confirmed delivery").
+// How one announcement's audience was narrowed. ALL is the default and the
+// only value any announcement written before recipient selection existed can
+// have, which is exactly what it means.
+enum AnnouncementAudienceMode {
+  ALL
+  INCLUDE
+  EXCLUDE
+}
+
 enum AnnouncementEmailState {
   PENDING
   PROCESSING
@@ -252,6 +261,8 @@ model User {
   projectsLaunched          Project[]                      @relation("ProjectLauncher")
   projectAnnouncements      ProjectAnnouncement[]          @relation("AnnouncementAdmin")
   projectAnnouncementEmails ProjectAnnouncementRecipient[]
+  emailBroadcasts           EmailBroadcast[]               @relation("BroadcastAdmin")
+  emailBroadcastRecipients  EmailBroadcastRecipient[]
   companiesCreated          Company[]                      @relation("CompanyCreator")
   enquiries                 Enquiry[]                      @relation("MemberEnquiries")
   investments               Investment[]
@@ -276,6 +287,8 @@ model User {
 
   @@index([deletedAt])
   @@map("users")
+  analyticsSessions AnalyticsSession[] @relation("AnalyticsSessionUser")
+  analyticsEvents   AnalyticsEvent[]   @relation("AnalyticsEventUser")
 }
 
 // ─── PROFILE ──────────────────────────────────────────────────────────────────
@@ -807,6 +820,20 @@ model ProjectAnnouncement {
   // existing history ambiguous. See services/projectLaunch.js AUDIENCES.
   audience String @default("ALL_ACTIVE_MEMBERS")
 
+  // How the audience above was narrowed, per announcement.
+  //
+  // ALL is the audience as it stood; INCLUDE means only `audienceUserIds` were
+  // written to the outbox; EXCLUDE means the audience minus them. Stored
+  // rather than derived because the member list moves: "412 of 530" has to
+  // stay readable months later, when both figures would compute differently.
+  audienceMode    AnnouncementAudienceMode @default(ALL)
+  // The members the admin ticked. Ids, not addresses — the addresses that were
+  // actually mailed are snapshotted on the recipient rows, and an exclusion
+  // has no recipient row to carry it.
+  audienceUserIds String[]                 @default([])
+  // The size of the audience BEFORE the narrowing was applied.
+  audienceSize    Int                      @default(0)
+
   adminId   String?
   // Denormalised so a history line stays readable after the admin's account is
   // gone, exactly as ActivityLog does it.
@@ -879,6 +906,102 @@ model ProjectAnnouncementRecipient {
   @@unique([announcementId, email])
   @@index([status, runAfter])
   @@map("project_announcement_recipients")
+}
+
+// ─── EMAIL BROADCASTS ─────────────────────────────────────────────────────────
+// The admin-written broadcast email: a free-form message, a select/exclude
+// recipient choice, and a send. It is the same design as ProjectAnnouncement /
+// ProjectAnnouncementRecipient above, deliberately reused rather than
+// generalised into one shared model - a broadcast has no project, and bolting
+// an optional projectId onto the announcement tables would make every existing
+// query there handle a case that was never possible before. See
+// services/emailBroadcast.js and services/emailBroadcastWorker.js.
+enum BroadcastAudienceMode {
+  ALL
+  INCLUDE
+  EXCLUDE
+}
+
+enum BroadcastEmailState {
+  PENDING
+  PROCESSING
+  COMPLETED
+  PARTIAL
+  FAILED
+}
+
+enum BroadcastRecipientStatus {
+  QUEUED
+  SENDING
+  SENT
+  FAILED
+  DEAD
+}
+
+model EmailBroadcast {
+  id             String @id @default(uuid())
+  // Supplied by the composer and kept for the life of that compose, so a
+  // retried request is recognised rather than sent twice - same role as
+  // ProjectAnnouncement.idempotencyKey.
+  idempotencyKey String @unique
+
+  subject  String
+  heading  String
+  intro    String?
+  bodyText String
+  ctaLabel String?
+  ctaUrl   String?
+
+  // One audience today: ACTIVE, non-deleted users. Stored as a string, not
+  // hardcoded, for the same reason projectLaunch.js stores it - so a narrower
+  // audience added later does not make this history ambiguous.
+  audience        String                @default("ALL_ACTIVE_MEMBERS")
+  audienceMode    BroadcastAudienceMode @default(ALL)
+  audienceUserIds String[]              @default([])
+  audienceSize    Int                   @default(0)
+
+  adminId   String?
+  adminName String?
+
+  recipientCount Int                 @default(0)
+  emailState     BroadcastEmailState @default(PENDING)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  admin      User?                     @relation("BroadcastAdmin", fields: [adminId], references: [id], onDelete: SetNull)
+  recipients EmailBroadcastRecipient[]
+
+  @@index([createdAt])
+  @@map("email_broadcasts")
+}
+
+// One broadcast, one recipient, one row - same transactional-outbox shape as
+// ProjectAnnouncementRecipient, consumed by services/emailBroadcastWorker.js.
+model EmailBroadcastRecipient {
+  id          String  @id @default(uuid())
+  broadcastId String
+  userId      String?
+  // Snapshotted at send time, like ProjectAnnouncementRecipient.email.
+  email       String
+  name        String?
+
+  status      BroadcastRecipientStatus @default(QUEUED)
+  attempts    Int                      @default(0)
+  maxAttempts Int                      @default(5)
+  lastError   String?
+  runAfter    DateTime                 @default(now())
+  lockedAt    DateTime?
+  lockedBy    String?
+  sentAt      DateTime?
+  messageId   String?
+
+  broadcast EmailBroadcast @relation(fields: [broadcastId], references: [id], onDelete: Cascade)
+  user      User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@unique([broadcastId, email])
+  @@index([status, runAfter])
+  @@map("email_broadcast_recipients")
 }
 
 // ─── COMPANY PROFILES ─────────────────────────────────────────────────────────
@@ -1332,4 +1455,71 @@ model ApiKey {
 
   @@index([revokedAt])
   @@map("api_keys")
+}
+
+// ─── TRAFFIC ANALYTICS ────────────────────────────────────────────────────────
+
+// One browsing session: a visitor's tab from first page view until it goes
+// quiet. Anonymous and signed-in sessions share the table; `userId` is filled
+// the moment a valid session token accompanies a beat, which is how a guest
+// who then logs in becomes one row with both halves of their visit.
+// "Live" is derived (lastSeenAt within the heartbeat window), never stored.
+model AnalyticsSession {
+  id          String    @id
+  visitorId   String
+  userId      String?
+  ip          String?
+  country     String?
+  city        String?
+  device      String?
+  browser     String?
+  os          String?
+  source      String?
+  referrer    String?
+  landingPath String
+  currentPath String
+  pageViews   Int       @default(1)
+  loggedInAt  DateTime?
+  startedAt   DateTime  @default(now())
+  lastSeenAt  DateTime  @default(now())
+  endedAt     DateTime?
+
+  user   User?             @relation("AnalyticsSessionUser", fields: [userId], references: [id], onDelete: SetNull)
+  events AnalyticsEvent[]
+
+  @@index([lastSeenAt])
+  @@index([startedAt])
+  @@index([visitorId, startedAt])
+  @@index([userId, startedAt])
+  @@index([country])
+  @@map("analytics_sessions")
+}
+
+// Append-only history. `type` is a free string (PAGE_VIEW, LOGIN_SUCCESS,
+// LOGIN_FAILED, LOGOUT, REGISTER) so a new kind needs no migration. The
+// denormalised `email` keeps a failed login readable: there is no user row to
+// join for an address that does not exist.
+model AnalyticsEvent {
+  id        String   @id @default(uuid())
+  type      String
+  sessionId String?
+  visitorId String?
+  userId    String?
+  email     String?
+  path      String?
+  ip        String?
+  country   String?
+  city      String?
+  device    String?
+  browser   String?
+  createdAt DateTime @default(now())
+
+  session AnalyticsSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  user    User?             @relation("AnalyticsEventUser", fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([type, createdAt])
+  @@index([createdAt])
+  @@index([userId, createdAt])
+  @@index([sessionId])
+  @@map("analytics_events")
 }

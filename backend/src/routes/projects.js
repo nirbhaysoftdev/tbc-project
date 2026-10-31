@@ -72,6 +72,10 @@ router.post('/:id/milestones', requireAdmin, ctrl.addMilestone);
 // Declared after '/:id' because each one has its own suffix, so none of them
 // can be swallowed by the bare id route.
 router.get('/:id/announcements',  requireAdmin, lifecycleCtrl.getHistory);
+// The recipient picker's list: every member this project's announcement could
+// reach. Admin only - it carries names and email addresses, which no
+// member-facing payload is allowed to include.
+router.get('/:id/announcements/audience', requireAdmin, lifecycleCtrl.getAudience);
 // Launching is a one-time, irreversible, community-wide act: it has its own
 // endpoint rather than being a status change through PUT /:id, so an ordinary
 // edit can never trigger it (§4).

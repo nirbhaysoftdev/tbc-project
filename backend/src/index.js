@@ -14,7 +14,10 @@ const transactionRoutes = require('./routes/transactions');
 const adminRoutes       = require('./routes/admin');
 const adminEventsRoutes = require('./routes/adminEvents');
 const adminAnalyticsRoutes = require('./routes/adminAnalytics');
+const adminMonitoringRoutes = require('./routes/adminMonitoring');
+const trackRoutes        = require('./routes/track');
 const investmentRoutes  = require('./routes/investments');
+const emailBroadcastRoutes = require('./routes/emailBroadcasts');
 const superAdminRoutes  = require('./routes/superAdmin');
 const profileRoutes     = require('./routes/profile');
 const withdrawRoutes    = require('./routes/withdraw');
@@ -107,6 +110,9 @@ const authLimiter = rateLimit({
 // ── Routes ────────────────────────────────────
 app.use('/api/auth',         authLimiter, authRoutes);
 app.use('/api/i18n',         i18nRoutes);
+// Public, by design: page beats from visitors who are not signed in. Mounted
+// before the auth limiter - it has its own.
+app.use('/api/track',        trackRoutes);
 app.use('/api/files',        filesRoutes);
 app.use('/api/dashboard',    dashboardRoutes);
 app.use('/api/transactions', transactionRoutes);
@@ -120,8 +126,12 @@ app.use('/api/admin',        adminEventsRoutes);
 // The Overview's figures. Its own router for the same reason - and above
 // adminRoutes purely to keep the three /api/admin mounts together.
 app.use('/api/admin',        adminAnalyticsRoutes);
+// Analytics & Monitoring (/api/admin/monitoring/*). Above adminRoutes for the
+// same reason as the two mounts above it; read-only, enforced in the router.
+app.use('/api/admin',        adminMonitoringRoutes);
 app.use('/api/admin',        adminRoutes);
 app.use('/api/admin',        investmentRoutes);
+app.use('/api/admin',        emailBroadcastRoutes);
 app.use('/api/super-admin',  superAdminRoutes);
 app.use('/api/profile',      profileRoutes);
 app.use('/api/withdraw',     withdrawRoutes);
@@ -153,6 +163,8 @@ app.use((err, req, res, next) => {
 const prisma = require('./utils/prismaClient');
 const translationWorker = require('./services/i18n/worker');
 const announcementWorker = require('./services/announcementWorker');
+const emailBroadcastWorker = require('./services/emailBroadcastWorker');
+const trafficTracker = require('./services/trafficTracker');
 
 app.listen(PORT, async () => {
   console.log(`\n🚀 TBC API running on http://localhost:${PORT}`);
@@ -181,6 +193,19 @@ app.listen(PORT, async () => {
     } catch (err) {
       console.error(`   ✗  announcement worker not started - ${err.message}`);
     }
+
+    // The email broadcast sender, on the same terms: its queue is a table,
+    // so a failure to start it delays broadcast emails but loses none of
+    // them, and the API - including sending a new broadcast - works without
+    // it.
+    try {
+      emailBroadcastWorker.start();
+    } catch (err) {
+      console.error(`   ✗  email broadcast worker not started - ${err.message}`);
+    }
+
+    // Deletes analytics rows past ANALYTICS_RETENTION_DAYS, once a day.
+    trafficTracker.startRetention();
   } catch (err) {
     console.error(`   ✗  PostgreSQL NOT connected - ${err.message}`);
     console.error(`   Check DATABASE_URL in .env and ensure PostgreSQL is running.\n`);

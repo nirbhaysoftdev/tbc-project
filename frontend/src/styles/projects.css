@@ -1478,3 +1478,147 @@
   .pj-btn-primary:hover,
   .pj-btn-gold:hover { transform: none; }
 }
+
+/* ── The recipient picker (RecipientSelector) ──
+ *
+ * Shared by the launch confirmation and the major-update composer, so it is
+ * styled once here rather than twice in the two dialogs it appears in.
+ */
+.pj-confirm-wide { width: min(680px, 95vw); max-height: 92vh; overflow-y: auto; }
+
+.pj-recipients { gap: 10px; }
+
+.pj-mode-group { display: flex; flex-direction: column; gap: 6px; }
+
+.pj-mode {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 11px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.pj-mode:hover { border-color: rgba(255, 255, 255, 0.18); }
+
+/* The chosen mode is marked by border and weight as well as colour: which
+ * members get mailed must not rest on a hue alone. */
+.pj-mode-on {
+  border-color: var(--accent-gold, #c9a227);
+  color: var(--text-primary);
+  font-weight: 600;
+  background: rgba(201, 162, 39, 0.07);
+}
+
+.pj-mode input { accent-color: var(--accent-gold, #c9a227); flex: none; }
+
+.pj-picker {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pj-picker-head { display: flex; gap: 8px; align-items: center; }
+
+.pj-picker-search { flex: 1; min-width: 0; }
+
+/* Capped and scrolled: a community of several hundred must not push the
+ * Confirm button off the dialog. */
+.pj-picker-list {
+  max-height: 260px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.pj-picker-row {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) minmax(0, 1.2fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 4px;
+  font-size: 12px;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.pj-picker-row:last-child { border-bottom: 0; }
+
+.pj-picker-row:hover { background: rgba(255, 255, 255, 0.03); }
+
+.pj-picker-on { background: rgba(201, 162, 39, 0.06); }
+
+.pj-picker-row input { accent-color: var(--accent-gold, #c9a227); }
+
+.pj-picker-name {
+  color: var(--text-primary);
+  font-weight: 550;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pj-picker-role {
+  margin-inline-start: 6px;
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.pj-picker-email {
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Says what the tick MEANS in the current mode, because the same checkbox
+ * includes in one mode and excludes in the other. */
+.pj-picker-state {
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.pj-picker-on .pj-picker-state { color: var(--text-secondary); }
+
+.pj-picker-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+.pj-btn-link {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: var(--accent-gold, #c9a227);
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.pj-btn-link:disabled { opacity: 0.5; cursor: default; }
+
+@media (max-width: 560px) {
+  /* The email column is the first thing to go: the name and what the tick
+   * does are what the admin is reading. */
+  .pj-picker-row { grid-template-columns: 18px minmax(0, 1fr) auto; }
+  .pj-picker-email { display: none; }
+}

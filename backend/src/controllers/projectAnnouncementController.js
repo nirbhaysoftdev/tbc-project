@@ -60,9 +60,37 @@ const findProject = (id) => prisma.project.findUnique({
   include: { launchedBy: { select: memberCardSelect() } },
 });
 
+/**
+ * The selection an admin asked for, as the service wants it, plus the reason
+ * to refuse it.
+ *
+ * Validated here rather than in the service because this is where a 400
+ * belongs. The service's own normalisation is the backstop: an unrecognised
+ * mode there becomes ALL, so a request that slipped past this can only ever
+ * widen to the full audience, never narrow silently.
+ */
+const recipientSelection = (body) => {
+  const picked = launch.normalizeSelection({
+    mode: body?.audienceMode,
+    userIds: body?.recipientIds,
+  });
+
+  // INCLUDE with nothing ticked normalises to ALL, which is the opposite of
+  // what the admin asked for, so it is answered rather than sent.
+  if (body?.audienceMode === 'INCLUDE' && picked.mode === 'ALL') {
+    return { error: 'Select at least one member to send this announcement to.' };
+  }
+  if (Array.isArray(body?.recipientIds) && body.recipientIds.length > launch.MAX_SELECTION) {
+    return { error: `No more than ${launch.MAX_SELECTION} members can be selected at once.` };
+  }
+  return { selection: picked };
+};
+
 /** The audience choices and defaults the composer needs to render itself. */
 const composerOptions = (project) => ({
   audiences: Object.entries(launch.AUDIENCES).map(([value, spec]) => ({ value, label: spec.label })),
+  audienceModes: Object.entries(launch.AUDIENCE_MODES).map(([value, label]) => ({ value, label })),
+  maxSelection: launch.MAX_SELECTION,
   updateCategories: Object.entries(launch.UPDATE_CATEGORIES).map(([value, label]) => ({ value, label })),
   defaults: {
     launchTitle: 'New Project Launched!',
@@ -118,6 +146,12 @@ const launchProject = async (req, res) => {
     const title = text(req.body?.title, LIMITS.title) || 'New Project Launched!';
     const message = text(req.body?.message, LIMITS.message) || launch.defaultLaunchMessage(project);
 
+    // Who hears about it. The launch itself is not conditional on this — a
+    // project with every member excluded still launches, it just mails nobody,
+    // and the response says how many it reached.
+    const picked = recipientSelection(req.body);
+    if (picked.error) return res.status(400).json({ error: picked.error });
+
     const { announcement, created } = await launch.createAnnouncement({
       project,
       type: 'INITIAL_LAUNCH',
@@ -129,6 +163,7 @@ const launchProject = async (req, res) => {
       title,
       message,
       audience: launch.isAudience(req.body?.audience) ? req.body.audience : launch.DEFAULT_AUDIENCE,
+      selection: picked.selection,
       admin: req.user,
       projectData: {
         launchedAt: now,
@@ -237,6 +272,9 @@ const majorUpdate = async (req, res) => {
       return res.status(400).json({ error: 'Unknown update category.' });
     }
 
+    const picked = recipientSelection(req.body);
+    if (picked.error) return res.status(400).json({ error: picked.error });
+
     const { announcement, created } = await launch.createAnnouncement({
       project,
       type: 'MAJOR_UPDATE',
@@ -246,6 +284,7 @@ const majorUpdate = async (req, res) => {
       detail,
       updateCategory: categoryKey ? launch.UPDATE_CATEGORIES[categoryKey] : null,
       audience: launch.isAudience(req.body?.audience) ? req.body.audience : launch.DEFAULT_AUDIENCE,
+      selection: picked.selection,
       admin: req.user,
     });
 
@@ -435,6 +474,49 @@ const classifyLaunch = async (req, res) => {
   }
 };
 
+// ── The recipient picker (admin only) ─────────
+/**
+ * GET /projects/:id/announcements/audience
+ *
+ * Every member an announcement for this project could reach, so the admin can
+ * tick or untick them before launching or announcing an update.
+ *
+ * ADMIN ONLY, and that is not incidental: this is a list of member names and
+ * email addresses, which `services/memberVisibility.js` exists to keep out of
+ * every member-facing payload. It is behind the same `requireAdmin` gate as
+ * the rest of this controller and is never embedded in a project response.
+ *
+ * The list is live. A member approved between opening the picker and sending
+ * is in the audience, so an EXCLUDE send reaches them and an INCLUDE send does
+ * not — which is the right way round: a selection says who was deliberately
+ * left off, and somebody who did not exist yet was not.
+ */
+const getAudience = async (req, res) => {
+  try {
+    const project = await prisma.project.findUnique({
+      where: { id: req.params.id },
+      select: { id: true },
+    });
+    if (!project) return res.status(404).json({ error: 'Project not found' });
+
+    const audience = launch.isAudience(req.query?.audience)
+      ? req.query.audience
+      : launch.DEFAULT_AUDIENCE;
+
+    const members = await launch.audienceMembers(audience);
+    res.json({
+      audience,
+      label: launch.AUDIENCES[audience].label,
+      total: members.length,
+      maxSelection: launch.MAX_SELECTION,
+      members,
+    });
+  } catch (err) {
+    console.error('getAudience error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
 // ── History (§9) ──────────────────────────────
 /**
  * GET /projects/:id/announcements
@@ -503,6 +585,19 @@ const getHistory = async (req, res) => {
         ...a,
         admin: a.admin || null,
         adminName: a.admin?.name || a.adminName,
+        // What the admin chose, as counts. The ids are on the row and an admin
+        // could fetch the names, but the history's job is to say how wide the
+        // send was, which is a number.
+        audienceSelection: {
+          mode: a.audienceMode,
+          audienceSize: a.audienceSize,
+          selectedCount: (a.audienceUserIds || []).length,
+          label: a.audienceMode === 'ALL'
+            ? null
+            : (a.audienceMode === 'INCLUDE'
+              ? `Only ${(a.audienceUserIds || []).length} selected member(s)`
+              : `${(a.audienceUserIds || []).length} member(s) excluded`),
+        },
         email: {
           state: a.emailState,
           recipients: a._count.recipients,
@@ -570,6 +665,7 @@ const retryAnnouncement = async (req, res) => {
 
 module.exports = {
   launchProject,
+  getAudience,
   majorUpdate,
   restartPromo,
   classifyLaunch,

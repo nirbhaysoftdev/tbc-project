@@ -10,6 +10,7 @@
     "settings": "Impostazioni",
     "adminPanel": "Pannello admin",
     "activityLogs": "Registro attività",
+    "adminAnalytics": "Analisi e monitoraggio",
     "withdrawalRequests": "Prelievi",
     "myProfile": "Il mio profilo",
     "walletShort": "Portafoglio (SalBank)",
@@ -18,6 +19,7 @@
     "adminApprovals": "Approvazioni",
     "adminRequests": "Richieste di investimento",
     "adminEnquiries": "Richieste",
+    "adminBroadcasts": "Comunicazioni email",
     "superAdmin": "Super Admin"
   },
   "community": {

@@ -198,6 +198,45 @@ function detailRow(label, value) {
     </tr>`;
 }
 
+// ── Free-form broadcast email (admin-written) ──
+// Lets an admin send anything in the house style with no code change - the
+// admin panel's "Email Communication" composer is the only caller. Body
+// paragraphs are split on blank lines so the sender can write plain text.
+function customEmailHtml({ name, heading, intro, bodyText, ctaLabel, ctaUrl }) {
+  const paragraphs = String(bodyText || '')
+    .split(/\n\s*\n/)
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .map((p) => `<div style="font-size:14px;line-height:1.6;color:#aab0c0;padding-top:12px;">${p.replace(/\n/g, '<br/>')}</div>`)
+    .join('');
+
+  const greeting = `
+    <div style="font-size:14px;line-height:1.6;color:#aab0c0;">
+      Hi ${name || 'there'},
+    </div>`;
+
+  const cta = ctaUrl
+    ? `<div style="text-align:center;padding-top:22px;">${goldButton(ctaUrl, ctaLabel || 'Open')}</div>`
+    : '';
+
+  return shell({
+    title: heading || 'A message from TBC',
+    intro: intro || 'A message from the Trillion Business Community team.',
+    bodyHtml: `${greeting}${paragraphs}${cta}`,
+    footerNote: `Sent by ${COMPANY.legalName}.`,
+  });
+}
+
+/** One recipient of a broadcast. The worker calls this once per row. */
+async function sendCustomBroadcastEmail({ to, name, subject, heading, intro, bodyText, ctaLabel, ctaUrl }) {
+  return sendMail({
+    to,
+    subject,
+    html: customEmailHtml({ name, heading, intro, bodyText, ctaLabel, ctaUrl }),
+    text: `Hi ${name || 'there'},\n\n${bodyText}${ctaUrl ? `\n\n${ctaLabel || 'Open'}: ${ctaUrl}` : ''}`,
+  });
+}
+
 // ── OTP (existing) ─────────────────────────────
 function otpEmailHtml({ code, expiresMinutes }) {
   const body = `
@@ -1346,6 +1385,8 @@ async function sendProjectAnnouncementEmail({
 
 module.exports = {
   sendMail,
+  customEmailHtml,
+  sendCustomBroadcastEmail,
   sendProjectAnnouncementEmail,
   sendEnquiryEmail,
   sendEnquiryRecipientChangedEmails,

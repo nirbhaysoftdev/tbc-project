@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { readToken, writeToken, clearToken } from './tokenStore';
 import { authAPI, profileAPI } from './api';
+import { resetSession } from './tracker';
 import { useI18n } from '@/i18n/I18nProvider';
 import type { LanguageCode } from '@/i18n/languages';
 
@@ -163,7 +164,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     else await refresh();
   };
 
-  const logout = () => {
+  const logout = async () => {
+    // Tell the server so the sign-out is on the record, but never let a slow
+    // or failed call hold the member on a page they asked to leave.
+    await Promise.race([
+      authAPI.logout().catch(() => {}),
+      new Promise((resolve) => setTimeout(resolve, 800)),
+    ]);
+    resetSession();
     clearStoredToken();
     setUser(null);
     setHasToken(false);

@@ -7,6 +7,7 @@ const prisma = require('../utils/prismaClient');
 const { logActivity } = require('../services/activityLog');
 const walletService = require('../services/walletService');
 const otpService = require('../services/otpService');
+const traffic = require('../services/trafficTracker');
 const {
   sendWelcomePendingEmail,
   sendAdminNewSignupNotification,
@@ -159,6 +160,8 @@ const register = async (req, res) => {
     sendAdminNewSignupNotification({ ...user, signupMethod: 'email' })
       .catch((e) => console.error('admin notify failed:', e.message));
 
+    traffic.recordAuth(req, { type: 'REGISTER', userId: user.id, email: user.email });
+
     // No token is issued here - pending members cannot log in until an admin approves them.
     res.status(201).json({
       user,
@@ -301,6 +304,7 @@ const googleAuth = async (req, res) => {
     if (user.status === 'REJECTED') return res.status(403).json({ error: 'Your membership application was not approved.' });
 
     const token = signToken(user);
+    traffic.recordAuth(req, { type: 'LOGIN_SUCCESS', userId: user.id, email: user.email });
     res.json({
       token,
       user: { ...safeUser(user), wallet: await derivedWallet(user.id, user.wallet) },
@@ -339,17 +343,23 @@ const login = async (req, res) => {
 
     // A soft-deleted account is indistinguishable from one that never existed:
     // the same generic error, so nothing here reveals that the row survives.
+    const failed = (uid = null) => traffic.recordAuth(req, { type: 'LOGIN_FAILED', userId: uid, email });
+
     if (!user || !user.passwordHash || user.deletedAt) {
+      failed();
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
     if (user.status === 'FROZEN') {
+      failed(user.id);
       return res.status(403).json({ error: 'Your account has been frozen. Contact support.' });
     }
     if (user.status === 'REJECTED') {
+      failed(user.id);
       return res.status(403).json({ error: 'Your membership application was not approved. Contact support.' });
     }
     if (user.status === 'PENDING') {
+      failed(user.id);
       return res.status(403).json({
         error: 'Your account is pending admin approval. You will receive an email once approved.',
         status: 'PENDING',
@@ -358,10 +368,12 @@ const login = async (req, res) => {
 
     const valid = await bcrypt.compare(password, user.passwordHash);
     if (!valid) {
+      failed(user.id);
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
     const token = signToken(user);
+    traffic.recordAuth(req, { type: 'LOGIN_SUCCESS', userId: user.id, email: user.email });
 
     if (user.status === 'ACTIVE') {
       const kpiService = require('../services/kpiService');
@@ -391,7 +403,8 @@ const login = async (req, res) => {
 };
 
 // ── Logout ──────────────────────────────────────
-const logout = async (_req, res) => {
+const logout = async (req, res) => {
+  traffic.recordAuth(req, { type: 'LOGOUT', userId: req.user?.id || null, email: req.user?.email });
   res.json({ message: 'Logged out successfully' });
 };
 

@@ -1,6 +1,7 @@
 // src/lib/api.ts
 import axios from 'axios';
 import { readToken } from '@/lib/tokenStore';
+import { analyticsHeaders } from '@/lib/tracker';
 import i18n from '@/i18n';
 import { DEFAULT_LANGUAGE, normalizeLanguage } from '@/i18n/languages';
 import { formatCurrency } from '@/i18n/format';
@@ -22,6 +23,9 @@ api.interceptors.request.use((config) => {
 
   const lang = normalizeLanguage(i18n.language) || DEFAULT_LANGUAGE;
   config.headers['Accept-Language'] = lang;
+
+  // Ties a login to the visit it happened in. Empty when the browser opted out.
+  Object.entries(analyticsHeaders()).forEach(([k, v]) => { config.headers[k] = v; });
 
   return config;
 });
@@ -394,6 +398,23 @@ export const downloadBlob = (blob: Blob, filename: string) => {
   window.URL.revokeObjectURL(url);
 };
 
+// ── Analytics & Monitoring (read-only) ────────
+export const monitoringAPI = {
+  overview: (params?: Record<string, string>) => api.get('/admin/monitoring/overview', { params }),
+  live:     (params?: Record<string, string>) => api.get('/admin/monitoring/live', { params }),
+  sessions: (params?: Record<string, string>) => api.get('/admin/monitoring/sessions', { params }),
+  landing:  (params?: Record<string, string>) => api.get('/admin/monitoring/landing', { params }),
+  geo:      (params?: Record<string, string>) => api.get('/admin/monitoring/geo', { params }),
+  auth:     (params?: Record<string, string>) => api.get('/admin/monitoring/auth', { params }),
+  traffic:  (params?: Record<string, string>) => api.get('/admin/monitoring/traffic', { params }),
+  options:  () => api.get('/admin/monitoring/options'),
+  users:    (q: string) => api.get('/admin/monitoring/users', { params: { q } }),
+  user:     (id: string, params?: Record<string, string>) => api.get(`/admin/monitoring/users/${id}`, { params }),
+  exportCsv: (params: Record<string, string>) => api.get('/admin/monitoring/export', { params, responseType: 'blob' }),
+  /** Absolute URL of the live stream, for the fetch-based reader in useLiveStream. */
+  streamUrl: (params: Record<string, string>) => `${API_URL}/admin/monitoring/live/stream?${new URLSearchParams(params).toString()}`,
+};
+
 // ── Withdraw ──────────────────────────────────
 export const withdrawAPI = {
   create:        (data: any)  => api.post('/withdraw', data),
@@ -473,6 +494,12 @@ export const projectsAPI = {
   // everything the composer needs to render itself, in one call.
   getLifecycle:     (id: string)              => api.get(`/projects/${id}/announcements`),
   launch:           (id: string, data: object = {}) => api.post(`/projects/${id}/launch`, data),
+  // Every member an announcement for this project could reach, for the
+  // recipient picker. Admin only - it carries names and email addresses, which
+  // no member-facing payload is allowed to include - and fetched only when the
+  // admin actually narrows the send.
+  getAnnouncementAudience: (id: string, audience?: string) =>
+    api.get(`/projects/${id}/announcements/audience`, { params: audience ? { audience } : {} }),
   // Records "launched before we tracked launches" for a project that predates
   // the module. Sends nothing and invents no date.
   classifyLaunch:   (id: string)              =>
@@ -500,6 +527,28 @@ export const projectsAPI = {
   uploadMedia:      (id: string, data: FormData) =>
     api.post(`/projects/${id}/media`, data, { headers: { 'Content-Type': 'multipart/form-data' } }),
   removeMedia:      (id: string, docId: string) => api.delete(`/projects/${id}/media/${docId}`),
+};
+
+// ── Email Communication (admin broadcast) ──────
+// A hand-written email, sent to a chosen set of active members. Same
+// select/exclude recipient contract as the project announcement lifecycle
+// above, generalised to no project. See services/emailBroadcast.js.
+export const broadcastsAPI = {
+  // Every active member the picker can offer. Admin only - carries names and
+  // email addresses - and fetched only once the admin narrows the send.
+  getAudience: () => api.get('/admin/broadcasts/audience'),
+  // Renders the email without sending or writing anything, for the
+  // composer's live preview pane.
+  preview: (data: object) => api.post('/admin/broadcasts/preview', data),
+  // `sessionId` is generated once per composer session and resent unchanged
+  // on a retry, so a failed request can be tried again without mailing
+  // twice. A new composer session is a new id.
+  create: (data: object) => api.post('/admin/broadcasts', data),
+  list: (params?: Record<string, string>) => api.get('/admin/broadcasts', { params }),
+  get: (id: string) => api.get(`/admin/broadcasts/${id}`),
+  // Re-queues only the recipients that failed. Addresses already accepted by
+  // the mail server are not eligible, so nobody gets a second copy.
+  retry: (id: string) => api.post(`/admin/broadcasts/${id}/retry`, {}),
 };
 
 // ── Companies ───────────────────────────────────

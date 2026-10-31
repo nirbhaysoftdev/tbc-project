@@ -186,6 +186,155 @@ test('an incomplete project cannot be launched', async () => {
   assert.equal((await h.announcementsFor(project.id)).length, 0);
 });
 
+// ─── Recipient selection ─────────────────────────────────────────────────────
+//
+// Who an announcement goes to is chosen per send: everybody, everybody except
+// some members, or only some members. The tests below are the ones that matter
+// — that an exclusion really is an exclusion in BOTH channels (no email and no
+// in-portal notification), that an inclusion reaches nobody else, and that a
+// malformed selection widens to the whole audience rather than narrowing it
+// silently.
+
+test('the audience list is admin-only and holds exactly the members who could be mailed', async () => {
+  const project = await h.makeProject({ ownerId: admin.id });
+
+  assert.equal((await h.call('GET', `/api/projects/${project.id}/announcements/audience`,
+    { user: member })).status, 403);
+  assert.equal((await h.call('GET', `/api/projects/${project.id}/announcements/audience`)).status, 401);
+
+  const res = await h.call('GET', `/api/projects/${project.id}/announcements/audience`, { user: admin });
+  assert.equal(res.status, 200);
+  const ids = res.body.members.map((m) => m.id);
+  assert.ok(ids.includes(member.id) && ids.includes(member2.id) && ids.includes(admin.id));
+  assert.ok(!ids.includes(pending.id), 'a PENDING applicant is not offered as a recipient');
+  assert.ok(!ids.includes(frozen.id), 'a FROZEN account is not offered as a recipient');
+  assert.equal(res.body.total, await expectedRecipients());
+});
+
+test('launching with members excluded mails and notifies everyone else, and only them', async () => {
+  const project = await h.makeProject({ ownerId: admin.id });
+
+  const res = await h.call('POST', `/api/projects/${project.id}/launch`, {
+    user: admin,
+    body: { audienceMode: 'EXCLUDE', recipientIds: [member.id] },
+  });
+  assert.equal(res.status, 201);
+
+  const [announcement] = await h.announcementsFor(project.id);
+  assert.equal(announcement.audienceMode, 'EXCLUDE');
+  assert.deepEqual(announcement.audienceUserIds, [member.id]);
+  // The denominator is kept, so the history can say "n of m" later.
+  assert.equal(announcement.audienceSize, await expectedRecipients());
+  assert.equal(announcement.recipientCount, announcement.audienceSize - 1);
+
+  const addresses = announcement.recipients.map((r) => r.email);
+  assert.ok(!addresses.includes(member.email), 'the excluded member has no outbox row at all');
+  assert.ok(addresses.includes(member2.email));
+
+  // The exclusion holds in the other channel too: handing them the
+  // announcement as an in-portal notification would be the same message by
+  // another door.
+  const excluded = await h.prisma.notification.findFirst({
+    where: { userId: member.id, data: { path: ['projectId'], equals: project.id } },
+  });
+  assert.equal(excluded, null, 'the excluded member was not notified in-portal either');
+  assert.ok(await h.prisma.notification.findFirst({
+    where: { userId: member2.id, data: { path: ['projectId'], equals: project.id } },
+  }), 'every other member still was');
+
+  // The project launched regardless - narrowing the recipients is not a
+  // condition of the launch.
+  assert.equal((await h.getProject(project.id)).launchState, 'LAUNCHED');
+  // And the feed post is published either way: who may see a project is its
+  // status, not who was told about it.
+  assert.ok(announcement.postId);
+});
+
+test('announcing to only selected members reaches nobody else', async () => {
+  const project = await h.makeProject({ ownerId: admin.id });
+  await h.call('POST', `/api/projects/${project.id}/launch`, {
+    user: admin,
+    // Launch quietly, so the assertions below are about the update alone.
+    body: { audienceMode: 'INCLUDE', recipientIds: [admin.id] },
+  });
+
+  const res = await h.call('POST', `/api/projects/${project.id}/announcements/major-update`, {
+    user: admin,
+    body: {
+      title: 'Phase two approved',
+      message: 'The second phase has been approved.',
+      audienceMode: 'INCLUDE',
+      recipientIds: [member2.id, pending.id],
+    },
+  });
+  assert.equal(res.status, 201);
+
+  const update = (await h.announcementsFor(project.id)).find((a) => a.type === 'MAJOR_UPDATE');
+  assert.equal(update.audienceMode, 'INCLUDE');
+  const addresses = update.recipients.map((r) => r.email);
+  // A PENDING id was asked for and is simply not in the audience: the
+  // selection narrows an audience, it cannot widen one.
+  assert.deepEqual(addresses, [member2.email]);
+  assert.equal(update.recipientCount, 1);
+  assert.ok(!addresses.includes(member.email));
+
+  const notNotified = await h.prisma.notification.findFirst({
+    where: {
+      userId: member.id,
+      type: 'PROJECT_UPDATE',
+      data: { path: ['announcementId'], equals: update.id },
+    },
+  });
+  assert.equal(notNotified, null, 'an unselected member is not notified about the update');
+});
+
+test('"only these members" with nobody selected is refused, not sent to everyone', async () => {
+  const project = await h.makeProject({ ownerId: admin.id });
+
+  const res = await h.call('POST', `/api/projects/${project.id}/launch`, {
+    user: admin,
+    body: { audienceMode: 'INCLUDE', recipientIds: [] },
+  });
+  assert.equal(res.status, 400);
+  assert.match(res.body.error, /at least one member/i);
+
+  // Refused means nothing happened - not launched, and no announcement that
+  // would have mailed the whole community.
+  assert.equal((await h.getProject(project.id)).launchState, 'NEVER_LAUNCHED');
+  assert.equal((await h.announcementsFor(project.id)).length, 0);
+});
+
+test('an unrecognised selection widens to the whole audience rather than narrowing it', async () => {
+  const project = await h.makeProject({ ownerId: admin.id });
+
+  const res = await h.call('POST', `/api/projects/${project.id}/launch`, {
+    user: admin,
+    body: { audienceMode: 'ONLY_MY_FRIENDS', recipientIds: [member.id, member2.id] },
+  });
+  assert.equal(res.status, 201);
+
+  const [announcement] = await h.announcementsFor(project.id);
+  assert.equal(announcement.audienceMode, 'ALL');
+  assert.deepEqual(announcement.audienceUserIds, []);
+  assert.equal(announcement.recipientCount, await expectedRecipients());
+});
+
+test('an announcement sent with no selection records ALL, which is what it was', async () => {
+  const project = await h.makeProject({ ownerId: admin.id });
+  await h.call('POST', `/api/projects/${project.id}/launch`, { user: admin });
+
+  const [announcement] = await h.announcementsFor(project.id);
+  assert.equal(announcement.audienceMode, 'ALL');
+  assert.equal(announcement.audienceSize, announcement.recipientCount);
+
+  // The history reports it as un-narrowed rather than as a selection of
+  // everybody, so the panel has nothing to draw attention to.
+  const history = await h.call('GET', `/api/projects/${project.id}/announcements`, { user: admin });
+  const row = history.body.announcements.find((a) => a.id === announcement.id);
+  assert.equal(row.audienceSelection.mode, 'ALL');
+  assert.equal(row.audienceSelection.label, null);
+});
+
 // ─── Existing projects (§14 "Existing projects") ─────────────────────────────
 
 test('projects that already existed are classified, not launched or announced', async () => {

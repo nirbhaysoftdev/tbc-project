@@ -4,6 +4,7 @@ import './globals.css';
 import { I18nProvider } from '@/i18n/I18nProvider';
 import { AuthProvider } from '@/lib/auth';
 import ServiceWorkerRegistrar from '@/components/pwa/ServiceWorkerRegistrar';
+import TrafficTracker from '@/components/analytics/TrafficTracker';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://trillionbc.com';
 const SITE_NAME = 'Trillion Business Community';
@@ -158,6 +159,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Registers the service worker and arms the install listener. Renders
             nothing; see components/pwa/ServiceWorkerRegistrar.tsx. */}
         <ServiceWorkerRegistrar />
+        {/* Page beats for the admin Analytics & Monitoring module. Renders
+            nothing, honours Do-Not-Track; see lib/tracker.ts. */}
+        <TrafficTracker />
       </body>
     </html>
   );

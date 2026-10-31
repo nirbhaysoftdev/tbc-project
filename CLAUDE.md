@@ -319,6 +319,42 @@ project that is already live.
 **The badge has no scheduled job.** It is derived from `newlyLaunchedUntil` on
 every read, so it expires on its own and a server clock is the only authority.
 
+### Choosing who an announcement reaches
+
+Launch and major update both take a recipient selection, chosen in the UI by
+`components/projects/RecipientSelector.tsx` (one component, used by the launch
+confirmation and the composer) and stored on the announcement as
+`audienceMode` + `audienceUserIds` + `audienceSize`.
+
+| Mode | Sends to |
+|---|---|
+| `ALL` (default) | the audience, unchanged |
+| `EXCLUDE` | the audience minus the selected members |
+| `INCLUDE` | only the selected members |
+
+- **`EXCLUDE` and `INCLUDE` are not the same send inverted.** The audience is
+  live, so a member approved between opening the picker and sending is reached
+  by an `EXCLUDE` send and not by an `INCLUDE` one. That is why the mode is
+  stored rather than resolved to a list of ids at send time.
+- **The selection narrows both channels.** Emails *and* the in-portal
+  notifications follow it — notifying somebody deliberately left off the send
+  list would hand them the announcement by another door. What it does **not**
+  narrow is the community feed post: who may see a project is its `status`, not
+  who was told about it, and the picker says so.
+- **A malformed selection widens, never narrows.** `normalizeSelection()` in
+  `services/projectLaunch.js` answers anything unrecognised — and `EXCLUDE`
+  with no ids — with `ALL`. `INCLUDE` with nothing selected is a 400 from the
+  controller instead, because normalising it to `ALL` would mail everyone when
+  the admin asked for almost nobody.
+- `GET /projects/:id/announcements/audience` is the picker's list and is
+  **admin only**: it carries member names and email addresses, which
+  `services/memberVisibility.js` exists to keep out of member-facing payloads.
+  It is fetched only once a narrowing mode is chosen.
+- Announcements written before this existed are `ALL`, which is what they were.
+  Migration `20261027200000_announcement_recipient_selection` backfills
+  `audienceSize` from `recipientCount` — with no narrowing possible, the send
+  list *was* the audience.
+
 ### Announcement emails: a second table-as-queue
 
 `services/announcementWorker.js` is a deliberate second copy of the pattern
@@ -854,3 +890,57 @@ cd frontend && python3 scripts/pwa-icons.py      # needs Pillow
 The launch images are listed by device in `layout.tsx` with their exact media
 queries. iOS matches on size alone and shows a blank screen when nothing
 matches, so a new device size means a new entry in **both** places.
+
+## Analytics & Monitoring
+
+**Admin → Analytics & Monitoring** (`/admin/analytics`, seven sections as hash
+tabs plus Reports) shows who is on the portal now and what they did: live
+visitors and signed-in users, landing-page traffic, geography, logins and
+registrations, per-member history, traffic sources, and CSV exports.
+
+| Piece | File |
+|---|---|
+| Browser tracker (beats, visit id) | `frontend/src/lib/tracker.ts`, mounted by `components/analytics/TrafficTracker.tsx` in the root layout |
+| Public ingest `POST /api/track` | `routes/track.js` → `services/trafficTracker.js` |
+| Read API `GET /api/admin/monitoring/*` | `routes/adminMonitoring.js` → `controllers/trafficMonitorController.js` → `services/trafficAnalytics.js` |
+| Tables | `analytics_sessions` (one row per visit) and `analytics_events` (append-only) |
+
+- **Read-only is enforced, not assumed.** The router answers every non-GET with
+  405 before any handler. ADMIN and SUPER_ADMIN only; impersonated sessions
+  are refused by `requireAdmin`; no API key reaches it.
+- **ADMIN sees masked IPs** (`203.0.113.x`), SUPER_ADMIN sees them whole - the
+  same in the tables and in exports. An ADMIN may only *filter* on the first
+  three parts of an address, otherwise the filter would reveal the hidden octet.
+- **Privacy.** Do-Not-Track / Global Privacy Control mean nothing is recorded
+  (client *and* server check). Query strings are dropped before storage. The
+  visitor id is a random UUID, not a fingerprint. Impersonation is not tracked.
+  Login/logout/failed-login events are a security record and are *not* subject
+  to DNT. Rows are deleted after `ANALYTICS_RETENTION_DAYS` (default 365).
+- **Live = last beat within 90s and not ended.** Beats go out every 30s from a
+  *visible* tab only. The board streams over SSE (`/monitoring/live/stream`,
+  read with `fetch` because EventSource cannot send `Authorization`), one query
+  per tick shared by every connected admin, and falls back to 10s polling.
+- **Every `Date` that meets a `timestamp` column in raw SQL goes through `ts()`**
+  in `trafficAnalytics.js`. Prisma sends a Date as timestamptz and stores UTC
+  without a zone, so on a server whose session zone is not UTC (dev is
+  Asia/Kolkata) a bare comparison is skewed by hours and nothing is ever "live".
+- **Location** comes from a CDN country header (`cf-ipcountry`,
+  `x-vercel-ip-country`) if present, else `geoip-lite`, which is lazy-loaded
+  (~100MB resident) and whose data goes stale; local/private IPs are "Unknown".
+- Client address: `X-Real-IP` if the proxy sets it, else the **rightmost**
+  `X-Forwarded-For` entry. Add `proxy_set_header X-Real-IP $remote_addr;` in
+  nginx, or every visitor is the proxy's own address.
+- Exports are CSV with a UTF-8 BOM (Excel opens them), capped at 50,000 rows,
+  cells starting `= + - @` are quoted against spreadsheet formula injection, and
+  each export is an activity-log entry (`DATA_EXPORTED`).
+
+**Deploying needs one migration**, `20261031150000_traffic_analytics` (hand-made
+from `migrate diff` with the `investment_projects` drop removed, as above), and
+`npm install` for `geoip-lite` and `ua-parser-js`. nginx must not buffer the SSE
+route; the API already sends `X-Accel-Buffering: no`. The frontend needs its
+usual rebuild + rsync.
+
+**Never run `next build` while `next dev` is running** - it rewrites `.next/`
+and the dev server then 404s every chunk (blank page). Stop dev first.
+
+Tests: `backend/tests/trafficMonitor.test.js`.

@@ -23,6 +23,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { projectsAPI } from '@/lib/api';
 import AnnouncementComposer, { ComposerOptions } from './AnnouncementComposer';
+import RecipientSelector, { RecipientSelection } from './RecipientSelector';
 
 export interface LaunchState {
   status: string;
@@ -52,6 +53,12 @@ interface AnnouncementRow {
   detail: string | null;
   updateCategory: string | null;
   audience: string;
+  audienceSelection: {
+    mode: 'ALL' | 'INCLUDE' | 'EXCLUDE';
+    audienceSize: number;
+    selectedCount: number;
+    label: string | null;
+  };
   adminName: string | null;
   postId: string | null;
   notifiedCount: number;
@@ -105,12 +112,17 @@ const asDate = (value?: string | null) =>
 
 /** A plain confirm dialog. Used for the two actions that need one. */
 function ConfirmDialog({
-  title, message, confirmLabel, busy, children, onCancel, onConfirm,
+  title, message, confirmLabel, busy, wide, confirmDisabled, children, onCancel, onConfirm,
 }: {
   title: string;
   message: string;
   confirmLabel: string;
   busy: boolean;
+  /** The action is incomplete, not in flight — e.g. "only these members" with
+   *  nobody ticked, which the server refuses anyway. */
+  confirmDisabled?: boolean;
+  /** For the launch dialog, which carries the recipient picker. */
+  wide?: boolean;
   children?: React.ReactNode;
   onCancel: () => void;
   onConfirm: () => void;
@@ -124,7 +136,8 @@ function ConfirmDialog({
   return (
     <div className="pj-viewer-overlay" role="dialog" aria-modal="true" aria-label={title}
       onClick={() => { if (!busy) onCancel(); }}>
-      <div className="pj-panel pj-confirm" onClick={(e) => e.stopPropagation()}>
+      <div className={`pj-panel pj-confirm${wide ? ' pj-confirm-wide' : ''}`}
+        onClick={(e) => e.stopPropagation()}>
         <div className="pj-panel-title" style={{ marginBottom: 12 }}>{title}</div>
         <p className="pj-confirm-text">{message}</p>
         {children}
@@ -133,7 +146,7 @@ function ConfirmDialog({
           <button type="button" className="pj-btn pj-btn-ghost" onClick={onCancel} disabled={busy}>
             Cancel
           </button>
-          <button type="button" className="pj-btn pj-btn-primary" onClick={onConfirm} disabled={busy}>
+          <button type="button" className="pj-btn pj-btn-primary" onClick={onConfirm} disabled={busy || confirmDisabled}>
             {busy ? 'Working…' : confirmLabel}
           </button>
         </div>
@@ -162,6 +175,10 @@ export default function LaunchPanel({
   const [dialog, setDialog] = useState<'launch' | 'promo' | 'classify' | null>(null);
   const [composer, setComposer] = useState(false);
   const [promoReason, setPromoReason] = useState('');
+  // Who the launch announcement goes to. Everyone, unless the admin narrows it
+  // in the confirmation dialog, and reset every time that dialog opens so a
+  // selection made for one launch cannot carry into another action.
+  const [launchRecipients, setLaunchRecipients] = useState<RecipientSelection>({ mode: 'ALL', userIds: [] });
 
   const load = useCallback(() => {
     setLoading(true);
@@ -303,7 +320,11 @@ export default function LaunchPanel({
         <div className="pj-actions">
           {state.canLaunch && (
             <button type="button" className="pj-btn pj-btn-gold" disabled={busy}
-              onClick={() => { setNotice(''); setError(''); setDialog('launch'); }}>
+              onClick={() => {
+                setNotice(''); setError('');
+                setLaunchRecipients({ mode: 'ALL', userIds: [] });
+                setDialog('launch');
+              }}>
               Launch Project
             </button>
           )}
@@ -371,6 +392,14 @@ export default function LaunchPanel({
                   </div>
                 )}
 
+                {row.audienceSelection && row.audienceSelection.mode !== 'ALL' && (
+                  <div className="pj-tl-meta">
+                    Recipients were narrowed: {row.audienceSelection.label}
+                    {row.audienceSelection.audienceSize > 0
+                      && ` — the audience held ${row.audienceSelection.audienceSize} member(s) at the time.`}
+                  </div>
+                )}
+
                 {row.email.state !== 'NOT_APPLICABLE' && (
                   <div className="pj-tl-meta">
                     {/* Counted, and named for what the numbers actually mean. */}
@@ -421,13 +450,33 @@ export default function LaunchPanel({
           title="Launch This Project?"
           message={'You are about to officially launch this project. The project will become '
             + 'available to eligible community members, an announcement email will be sent to '
-            + 'eligible members, a community notification will be published, and the project will '
-            + 'be marked as newly launched for 30 days. Do you want to continue?'}
+            + 'the recipients chosen below, a community notification will be published, and the '
+            + 'project will be marked as newly launched for 30 days. Do you want to continue?'}
           confirmLabel="Confirm Launch"
           busy={busy}
+          wide
+          confirmDisabled={launchRecipients.mode === 'INCLUDE' && launchRecipients.userIds.length === 0}
           onCancel={() => setDialog(null)}
-          onConfirm={() => run(() => projectsAPI.launch(projectId), 'Project launched.')}
-        />
+          onConfirm={() => run(
+            () => projectsAPI.launch(projectId, {
+              audienceMode: launchRecipients.mode,
+              recipientIds: launchRecipients.userIds,
+            }),
+            'Project launched.',
+          )}
+        >
+          {/* The launch happens either way: narrowing the recipients changes
+              who is mailed and notified, not whether the project launches. */}
+          <div style={{ marginTop: 14 }}>
+            <RecipientSelector
+              projectId={projectId}
+              audience={options?.audiences[0]?.value || 'ALL_ACTIVE_MEMBERS'}
+              value={launchRecipients}
+              onChange={setLaunchRecipients}
+              disabled={busy}
+            />
+          </div>
+        </ConfirmDialog>
       )}
 
       {dialog === 'classify' && (

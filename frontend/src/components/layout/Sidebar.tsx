@@ -109,6 +109,8 @@ export default function Sidebar() {
             { key: 'adminRequests',   href: '/admin#requests',   icon: InvestIcon,   badge: 'investments' },
             { key: 'withdrawalRequests', href: '/admin/withdrawals', icon: WithdrawIcon, badge: 'withdrawals' },
             { key: 'adminEnquiries',  href: '/admin#enquiries',  icon: EnquiryIcon },
+            { key: 'adminBroadcasts', href: '/admin/broadcasts', icon: MailIcon },
+            { key: 'adminAnalytics',  href: '/admin/analytics',  icon: AnalyticsIcon },
             { key: 'activityLogs',    href: '/admin/logs',       icon: LogsIcon },
             { key: 'superAdmin',      href: '/admin/super',      icon: SuperAdminIcon, superOnly: true },
           ],
@@ -374,6 +376,14 @@ function EnquiryIcon() {
     </svg>
   );
 }
+function MailIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <rect x="3" y="5" width="18" height="14" rx="2"/>
+      <path d="M4 7l8 6 8-6" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+}
 function SuperAdminIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -398,6 +408,14 @@ function ProjectsIcon() {
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
       <rect x="3" y="4" width="18" height="6" rx="1"/>
       <rect x="3" y="14" width="12" height="6" rx="1"/>
+    </svg>
+  );
+}
+function AnalyticsIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <path d="M4 19V5M4 19h16" strokeLinecap="round"/>
+      <path d="M8 15l3-4 3 2 5-6" strokeLinecap="round" strokeLinejoin="round"/>
     </svg>
   );
 }
