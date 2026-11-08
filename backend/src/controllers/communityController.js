@@ -1,3 +1,4 @@
+const notifier = require('../services/notifier');
 // src/controllers/communityController.js
 const prisma = require('../utils/prismaClient');
 const i18n = require('../services/i18n/translationService');
@@ -154,6 +155,14 @@ const addComment = async (req, res) => {
         author: { select: memberCardSelect() },
       },
     });
+    const post = await prisma.post.findUnique({ where: { id: req.params.id }, select: { authorId: true } });
+    if (post && post.authorId !== req.user.id) {
+      notifier.notify([post.authorId], {
+        type: 'POST_COMMENT', title: 'New comment on your post',
+        message: `${req.user.name} commented: ${comment.content.slice(0, 100)}`,
+        link: '/community', data: { postId: req.params.id },
+      });
+    }
     res.status(201).json({ comment });
   } catch (err) {
     console.error(err);

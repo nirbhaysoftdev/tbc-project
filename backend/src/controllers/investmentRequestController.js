@@ -24,6 +24,7 @@ const requestInclude = {
 };
 
 const { logActivity } = require('../services/activityLog');
+const notifier = require('../services/notifier');
 
 const fail = (res, err) => {
   const status = err.status || 500;
@@ -59,15 +60,14 @@ const createRequest = async (req, res) => {
       include: requestInclude,
     });
 
-    await prisma.notification.create({
-      data: {
-        userId: project.ownerId,
-        type: 'DEAL_UPDATE',
-        title: 'New investment request',
-        message: `${req.user.name} requested to invest €${amount.toLocaleString()} in ${project.title}`,
-        link: `/community/deal-room/detail?id=${project.id}`,
-      },
-    }).catch(() => {});
+    const requestLink = `/community/deal-room/detail?id=${project.id}`;
+    const requestText = `${req.user.name} requested to invest €${amount.toLocaleString()} in ${project.title}`;
+    // The project owner, and every admin who is not also the owner: one buzz each.
+    await notifier.notify([project.ownerId], { type: 'DEAL_UPDATE', title: 'New investment request', message: requestText, link: requestLink });
+    await notifier.notifyAdmins({
+      type: 'INVESTMENT_REQUEST', title: 'New investment request', message: requestText,
+      link: '/admin#investments', data: { projectId: project.id, requestId: request.id },
+    }, { exclude: [project.ownerId] });
 
     logActivity({
       type:        'INVESTMENT_REQUESTED',
@@ -230,15 +230,10 @@ const rejectRequest = async (req, res) => {
       include: requestInclude,
     });
 
-    await prisma.notification.create({
-      data: {
-        userId: request.userId,
-        type: 'DEAL_UPDATE',
-        title: 'Investment request declined',
-        message: reason || 'Your investment request was not approved.',
-        link: '/dashboard',
-      },
-    }).catch(() => {});
+    await notifier.notify([request.userId], {
+      type: 'DEAL_UPDATE', title: 'Investment request declined',
+      message: reason || 'Your investment request was not approved.', link: '/dashboard',
+    });
 
     logActivity({
       type:        'INVESTMENT_REQUEST_REJECTED',
@@ -343,15 +338,11 @@ const completeRequest = async (req, res) => {
       },
     }).catch(() => {});
 
-    await prisma.notification.create({
-      data: {
-        userId: request.userId,
-        type: 'DEAL_UPDATE',
-        title: 'Investment confirmed',
-        message: `Your investment of €${amount.toLocaleString()} has been confirmed and added to your wallet.`,
-        link: '/dashboard',
-      },
-    }).catch(() => {});
+    await notifier.notify([request.userId], {
+      type: 'INVESTMENT_CONFIRMED', title: 'Investment confirmed',
+      message: `Your investment of €${amount.toLocaleString()} has been confirmed and added to your wallet.`,
+      link: '/dashboard',
+    });
 
     logActivity({
       type:        'INVESTMENT_COMPLETED',

@@ -27,6 +27,7 @@
 const prisma = require('../utils/prismaClient');
 const walletService = require('./walletService');
 const mailer = require('./mailer');
+const notifier = require('./notifier');
 
 /**
  * Send a member document after the money has actually been committed. Fire and
@@ -378,6 +379,12 @@ async function createOneTimeProfit({ userId, projectId, profitType, value, effec
     return created;
   });
 
+  notifier.notify([userId], {
+    type: 'PROFIT_DISTRIBUTED', title: 'Profit credited',
+    message: `€${Number(record.amount).toLocaleString()} profit was added to your wallet${project?.title ? ` from ${project.title}` : ''}.`,
+    link: '/dashboard',
+  });
+
   notifyMember(async () => {
     const user = await memberFor(userId);
     if (user?.email) {
@@ -457,6 +464,12 @@ async function computeMonthlyProfitForPeriod({ userId, projectId, periodDate, cr
 
       await walletService.syncWallet(userId, tx);
       return rec;
+    });
+
+    notifier.notify([userId], {
+      type: 'PROFIT_DISTRIBUTED', title: 'Monthly profit credited',
+      message: `€${Number(record.amount).toLocaleString()} profit for ${key} was added to your wallet${project?.title ? ` from ${project.title}` : ''}.`,
+      link: '/dashboard',
     });
 
     notifyMember(async () => {

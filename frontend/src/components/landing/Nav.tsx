@@ -15,6 +15,7 @@ const LINKS = [
   { href: '#what', key: 'what' },
   { href: '#advantages', key: 'advantages' },
   { href: '#how-it-works', key: 'howItWorks' },
+  { href: '#aladino', key: 'aladino' },
   { href: '#profit', key: 'profit' },
   { href: '#faq', key: 'faq' },
 ];

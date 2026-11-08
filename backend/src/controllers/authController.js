@@ -4,6 +4,7 @@ const jwt    = require('jsonwebtoken');
 const { validationResult } = require('express-validator');
 const { OAuth2Client } = require('google-auth-library');
 const prisma = require('../utils/prismaClient');
+const notifier = require('../services/notifier');
 const { logActivity } = require('../services/activityLog');
 const walletService = require('../services/walletService');
 const otpService = require('../services/otpService');
@@ -156,7 +157,12 @@ const register = async (req, res) => {
       metadata:    { email: normEmail, memberType, signupMethod: 'email' },
     });
 
-    sendWelcomePendingEmail(user).catch((e) => console.error('welcome email failed:', e.message));
+    notifier.notifyAdmins({
+  type: 'NEW_SIGNUP', title: 'New signup request',
+  message: `${user.name} has applied for membership and is waiting for approval.`,
+  link: '/admin#pending', data: { userId: user.id },
+});
+sendWelcomePendingEmail(user).catch((e) => console.error('welcome email failed:', e.message));
     sendAdminNewSignupNotification({ ...user, signupMethod: 'email' })
       .catch((e) => console.error('admin notify failed:', e.message));
 
@@ -284,7 +290,12 @@ const googleAuth = async (req, res) => {
         metadata:    { email, signupMethod: 'google' },
       });
 
-      sendWelcomePendingEmail(user).catch((e) => console.error('welcome email failed:', e.message));
+      notifier.notifyAdmins({
+  type: 'NEW_SIGNUP', title: 'New signup request',
+  message: `${user.name} has applied for membership and is waiting for approval.`,
+  link: '/admin#pending', data: { userId: user.id },
+});
+sendWelcomePendingEmail(user).catch((e) => console.error('welcome email failed:', e.message));
       sendAdminNewSignupNotification({ ...user, signupMethod: 'google' })
         .catch((e) => console.error('admin notify failed:', e.message));
     } else if (!user.googleId) {

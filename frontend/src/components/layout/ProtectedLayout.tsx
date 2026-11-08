@@ -10,6 +10,7 @@ import { AdminAlertsProvider } from "@/lib/adminAlerts";
 import { isAdminRole, isSuperAdminRole } from '@/lib/roles';
 import ImpersonationBanner from './ImpersonationBanner';
 import InstallPrompt from '@/components/pwa/InstallPrompt';
+import PushPrompt from '@/components/pwa/PushPrompt';
 
 interface Props {
   children: React.ReactNode;
@@ -146,6 +147,7 @@ export default function ProtectedLayout({
           when the member has said "not now" recently. It lives behind the
           login because the thing worth installing is the portal. */}
       <InstallPrompt />
+      <PushPrompt />
       <div className="app-layout">
         <Sidebar />
 

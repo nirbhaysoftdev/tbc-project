@@ -10,6 +10,7 @@ const {
   sendWalletActivatedEmail,
 } = require('../services/mailer');
 const { logActivity } = require('../services/activityLog');
+const notifier = require('../services/notifier');
 const { isSuperAdmin, LIVE_USER } = require('../utils/roles');
 
 // ── Generate a readable temporary password ─────
@@ -765,6 +766,12 @@ const approveUser = async (req, res) => {
       metadata:    { walletEnabled: walletOn, documentsAdded: newDocs.length },
     });
 
+    notifier.notify([id], {
+      type: 'ACCOUNT_APPROVED', title: 'Welcome to TBC',
+      message: walletOn ? 'Your membership is approved and your wallet is active.' : 'Your membership is approved.',
+      link: '/dashboard',
+    });
+
     sendAccountApprovedEmail(user, walletOn)
       .catch((e) => console.error('approval email failed:', e.message));
 
@@ -798,6 +805,12 @@ const rejectUser = async (req, res) => {
         action:   'REJECT_USER',
         details:  { reason },
       },
+    });
+
+    notifier.notify([id], {
+      type: 'ACCOUNT_REJECTED', title: 'Application update',
+      message: reason ? `Your application was not approved: ${reason}` : 'Your application was not approved.',
+      link: '/login',
     });
 
     logActivity({

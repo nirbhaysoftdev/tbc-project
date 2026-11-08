@@ -604,3 +604,9 @@ export const enquiriesAPI = {
 // Media stream URLs come back relative to the API root, so they need the same
 // base as the axios client when handed to an <img>, <video> or <iframe>.
 export const mediaSrc = (streamUrl: string) => `${API_URL}${streamUrl}`;
+// ── Push notifications ──────────────────────────
+export const pushAPI = {
+  getKey:      ()                              => api.get<{ publicKey: string }>('/push/key'),
+  subscribe:   (subscription: PushSubscriptionJSON) => api.post('/push/subscribe', { subscription }),
+  unsubscribe: (endpoint: string)              => api.post('/push/unsubscribe', { endpoint }),
+};

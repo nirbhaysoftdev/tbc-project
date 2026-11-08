@@ -1,3 +1,4 @@
+const notifier = require('../services/notifier');
 // src/controllers/eventsController.js
 const prisma = require('../utils/prismaClient');
 const i18n = require('../services/i18n/translationService');
@@ -88,6 +89,12 @@ const createEvent = async (req, res) => {
         createdBy:   req.user.id,
       },
     });
+
+    notifier.notifyEveryone({
+      type: 'NEW_EVENT', title: 'New event',
+      message: `${event.title} - ${new Date(event.startDate).toDateString()}`,
+      link: '/community/events', data: { eventId: event.id },
+    }, { exceptUserId: req.user.id });
 
     // Scheduled after the English row is committed; never able to fail the save.
     await i18n.registerSource('Event', event.id, {

@@ -143,10 +143,33 @@ async function logActivity(entry) {
         metadata:    entry.metadata ?? undefined,
       },
     });
+    alertForActivity(entry, def);
   } catch (err) {
     // Logging is best-effort by design: never surface this to the caller.
     console.error('activityLog failed:', err.message);
   }
+}
+
+// Activity types that also page a human. Super-admin-only matters go to super
+// admins; the actor is never told about their own action.
+const SUPER_ADMIN_ALERTS = new Set([
+  'API_KEY_CREATED', 'API_KEY_ROTATED', 'API_KEY_REVOKED', 'API_KEY_UPDATED',
+  'ENQUIRY_RECIPIENT_CHANGED', 'SIGNUP_NOTIFY_CHANGED',
+  'IMPERSONATION_STARTED', 'ROLE_CHANGED', 'PASSWORD_RESET_BY_ADMIN',
+  'TRANSACTION_REVERSED', 'WALLET_UPDATED', 'MEMBER_PURGED',
+]);
+const ADMIN_ALERTS = new Set(['EMAIL_FAILED', 'DOCUMENT_UPLOADED']);
+
+function alertForActivity(entry, def) {
+  const notifier = require('./notifier'); // lazy: notifier -> prisma only, but keep logging dependency-free
+  const exclude = entry.actorId ? [entry.actorId] : [];
+  const payload = {
+    type: `ACTIVITY_${entry.type}`, title: entry.title || def?.label || entry.type,
+    message: (entry.description || def?.label || entry.type), link: '/admin/super',
+  };
+  if (SUPER_ADMIN_ALERTS.has(entry.type)) return notifier.notifyAdmins(payload, { superOnly: true, exclude });
+  if (ADMIN_ALERTS.has(entry.type)) return notifier.notifyAdmins({ ...payload, link: '/admin' }, { exclude });
+  return null;
 }
 
 module.exports = { logActivity, ACTIVITY, CATEGORIES };

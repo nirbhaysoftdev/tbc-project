@@ -254,6 +254,7 @@ model User {
   receivedMessages   Message[]           @relation("ReceivedMessages")
   eventRegistrations EventRegistration[]
   notifications      Notification[]
+  pushSubscriptions  PushSubscription[]
 
   // Deal Room
   projectsOwned             Project[]                      @relation("ProjectOwner")
@@ -658,6 +659,25 @@ model Notification {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("notifications")
+}
+
+/// One row per browser/device that agreed to receive push. A member on a phone
+/// and a laptop has two. `endpoint` is the push service's address for that
+/// browser and is unique; re-subscribing the same browser updates the row.
+model PushSubscription {
+  id         String    @id @default(uuid())
+  userId     String
+  endpoint   String    @unique
+  p256dh     String
+  auth       String
+  userAgent  String?
+  createdAt  DateTime  @default(now())
+  lastUsedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("push_subscriptions")
 }
 
 // ─── DEAL ROOM ────────────────────────────────────────────────────────────────

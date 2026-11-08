@@ -1,3 +1,4 @@
+const notifier = require('../services/notifier');
 // src/controllers/projectsController.js
 const fs = require('fs');
 const path = require('path');
@@ -532,6 +533,16 @@ const createProject = async (req, res) => {
       primaryObjective: project.primaryObjective,
     });
 
+    // A deal published straight to ACTIVE is announced to everyone. A DRAFT is
+    // not - it has not been shared with anyone yet.
+    if (project.status === 'ACTIVE') {
+      notifier.notifyEveryone({
+        type: 'NEW_DEAL', title: 'New deal',
+        message: `${project.title} has been added to the Deal Room.`,
+        link: `/projects/detail?id=${encodeURIComponent(project.id)}`, data: { projectId: project.id },
+      }, { exceptUserId: req.user.id });
+    }
+
     logActivity({
       type:        'PROJECT_CREATED',
       title:       `Project created: ${project.title}`,
@@ -654,6 +665,19 @@ const updateProject = async (req, res) => {
       description:      updated.description,
       primaryObjective: updated.primaryObjective,
     });
+
+    // A personal heads-up to the members who hold capital in it when it reaches
+    // FUNDED or CLOSED. This is not an announcement: no post, no email, no
+    // badge, and members without a stake are not told.
+    if (project.status !== updated.status && ['FUNDED', 'CLOSED'].includes(updated.status)) {
+      prisma.walletInvestment.findMany({
+        where: { projectId: updated.id, status: 'ACTIVE' }, select: { userId: true }, distinct: ['userId'],
+      }).then((rows) => notifier.notify(rows.map((r) => r.userId), {
+        type: 'PROJECT_STATUS', title: `${updated.title} is now ${updated.status.toLowerCase()}`,
+        message: `The project you invested in has moved to ${updated.status}.`,
+        link: `/projects/detail?id=${encodeURIComponent(updated.id)}`, data: { projectId: updated.id },
+      })).catch((e) => console.error('status notify failed:', e.message));
+    }
 
     // The lifecycle block comes back with the save so the panel's state and
     // the eligibility behind its buttons stay in step with an edit that

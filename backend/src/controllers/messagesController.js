@@ -1,3 +1,4 @@
+const notifier = require('../services/notifier');
 // src/controllers/messagesController.js
 const prisma = require('../utils/prismaClient');
 const { memberCardSelect } = require('../services/memberVisibility');
@@ -104,15 +105,10 @@ const sendMessage = async (req, res) => {
     });
 
     // Create notification for receiver
-    await prisma.notification.create({
-      data: {
-        userId:  receiverId,
-        type:    'NEW_MESSAGE',
-        title:   'New message',
-        message: `${req.user.name} sent you a message`,
-        link:    `/community/messages`,
-        data:    { senderId: req.user.id },
-      },
+    await notifier.notify([receiverId], {
+      type: 'NEW_MESSAGE', title: 'New message',
+      message: `${req.user.name} sent you a message`,
+      link: `/community/messages`, data: { senderId: req.user.id },
     });
 
     res.status(201).json({ message });

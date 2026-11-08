@@ -1,3 +1,4 @@
+const notifier = require('../services/notifier');
 // src/controllers/superAdminAssetsController.js
 //
 // The super-admin actions that are not about a user record: identity documents
@@ -220,6 +221,13 @@ const reviewKycDocument = async (req, res) => {
       before: { status: doc.status }, after: { status },
       extra: { documentId: docId, documentType: doc.documentType },
     });
+    if (doc.status !== status) {
+      notifier.notify([id], {
+        type: 'KYC_UPDATE', title: `Document ${status}`,
+        message: `Your ${String(doc.documentType).replace(/_/g, ' ')} was ${status}.`,
+        link: '/profile',
+      });
+    }
     logActivity({
       type:        'KYC_DOCUMENT_REVIEWED',
       title:       `KYC document ${status}`,

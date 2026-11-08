@@ -26,7 +26,7 @@
 // a new build is a new URL. Bump VERSION when this file changes and the old
 // caches are dropped on activate.
 
-const VERSION = 'v2';
+const VERSION = 'v3';
 const SHELL_CACHE = `tbc-shell-${VERSION}`;
 const ASSET_CACHE = `tbc-assets-${VERSION}`;
 const OFFLINE_URL = '/offline.html';
@@ -150,4 +150,41 @@ self.addEventListener('fetch', (event) => {
   }
 
   event.respondWith(networkFirst(request, SHELL_CACHE));
+});
+
+
+// ── Web Push ─────────────────────────────────────────────────────────────────
+// The payload is a title, a one-line body and a link - never a balance or a
+// document, because a lock screen is public. The worker shows it; it fetches
+// nothing and caches nothing, so no member data reaches a cache from here.
+self.addEventListener('push', (event) => {
+  let data = {};
+  try { data = event.data ? event.data.json() : {}; } catch (e) { data = { body: event.data && event.data.text() }; }
+  const title = data.title || 'Trillion Business Community';
+  event.waitUntil(self.registration.showNotification(title, {
+    body: data.body || '',
+    icon: '/icons/icon-192.png',
+    badge: '/icons/icon-192.png',
+    // Same tag replaces rather than stacks, so a burst of messages is one card.
+    tag: data.tag || undefined,
+    renotify: !!data.tag,
+    data: { url: data.url || '/dashboard' },
+  }));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const target = new URL((event.notification.data && event.notification.data.url) || '/dashboard', self.location.origin).href;
+  event.waitUntil((async () => {
+    const all = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    // Reuse the open app window if there is one; otherwise open a new one.
+    for (const client of all) {
+      if (new URL(client.url).origin === self.location.origin && 'focus' in client) {
+        await client.focus();
+        if ('navigate' in client) return client.navigate(target);
+        return undefined;
+      }
+    }
+    return self.clients.openWindow(target);
+  })());
 });

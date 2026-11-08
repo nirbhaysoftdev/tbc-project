@@ -726,5 +726,53 @@
     "partnerSlides": "Partner slides",
     "profitFlow": "Business activity leads to the Universal Profit Fund, which leads to eligible members",
     "linkedin": "LinkedIn"
+  },
+  "aladino": {
+    "tag": "Our project",
+    "title": "Meet ALADINO.",
+    "lead": "The AI store assistant by Trillion Business Community.",
+    "body": "It welcomes your customers, finds any product, explains every offer and checks them out. Behind the scenes, it shows your business what people really want: AI cameras that see, a robot that serves and a CRM that remembers.",
+    "industriesTitle": "One ALADINO for every industry.",
+    "learnMore": "Learn more",
+    "viewIndustries": "View all industries",
+    "logoAlt": "ALADINO logo",
+    "industries": {
+      "petrol": {
+        "name": "Petrol",
+        "sub": "Service stations",
+        "desc": "Pumps watched, drivers served, every litre and sale recorded."
+      },
+      "home": {
+        "name": "Home",
+        "sub": "Homes and families",
+        "desc": "Cleans, guards and looks after the family, in one robot."
+      },
+      "logistics": {
+        "name": "Logistics",
+        "sub": "Warehouses and fulfilment",
+        "desc": "CRM, AI cameras and robots for warehouses and fulfilment."
+      },
+      "hospital": {
+        "name": "Hospital",
+        "sub": "Hospitals and clinics",
+        "desc": "Calmer waiting rooms, clear directions and faster help."
+      },
+      "hotel": {
+        "name": "Hotel",
+        "sub": "Hotels and hospitality",
+        "desc": "A welcome in every language, at any hour."
+      },
+      "restaurant": {
+        "name": "Restaurant",
+        "sub": "Restaurants and cafés",
+        "desc": "Faster tables, a menu in every language, happier guests."
+      },
+      "government": {
+        "name": "Government",
+        "sub": "Government offices",
+        "desc": "Public services without the long wait."
+      }
+    },
+    "industriesLead": "The same cameras, robot and CRM, set up for the way each industry works."
   }
 }

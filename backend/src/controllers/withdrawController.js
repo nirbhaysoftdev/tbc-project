@@ -14,6 +14,7 @@ const prisma = require('../utils/prismaClient');
 const walletService = require('../services/walletService');
 const mailer = require('../services/mailer');
 const { logActivity } = require('../services/activityLog');
+const notifier = require('../services/notifier');
 
 // Member submits withdrawal request
 const createRequest = async (req, res) => {
@@ -60,6 +61,12 @@ const createRequest = async (req, res) => {
 
       await walletService.syncWallet(req.user.id, tx);
       return created;
+    });
+
+    notifier.notifyAdmins({
+      type: 'WITHDRAWAL_REQUEST', title: 'New withdrawal request',
+      message: `${req.user.name} requested a withdrawal of €${Number(amt).toLocaleString()}.`,
+      link: '/admin#requests', data: { requestId: request.id },
     });
 
     logActivity({
@@ -162,6 +169,12 @@ const approveRequest = async (req, res) => {
       });
     });
 
+    notifier.notify([request.userId], {
+      type: 'WITHDRAWAL_UPDATE', title: 'Withdrawal paid',
+      message: `Your withdrawal of €${Number(request.amount).toLocaleString()} has been approved and paid.`,
+      link: '/dashboard',
+    });
+
     logActivity({
       type:        'WITHDRAWAL_APPROVED',
       title:       `Withdrawal done · ${request.firstName} ${request.lastName}`,
@@ -231,6 +244,12 @@ const rejectRequest = async (req, res) => {
       });
 
       await walletService.syncWallet(request.userId, tx);
+    });
+
+    notifier.notify([request.userId], {
+      type: 'WITHDRAWAL_UPDATE', title: 'Withdrawal declined',
+      message: request.reason ? `Your withdrawal was declined: ${request.reason}` : 'Your withdrawal request was declined.',
+      link: '/dashboard',
     });
 
     logActivity({

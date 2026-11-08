@@ -31,6 +31,7 @@ const prisma = require('../utils/prismaClient');
 const sanitizeHtml = require('sanitize-html');
 const { sendEnquiryEmail, sendEnquiryRecipientChangedEmails } = require('../services/mailer');
 const { logActivity } = require('../services/activityLog');
+const notifier = require('../services/notifier');
 const { isAdmin } = require('../utils/roles');
 const {
   getEnquiryRecipients, setEnquiryRecipients, MAX_RECIPIENTS,
@@ -190,6 +191,16 @@ const createEnquiry = async (req, res) => {
         data:  { status: 'SENT', sentAt: new Date() },
       });
 
+      notifier.notifyAdmins({
+        type: 'NEW_ENQUIRY', title: 'New enquiry',
+        message: `${req.user.name} enquired about ${subjectName}.`,
+        link: '/admin#enquiries', data: { enquiryId: enquiry.id },
+      });
+      notifier.notify([req.user.id], {
+        type: 'ENQUIRY_RECEIVED', title: 'Enquiry received',
+        message: `Your enquiry about ${subjectName} was delivered. The team will connect with you soon.`, link: '/dashboard',
+      });
+
       logActivity({
         type:        'ENQUIRY_SENT',
         title:       `Enquiry sent: ${subjectName}`,
@@ -214,6 +225,12 @@ const createEnquiry = async (req, res) => {
         where: { id: enquiry.id },
         data:  { status: 'FAILED', error: String(err.message || 'unknown').slice(0, 500) },
       }).catch(() => {});
+
+      notifier.notifyAdmins({
+        type: 'ENQUIRY_FAILED', title: 'Enquiry email failed',
+        message: `An enquiry about ${subjectName} could not be emailed and needs attention.`,
+        link: '/admin#enquiries', data: { enquiryId: enquiry.id },
+      });
 
       return res.status(502).json({
         error: 'Your message could not be delivered just now. Please try again in a few minutes.',

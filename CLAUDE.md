@@ -944,3 +944,22 @@ usual rebuild + rsync.
 and the dev server then 404s every chunk (blank page). Stop dev first.
 
 Tests: `backend/tests/trafficMonitor.test.js`.
+
+## Push notifications (PWA)
+
+`services/notifier.js` is the one door: `notify(ids, …)`, `notifyAdmins(…, {superOnly, exclude})`,
+`notifyEveryone(…, {exceptUserId})`. Each call writes the `Notification` row **and** sends Web Push
+to every row in `push_subscriptions`, and never throws - a dead push service cannot fail a signup.
+Do not `prisma.notification.create` directly any more; it would skip the push.
+
+- Payloads are title + one line + link, never balances or documents (a lock screen is public).
+- Env: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`. **Generate once; changing them
+  silently orphans every subscribed device.** Missing keys = push off, bell still works.
+- `/api/push/{key,subscribe,unsubscribe}`; `lib/push.ts` + `components/pwa/PushPrompt.tsx` ask on a
+  tap, never on load. iOS only works from the Home Screen app (16.4+).
+- `sw.js` has `push` / `notificationclick` handlers (VERSION v3). Deploy: migration
+  `20261104100000_push_subscriptions`, `npm install` (web-push), restart, rebuild + rsync.
+- `activityLog` also pages super admins for `SUPER_ADMIN_ALERTS` (API keys, role changes, wallet
+  edits, impersonation...) - add a type to that set rather than calling the notifier again.
+- Not built yet: event reminders (needs a `remindedAt` column + interval) and new-device login alerts.
+

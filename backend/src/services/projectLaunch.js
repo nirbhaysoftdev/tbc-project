@@ -9,6 +9,7 @@
 // the rules. That split is what lets the tests drive a launch without a
 // request or an SMTP server.
 const prisma = require('../utils/prismaClient');
+const notifier = require('./notifier');
 const { LIVE_USER } = require('../utils/roles');
 
 /** The promotional window, in days. One place, because three screens show it. */
@@ -455,20 +456,18 @@ async function publishCommunityAnnouncement(announcement, project) {
     let notified = 0;
     for (let i = 0; i < members.length; i += NOTIFY_CHUNK) {
       const chunk = members.slice(i, i + NOTIFY_CHUNK);
-      const result = await prisma.notification.createMany({
-        data: chunk.map((member) => ({
-          userId: member.id,
-          // PROJECT_LAUNCHED or PROJECT_UPDATE: the two things a member can be
-          // told about a project. The member's notification list groups by
-          // type, so "this is new" and "this changed" stay distinguishable.
-          type: announcement.type === 'MAJOR_UPDATE' ? 'PROJECT_UPDATE' : 'PROJECT_LAUNCHED',
-          title: heading,
-          message: announcement.message.slice(0, 500),
-          link,
-          data: { projectId: project.id, announcementId: announcement.id, announcementType: announcement.type },
-        })),
+      // Through the notifier so the same send also reaches installed devices
+      // as a push; the audience (and any EXCLUDE/INCLUDE narrowing) is unchanged.
+      // PROJECT_LAUNCHED or PROJECT_UPDATE: the two things a member can be told
+      // about a project, kept distinct so the list can tell new from changed.
+      const result = await notifier.notify(chunk.map((member) => member.id), {
+        type: announcement.type === 'MAJOR_UPDATE' ? 'PROJECT_UPDATE' : 'PROJECT_LAUNCHED',
+        title: heading,
+        message: announcement.message,
+        link,
+        data: { projectId: project.id, announcementId: announcement.id, announcementType: announcement.type },
       });
-      notified += result.count;
+      notified += result.notified;
     }
 
     await prisma.projectAnnouncement.update({
