@@ -728,7 +728,7 @@
     "linkedin": "LinkedIn"
   },
   "aladino": {
-    "tag": "Our project",
+    "tag": "Our Major Project",
     "title": "Meet ALADINO.",
     "lead": "The AI store assistant by Trillion Business Community.",
     "body": "It welcomes your customers, finds any product, explains every offer and checks them out. Behind the scenes, it shows your business what people really want: AI cameras that see, a robot that serves and a CRM that remembers.",
@@ -736,6 +736,7 @@
     "learnMore": "Learn more",
     "viewIndustries": "View all industries",
     "logoAlt": "ALADINO logo",
+    "robotAlt": "An ALADINO retail assistant robot helping a shopper find and add products from its touchscreen in a supermarket aisle",
     "industries": {
       "petrol": {
         "name": "Petrol",

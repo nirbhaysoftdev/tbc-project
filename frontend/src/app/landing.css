@@ -3175,11 +3175,30 @@
 }
 .lp-aladino-actions { margin-top: 28px; }
 .lp-aladino-logo { min-width: 0; display: flex; justify-content: center; }
+.lp-aladino-mark { position: relative; display: block; width: 100%; max-width: 300px; margin: 4px 0 20px; }
+.lp-aladino-mark img { width: 100%; height: auto; filter: drop-shadow(0 20px 50px rgba(200,168,75,0.16)); }
+.lp-aladino-reg {
+  position: absolute;
+  top: 6%;
+  right: 4%;
+  font-family: var(--lp-sans, system-ui, sans-serif);
+  font-size: clamp(18px, 2.4vw, 26px);
+  line-height: 1;
+  font-weight: 600;
+  color: var(--lp-text);
+  pointer-events: none;
+  user-select: none;
+}
+.lp-aladino-logo img.lp-aladino-photo {
+  border-radius: 20px;
+  border: 1px solid rgba(200,168,75,0.22);
+  box-shadow: 0 24px 60px rgba(0,0,0,0.35);
+}
 .lp-aladino-logo img {
+  display: block;
   width: 100%;
-  max-width: 460px;
+  max-width: 520px;
   height: auto;
-  filter: drop-shadow(0 20px 50px rgba(200,168,75,0.16));
 }
 .lp-aladino-industries { margin-top: 72px; text-align: center; }
 .lp-aladino-sub {
@@ -3240,7 +3259,11 @@
 
 @media (max-width: 900px) {
   .lp-aladino-grid { grid-template-columns: 1fr; gap: 36px; }
-  .lp-aladino-logo { order: -1; }
-  .lp-aladino-logo img { max-width: 300px; }
+  .lp-aladino-logo img { max-width: 420px; }
+  .lp-aladino-mark { max-width: 240px; }
   .lp-aladino-industries { margin-top: 48px; }
+}
+
+@media (max-width: 720px) {
+  .lp-scenario { display: none; }
 }

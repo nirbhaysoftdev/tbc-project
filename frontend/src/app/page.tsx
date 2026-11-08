@@ -58,10 +58,10 @@ export default function LandingPage() {
         <WhatItIs />
         <GlobalReach />
         <Community />
+        <Aladino />
         <WhyJoin />
         <HowItWorks />
         <Partners />
-        <Aladino />
         <Scenario />
         <Profit />
         <Inside />

@@ -23,6 +23,10 @@ export default function Aladino() {
           <h2 className="lp-section-title lp-align-left">
             <SplitWordsInView text={t('aladino.title')} />
           </h2>
+          <Reveal className="lp-aladino-mark" delay={0.06}>
+            <img src="/images/aladino-logo.webp" alt={t('aladino.logoAlt')} width={900} height={501} loading="lazy" />
+            <span className="lp-aladino-reg" aria-hidden>®</span>
+          </Reveal>
           <Reveal className="lp-what-lead-text" delay={0.1}>
             {t('aladino.lead')}
           </Reveal>
@@ -40,7 +44,16 @@ export default function Aladino() {
         </div>
 
         <Reveal className="lp-aladino-logo" dir="left" delay={0.1} amount={0.15}>
-          <img src="/images/aladino-logo.webp" alt={t('aladino.logoAlt')} width={900} height={501} loading="lazy" />
+          <img
+            className="lp-aladino-photo"
+            src="/images/aladino-retail-robot-700.webp"
+            srcSet="/images/aladino-retail-robot-700.webp 700w, /images/aladino-retail-robot-1200.webp 1254w"
+            sizes="(max-width: 900px) 90vw, 460px"
+            alt={t('aladino.robotAlt')}
+            width={1254}
+            height={1254}
+            loading="lazy"
+          />
         </Reveal>
       </div>
 
