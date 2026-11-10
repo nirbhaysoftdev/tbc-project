@@ -127,6 +127,17 @@ function tokenUser(req) {
   }
 }
 
+/**
+ * A valid token can name a user who no longer exists (a reset or reseeded
+ * database, a deleted account). Writing that id would violate the foreign key
+ * and lose the whole beat, so such a visitor is recorded as anonymous instead.
+ */
+async function liveUserId(userId) {
+  if (!userId) return null;
+  const row = await prisma.user.findUnique({ where: { id: userId }, select: { id: true } });
+  return row ? row.id : null;
+}
+
 const optedOut = (req) => req.headers.dnt === '1' || req.headers['sec-gpc'] === '1';
 const isBot = (req) => BOT.test(String(req.headers['user-agent'] || ''));
 
@@ -139,7 +150,7 @@ const isBot = (req) => BOT.test(String(req.headers['user-agent'] || ''));
 async function recordBeat(req, body = {}) {
   try {
     if (optedOut(req) || isBot(req)) return;
-    const { userId, impersonated } = tokenUser(req);
+    const { userId: tokenUserId, impersonated } = tokenUser(req);
     // A super admin looking at the portal AS a member is not that member
     // being active, and must not inflate or pollute their history.
     if (impersonated) return;
@@ -149,6 +160,8 @@ async function recordBeat(req, body = {}) {
     if (!SESSION_ID.test(sessionId) || !SESSION_ID.test(visitorId)) return;
     const kind = ['view', 'beat', 'end'].includes(body.kind) ? body.kind : 'beat';
     const path = cleanPath(body.path);
+    // Only a beat that is about to write a user id needs the check.
+    let userId = tokenUserId;
     const now = new Date();
 
     const existing = await prisma.analyticsSession.findUnique({
@@ -160,6 +173,7 @@ async function recordBeat(req, body = {}) {
 
     if (!existing) {
       if (!path) return;
+      userId = await liveUserId(userId);
       const ip = clientIp(req);
       const geo = geoFor(req, ip);
       const ua = deviceFor(req.headers['user-agent']);
@@ -181,7 +195,10 @@ async function recordBeat(req, body = {}) {
     }
 
     const data = { lastSeenAt: now };
-    if (userId && !existing.userId) { data.userId = userId; data.loggedInAt = now; }
+    if (userId && !existing.userId) {
+      userId = await liveUserId(userId);
+      if (userId) { data.userId = userId; data.loggedInAt = now; }
+    }
     if (kind === 'end') data.endedAt = now;
     // A beat after an 'end' (a restored tab) revives the session.
     else if (existing.endedAt) data.endedAt = null;

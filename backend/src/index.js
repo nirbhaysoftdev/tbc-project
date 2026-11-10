@@ -140,6 +140,7 @@ app.use('/api/community',    communityRoutes);
 app.use('/api/events',       eventsRoutes);
 app.use('/api/messages',     messagesRoutes);
 app.use('/api/push',         pushRoutes);
+app.use('/api/news',         require('./routes/news'));
 app.use('/api/projects',     projectsRoutes);
 app.use('/api/companies',    companiesRoutes);
 app.use('/api/enquiries',    enquiryRoutes);
@@ -167,6 +168,8 @@ const translationWorker = require('./services/i18n/worker');
 const announcementWorker = require('./services/announcementWorker');
 const emailBroadcastWorker = require('./services/emailBroadcastWorker');
 const trafficTracker = require('./services/trafficTracker');
+const newsFetcher = require('./services/newsFetcher');
+const marketFetcher = require('./services/marketFetcher');
 
 app.listen(PORT, async () => {
   console.log(`\n🚀 TBC API running on http://localhost:${PORT}`);
@@ -204,6 +207,14 @@ app.listen(PORT, async () => {
       emailBroadcastWorker.start();
     } catch (err) {
       console.error(`   ✗  email broadcast worker not started - ${err.message}`);
+    }
+
+    // Headlines from publishers' RSS feeds. Failure only means older news.
+    try {
+      newsFetcher.start();
+      marketFetcher.start();
+    } catch (err) {
+      console.error(`   ✗  news fetcher not started - ${err.message}`);
     }
 
     // Deletes analytics rows past ANALYTICS_RETENTION_DAYS, once a day.

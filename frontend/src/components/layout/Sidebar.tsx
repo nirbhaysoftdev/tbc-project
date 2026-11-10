@@ -120,6 +120,7 @@ export default function Sidebar() {
           items: [
             { key: 'projects',  href: '/projects',  icon: ProjectsIcon },
             { key: 'companies', href: '/companies', icon: CompaniesIcon },
+            { key: 'news',      href: '/news',      icon: NewsIcon },
             { key: 'transactions', href: '/transactions', icon: TxIcon },
           ],
         },
@@ -147,6 +148,7 @@ export default function Sidebar() {
             { key: 'community', href: '/community', icon: CommIcon },
             { key: 'projects',  href: '/projects',  icon: ProjectsIcon },
             { key: 'companies', href: '/companies', icon: CompaniesIcon },
+            { key: 'news',      href: '/news',      icon: NewsIcon },
           ],
         },
         {
@@ -390,6 +392,15 @@ function SuperAdminIcon() {
       <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
       <circle cx="12" cy="10" r="2.2"/>
       <path d="M12 12.2V16" strokeLinecap="round"/>
+    </svg>
+  );
+}
+function NewsIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <path d="M4 5h13a1 1 0 011 1v13H6a2 2 0 01-2-2V5z" strokeLinejoin="round"/>
+      <path d="M18 9h2v8a2 2 0 01-2 2" strokeLinecap="round"/>
+      <path d="M8 9h6M8 13h6M8 16h3" strokeLinecap="round"/>
     </svg>
   );
 }

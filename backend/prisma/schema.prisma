@@ -1543,3 +1543,22 @@ model AnalyticsEvent {
   @@index([sessionId])
   @@map("analytics_events")
 }
+
+// Business headlines pulled from publishers' public RSS feeds by
+// services/newsFetcher.js. We keep the headline, a short snippet and the link
+// back to the publisher - never the article body. `url` is the identity: the
+// same story fetched twice is one row. Rows older than a week are pruned.
+model NewsItem {
+  id          String   @id @default(uuid())
+  url         String   @unique
+  title       String
+  summary     String?
+  source      String
+  imageUrl    String?
+  publishedAt DateTime
+  createdAt   DateTime @default(now())
+
+  @@index([publishedAt])
+  @@index([source, publishedAt])
+  @@map("news_items")
+}

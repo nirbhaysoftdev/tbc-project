@@ -8,6 +8,7 @@
 //   05 WHY JOIN     Concrete outcomes for a business owner
 //   06 HOW IT WORKS Discover → Connect → Collaborate → Create → Grow
 //   04 PARTNERS     Proof, early - businesses already inside
+//   04C HEADLINES   Live business headlines (title + source only; detail is in the portal)
 //   04B ALADINO     Our project - the AI store assistant and its seven industries
 //   07 SCENARIO     One opportunity, six businesses
 //   07B PROFIT      Universal Profit - the proposed profit-sharing framework
@@ -29,6 +30,7 @@ import HowItWorks from '@/components/landing/HowItWorks';
 import Scenario from '@/components/landing/Scenario';
 import Community from '@/components/landing/Community';
 import Partners from '@/components/landing/Partners';
+import Headlines from '@/components/landing/Headlines';
 import Aladino from '@/components/landing/Aladino';
 import Profit from '@/components/landing/Profit';
 import Inside from '@/components/landing/Inside';
@@ -62,6 +64,7 @@ export default function LandingPage() {
         <WhyJoin />
         <HowItWorks />
         <Partners />
+        <Headlines />
         <Scenario />
         <Profit />
         <Inside />

@@ -552,6 +552,16 @@ export const broadcastsAPI = {
 };
 
 // ── Companies ───────────────────────────────────
+// Business headlines. `headlines` and `markets` are public (the landing page);
+// the archive needs a session. Pages read these from the server's copy - the browser never talks to
+// a publisher.
+export const newsAPI = {
+  headlines: (limit = 8)                         => api.get('/news/headlines', { params: { limit } }),
+  markets:   ()                                  => api.get('/news/markets'),
+  list:      (params?: Record<string, string>)   => api.get('/news', { params }),
+  refresh:   ()                                  => api.post('/news/refresh'),
+};
+
 // The company profile module. Same contract as projectsAPI: server-side
 // search, filters, sorting and pagination, and media that is only reachable
 // through short-lived ticketed URLs.
