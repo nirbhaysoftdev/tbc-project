@@ -521,6 +521,8 @@
       "withdrawn": "Withdrawn",
       "pendingWithdrawal": "Pending Withdrawal",
       "roi": "Return on Capital",
+      "monthlyFixProfit": "Monthly Fix Profit",
+      "monthlyFixProfitNotSet": "Monthly fix profit not set",
       "projects": "Projects"
     },
     "docs": {

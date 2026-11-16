@@ -521,6 +521,8 @@
       "withdrawn": "Prelevato",
       "pendingWithdrawal": "Prelievo in attesa",
       "roi": "Rendimento sul capitale",
+      "monthlyFixProfit": "Profitto fisso mensile",
+      "monthlyFixProfitNotSet": "Profitto fisso mensile non impostato",
       "projects": "Progetti"
     },
     "docs": {

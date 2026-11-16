@@ -170,6 +170,7 @@ const emailBroadcastWorker = require('./services/emailBroadcastWorker');
 const trafficTracker = require('./services/trafficTracker');
 const newsFetcher = require('./services/newsFetcher');
 const marketFetcher = require('./services/marketFetcher');
+const monthlyProfitWorker = require('./services/monthlyProfitWorker');
 
 app.listen(PORT, async () => {
   console.log(`\n🚀 TBC API running on http://localhost:${PORT}`);
@@ -207,6 +208,14 @@ app.listen(PORT, async () => {
       emailBroadcastWorker.start();
     } catch (err) {
       console.error(`   ✗  email broadcast worker not started - ${err.message}`);
+    }
+
+    // Credits each member's monthly fixed profit (and emails the statement) on
+    // their configured day. Idempotent, so a restart never double-pays.
+    try {
+      monthlyProfitWorker.start();
+    } catch (err) {
+      console.error(`   ✗  monthly profit worker not started - ${err.message}`);
     }
 
     // Headlines from publishers' RSS feeds. Failure only means older news.

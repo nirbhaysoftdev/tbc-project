@@ -232,6 +232,15 @@ function MemberDetailContent() {
   } = data;
   const profile = member.profile || {};
 
+  // The monthly fix profit is whatever the admin set in the active
+  // MONTHLY_PERCENT configs; several projects can carry different rates.
+  const monthlyRates: number[] = Array.from(new Set<number>(
+    (profitConfigs || []).filter((c: any) => c.profitType === 'MONTHLY_PERCENT').map((c: any) => Number(c.rate)),
+  )).sort((a, b) => a - b);
+  const monthlyFixValue = monthlyRates.length === 0
+    ? t('admin:memberDetail.tiles.monthlyFixProfitNotSet')
+    : monthlyRates.map(r => `${formatNumber(r)}%`).join(' / ');
+
   // `key` is the stable React key; `label` is translated.
   const tiles = [
     { key: 'investedCapital',   label: t('admin:memberDetail.tiles.investedCapital'),   value: formatEur(kpis.investedCapital) },
@@ -241,6 +250,7 @@ function MemberDetailContent() {
     { key: 'withdrawn',         label: t('admin:memberDetail.tiles.withdrawn'),         value: formatEur(kpis.withdrawnProfit) },
     { key: 'pendingWithdrawal', label: t('admin:memberDetail.tiles.pendingWithdrawal'), value: formatEur(kpis.pendingWithdrawal) },
     { key: 'roi',               label: t('admin:memberDetail.tiles.roi'),               value: `${formatNumber(kpis.roi)}%` },
+    { key: 'monthlyFixProfit',  label: t('admin:memberDetail.tiles.monthlyFixProfit'),  value: monthlyFixValue },
     { key: 'projects',          label: t('admin:memberDetail.tiles.projects'),          value: formatNumber(kpis.projectCount) },
   ];
 

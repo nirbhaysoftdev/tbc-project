@@ -521,7 +521,37 @@ async function generateMonthlyProfitsForPeriod(periodDate = new Date(), createdB
   };
 }
 
+/**
+ * The scheduled run: for every active monthly config, credit each cycle whose
+ * configured day has arrived - this month's, and last month's in case the API
+ * was down on the day. Idempotent (unique cycle row), so running hourly, twice
+ * or from two processes can never pay a cycle twice or email it twice.
+ */
+async function generateDueMonthlyProfits(now = new Date(), createdBy = 'system') {
+  const configs = await prisma.profitConfig.findMany({
+    where: { profitType: 'MONTHLY_PERCENT', active: true, effectiveFrom: { lte: now } },
+    select: { userId: true, projectId: true, monthlyProfitDay: true },
+  });
+
+  const credited = [];
+  for (const { userId, projectId, monthlyProfitDay } of configs) {
+    for (const monthOffset of [-1, 0]) {
+      const lastDay = new Date(now.getFullYear(), now.getMonth() + monthOffset + 1, 0).getDate();
+      const cycle = new Date(now.getFullYear(), now.getMonth() + monthOffset, Math.min(monthlyProfitDay, lastDay));
+      if (cycle > now) continue;
+      try {
+        const res = await computeMonthlyProfitForPeriod({ userId, projectId, periodDate: cycle, createdBy });
+        if (res.generated) credited.push(res.record);
+      } catch (err) {
+        console.error(`[monthly-profit] ${userId}/${projectId || '-'} ${periodKey(cycle)}:`, err.message);
+      }
+    }
+  }
+  return { generated: credited.length, credited, checked: configs.length };
+}
+
 module.exports = {
+  generateDueMonthlyProfits,
   periodKey,
   firstEligibleCycleDate,
   resolveProject,
