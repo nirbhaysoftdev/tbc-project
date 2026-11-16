@@ -34,7 +34,7 @@ const todayIso = () => new Date().toISOString().slice(0, 10);
 
 export default function InvestmentRequestsTab({ onCompleted }: { onCompleted?: () => void }) {
   const { t } = useTranslation(['admin', 'common']);
-  const [statusFilter, setStatusFilter] = useState<Status | ''>('');
+  const [statusFilter, setStatusFilter] = useState<Status | 'OPEN' | ''>('OPEN');
 
   const [active, setActive] = useState<any | null>(null);
   const [detail, setDetail] = useState<any | null>(null);
@@ -105,7 +105,8 @@ export default function InvestmentRequestsTab({ onCompleted }: { onCompleted?: (
           until you confirm payment and complete the request with the actual amount received.
         </p>
         <select className="filter-select" value={statusFilter}
-          onChange={e => setStatusFilter(e.target.value as Status | '')}>
+          onChange={e => setStatusFilter(e.target.value as Status | 'OPEN' | '')}>
+          <option value="OPEN">{t('admin:requests.openRequests')}</option>
           <option value="">{t('admin:requests.allStatuses')}</option>
           {(Object.keys(STATUS_LABEL) as Status[]).map(s => (
             <option key={s} value={s}>{STATUS_LABEL[s]}</option>

@@ -45,6 +45,7 @@ enum TransactionStatus {
   COMPLETED
   PENDING
   FAILED
+  REVERSED
 }
 
 enum TransactionCategory {
@@ -94,6 +95,7 @@ enum ProfitType {
 enum ProfitRecordType {
   ONE_TIME
   MONTHLY
+  INSURANCE
 }
 
 enum PostType {
@@ -242,7 +244,8 @@ model User {
   withdrawRequests  WithdrawRequest[]
   walletInvestments WalletInvestment[]
   profitConfigs     ProfitConfig[]
-  profitRecords     ProfitRecord[]
+  insurancePolicy   InsurancePolicy?
+profitRecords     ProfitRecord[]
 
   // Community
   profile            Profile?
@@ -479,6 +482,9 @@ model ProfitConfig {
   projectId        String?
   profitType       ProfitType @default(MONTHLY_PERCENT)
   rate             Float // percent, e.g. 2 = 2%
+  // Set = the member is credited this many euros every cycle, whatever the
+  // capital; `rate` then only records the equivalent % when it was set.
+  fixedAmount      Float?
   monthlyProfitDay Int        @default(15)
   effectiveFrom    DateTime   @default(now())
   active           Boolean    @default(true)
@@ -490,6 +496,34 @@ model ProfitConfig {
 
   @@index([userId, projectId, active])
   @@map("profit_configs")
+}
+
+enum InsuranceStatus {
+  ACTIVE
+  DISABLED
+}
+
+// A member's annual insurance return: on `renewalDate`, and on the same date
+// every year after, `ratePercent` of their invested capital is credited as
+// profit (a ProfitRecord of type INSURANCE). One policy per member.
+// `renewalDate` is always the NEXT payout; it moves forward a year in the same
+// transaction that credits it, which is also what makes the credit idempotent.
+model InsurancePolicy {
+  id                 String          @id @default(uuid())
+  userId             String          @unique
+  ratePercent        Float
+  renewalDate        DateTime
+  status             InsuranceStatus @default(ACTIVE)
+  lastCreditedAt     DateTime?
+  lastCreditedAmount Float?
+  createdBy          String?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, renewalDate])
+  @@map("insurance_policies")
 }
 
 // One row per profit event (one-time or a single monthly cycle). `period` is

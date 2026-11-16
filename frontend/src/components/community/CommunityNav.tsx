@@ -21,6 +21,10 @@ const NAV_LINKS = [
   { href: '/community/messages',  key: 'messages', countKey: 'msg' },
 ];
 
+// Deal Room, Events and Messages now have rows in the sidebar, so the sub-nav
+// keeps only the feed and the directory. The standalone 'full' bar is unchanged.
+const MOVED_TO_SIDEBAR = ['dealRoom', 'events', 'messages'];
+
 export default function CommunityNav({
   variant = 'full',
 }: {
@@ -59,7 +63,7 @@ export default function CommunityNav({
   if (variant === 'subnav') {
     return (
       <nav className="comm-subnav" aria-label={t('nav:community.feed')}>
-        {NAV_LINKS.map(({ href, key, countKey }) => {
+        {NAV_LINKS.filter(({ key }) => !MOVED_TO_SIDEBAR.includes(key)).map(({ href, key, countKey }) => {
           const isActive = href === '/community'
             ? pathname === '/community'
             : pathname.startsWith(href);

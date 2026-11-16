@@ -86,7 +86,8 @@
     "txStatus": {
       "COMPLETED": "Completed",
       "PENDING": "Pending",
-      "FAILED": "Failed"
+      "FAILED": "Failed",
+      "REVERSED": "Reversed"
     },
     "pageTitle": "Transaction History",
     "csv": "CSV",
@@ -98,8 +99,16 @@
     "investment": "Investment",
     "profit": "Profit",
     "totalBalance": "Total Balance",
-    "analyticsTitle": "Detailed Portfolio Analytics",
-    "analyticsNote": "Donut chart (capital allocation) and monthly profit bar chart coming in Phase 2."
+    "openingBalance": "Opening balance",
+    "allocationTitle": "Capital allocation",
+    "allocationNote": "Where your invested capital sits, by project.",
+    "noCapital": "No capital invested yet.",
+    "profitTitle": "Monthly profit",
+    "profitNote": "Profit credited each month over the last 12 months, by source.",
+    "noProfit": "No profit credited in the last 12 months.",
+    "typeMonthly": "Monthly fix",
+    "typeInsurance": "Insurance",
+    "typeOneTime": "One-time"
   },
   "cards": {
     "title": "Cards",
@@ -137,5 +146,27 @@
     "languageHint": "Choose the language for the interface. Your choice is saved to your profile and follows you to other devices.",
     "updated": "Profile updated successfully.",
     "updateFailed": "Update failed."
+  },
+  "insurance": {
+    "title": "Insurance",
+    "note": "{{rate}}% of your capital is credited to your profit every year on the renewal date.",
+    "disabledNote": "Your insurance is currently not active.",
+    "rate": "Insurance",
+    "renewal": "Next renewal",
+    "expected": "Expected credit",
+    "status": {
+      "ACTIVE": "Active",
+      "DISABLED": "Disabled"
+    }
+  },
+  "returns": {
+    "monthlyTitle": "Monthly fix profit",
+    "monthlyNote": "Credited automatically each month on the day shown, on the capital you hold at that time.",
+    "project": "Project",
+    "fix": "Fix",
+    "onCapital": "On capital",
+    "next": "Next credit",
+    "credit": "Expected credit",
+    "yearly": "Yearly return received"
   }
 }

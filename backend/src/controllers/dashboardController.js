@@ -19,7 +19,8 @@ const getSummary = async (req, res) => {
       walletService.getWalletBreakdown(req.user.id),
       walletService.getProjectBreakdown(req.user.id),
       prisma.transaction.findMany({
-        where:   { userId: req.user.id },
+        // Undone transactions are the administration's correction, not the member's history.
+        where:   { userId: req.user.id, status: { not: 'REVERSED' } },
         orderBy: { createdAt: 'desc' },
         take:    5,
         include: { project: { select: { id: true, title: true } } },
@@ -129,4 +130,80 @@ function buildChartPoints(transactions, wallet, period, from) {
   return points;
 }
 
-module.exports = { getSummary, getChartData };
+// The signed-in member's recurring returns - insurance and monthly fix profit -
+// with each amount recomputed from the capital they hold right now.
+const getReturns = async (req, res) => {
+  try {
+    const yearAgo = new Date(); yearAgo.setFullYear(yearAgo.getFullYear() - 1);
+    const [policy, plans, received] = await Promise.all([
+      require('../services/insurance').getForUser(req.user.id),
+      require('../services/investmentEngine').monthlyPlansForUser(req.user.id),
+      prisma.profitRecord.aggregate({
+        where: { userId: req.user.id, type: 'INSURANCE', generatedAt: { gte: yearAgo } },
+        _sum: { amount: true },
+      }),
+    ]);
+    res.json({
+      insurance: policy && {
+        ratePercent: policy.ratePercent, renewalDate: policy.renewalDate, status: policy.status,
+        capital: policy.capital, expectedAmount: policy.expectedAmount,
+        lastCreditedAt: policy.lastCreditedAt, lastCreditedAmount: policy.lastCreditedAmount,
+        // Insurance actually credited in the last 12 months.
+        receivedLastYear: received._sum.amount || 0,
+      },
+      monthly: plans.map((p) => ({
+        project: p.project, rate: p.rate, fixedAmount: p.fixedAmount, monthlyProfitDay: p.monthlyProfitDay,
+        nextDate: p.nextDate, capital: p.capital, eligibleCapital: p.eligibleCapital, expectedAmount: p.expectedAmount,
+      })),
+    });
+  } catch (err) {
+    console.error('Returns error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
+// ── Portfolio: live balance, where the capital sits, and profit month by month ──
+const MONTHS = 12;
+const monthKey = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+
+const getPortfolio = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const now = new Date();
+    const since = new Date(now.getFullYear(), now.getMonth() - (MONTHS - 1), 1);
+
+    const [wallet, byProject, records] = await Promise.all([
+      walletService.getWalletBreakdown(userId),
+      walletService.getProjectBreakdown(userId),
+      prisma.profitRecord.findMany({
+        where: { userId, generatedAt: { gte: since } },
+        select: { amount: true, type: true, generatedAt: true },
+      }),
+    ]);
+
+    // One bucket per month, empty months included so the bars keep their spacing.
+    const buckets = new Map();
+    for (let i = 0; i < MONTHS; i += 1) {
+      const d = new Date(since.getFullYear(), since.getMonth() + i, 1);
+      buckets.set(monthKey(d), { month: monthKey(d), monthly: 0, insurance: 0, oneTime: 0, total: 0 });
+    }
+    for (const r of records) {
+      const b = buckets.get(monthKey(r.generatedAt));
+      if (!b) continue;
+      const field = r.type === 'MONTHLY' ? 'monthly' : r.type === 'INSURANCE' ? 'insurance' : 'oneTime';
+      b[field] += r.amount;
+      b.total += r.amount;
+    }
+    const round = (n) => Math.round(n * 100) / 100;
+    const monthlyProfit = [...buckets.values()].map((b) => ({
+      month: b.month, monthly: round(b.monthly), insurance: round(b.insurance), oneTime: round(b.oneTime), total: round(b.total),
+    }));
+
+    res.json({ wallet, byProject, monthlyProfit });
+  } catch (err) {
+    console.error('Portfolio error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
+module.exports = { getSummary, getChartData, getReturns, getPortfolio };

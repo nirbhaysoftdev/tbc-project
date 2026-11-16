@@ -1,5 +1,8 @@
 {
   "main": {
+    "events": "الفعاليات",
+    "dealRoom": "Deal Room",
+    "messages": "الرسائل",
     "community": "المجتمع",
     "dashboard": "لوحة التحكم",
     "projects": "المشاريع",

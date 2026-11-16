@@ -253,12 +253,29 @@ async function returnCapital({ investmentId, amount, createdBy, description }) {
 
 // ── Monthly profit configuration ───────────────
 
-async function setMonthlyProfitConfig({ userId, projectId, rate, monthlyProfitDay = 15, effectiveFrom, createdBy }) {
-  const r = parseFloat(rate);
+async function setMonthlyProfitConfig({ userId, projectId, rate, fixedAmount, monthlyProfitDay = 15, effectiveFrom, createdBy }) {
   if (!userId) throw badRequest('User is required');
-  if (Number.isNaN(r) || r <= 0) throw badRequest('Monthly rate must be greater than zero');
+  const day = parseInt(monthlyProfitDay, 10);
+  if (!(day >= 1 && day <= 31)) throw badRequest('Profit day must be between 1 and 31');
+
+  const hasAmount = fixedAmount !== undefined && fixedAmount !== null && fixedAmount !== '';
+  const hasRate = rate !== undefined && rate !== null && rate !== '';
+  if (hasAmount === hasRate) throw badRequest('Provide either a monthly percentage or a fixed amount');
 
   const project = await resolveProject(projectId);
+  let r;
+  let amt = null;
+  if (hasAmount) {
+    amt = money(parseFloat(fixedAmount));
+    if (Number.isNaN(amt) || amt <= 0) throw badRequest('Monthly amount must be greater than zero');
+    // The equivalent % is informational (reports, the rate column). 0 when
+    // there is no capital to express it against yet.
+    const capital = await getTotalCapital(userId, project?.id || null);
+    r = capital > 0 ? Math.round((amt / capital) * 10000) / 100 : 0;
+  } else {
+    r = parseFloat(rate);
+    if (Number.isNaN(r) || r <= 0) throw badRequest('Monthly rate must be greater than zero');
+  }
   const from = effectiveFrom ? new Date(effectiveFrom) : new Date();
 
   return prisma.$transaction(async (tx) => {
@@ -276,7 +293,8 @@ async function setMonthlyProfitConfig({ userId, projectId, rate, monthlyProfitDa
         projectId: project?.id || null,
         profitType: 'MONTHLY_PERCENT',
         rate: r,
-        monthlyProfitDay,
+        fixedAmount: amt,
+        monthlyProfitDay: day,
         effectiveFrom: from,
         active: true,
         createdBy,
@@ -292,6 +310,10 @@ async function getCurrentMonthlyProfitConfig(userId, projectId, client = prisma)
   });
 }
 
+/** What a config credits for a cycle: its fixed amount, or its % of eligible capital. */
+const monthlyAmountFor = (config, eligibleCapital) =>
+  config.fixedAmount != null ? money(config.fixedAmount) : money(eligibleCapital * config.rate / 100);
+
 /** The config whose rate actually applies to a given cycle date (may be inactive now). */
 async function getApplicableMonthlyConfig(userId, projectId, asOfDate, client = prisma) {
   return client.profitConfig.findFirst({
@@ -305,26 +327,75 @@ async function getApplicableMonthlyConfig(userId, projectId, asOfDate, client = 
   });
 }
 
-/** Preview card data: current capital, rate, computed monthly amount, next cycle date. */
-async function previewMonthlyProfit(userId, projectId) {
+/**
+ * Preview for the monthly fix: capital, the config in force (if any), the
+ * capital that will be eligible on the next cycle and what that credits.
+ * `day` previews a day the admin is typing; it defaults to the config's own.
+ */
+async function previewMonthlyProfit(userId, projectId, day) {
   const [capital, config] = await Promise.all([
     getTotalCapital(userId, projectId),
     getCurrentMonthlyProfitConfig(userId, projectId),
   ]);
-  if (!config) return { capital, rate: null, monthlyAmount: 0, nextProfitDate: null };
+  const cycleDay = parseInt(day, 10) || config?.monthlyProfitDay || 15;
 
   const now = new Date();
-  const day = config.monthlyProfitDay;
-  let next = new Date(now.getFullYear(), now.getMonth(), day);
-  if (next <= now) next = new Date(now.getFullYear(), now.getMonth() + 1, day);
+  const at = (offset) => {
+    const last = new Date(now.getFullYear(), now.getMonth() + offset + 1, 0).getDate();
+    return new Date(now.getFullYear(), now.getMonth() + offset, Math.min(cycleDay, last));
+  };
+  const next = at(0) > now ? at(0) : at(1);
 
-  const eligibleCapital = await getEligibleCapitalForDate(userId, projectId, next, day);
+  const eligibleCapital = await getEligibleCapitalForDate(userId, projectId, next, cycleDay);
+  const monthlyAmount = !config ? 0
+    : eligibleCapital > 0 ? monthlyAmountFor(config, eligibleCapital) : 0;
   return {
     capital,
-    rate: config.rate,
-    monthlyAmount: money(eligibleCapital * config.rate / 100),
+    eligibleCapital,
+    config: config ? {
+      rate: config.rate, fixedAmount: config.fixedAmount ?? null,
+      monthlyProfitDay: config.monthlyProfitDay, effectiveFrom: config.effectiveFrom,
+    } : null,
+    rate: config ? config.rate : null,
+    monthlyAmount,
     nextProfitDate: next,
   };
+}
+
+/**
+ * Every active monthly fix a member has, with what it would credit on its next
+ * cycle - recomputed from the capital the member holds right now, so a booking
+ * made a minute ago is already in the figure. Capital invested after a cycle's
+ * cut-off counts from the following cycle (the eligibility rule above), which
+ * is why `capital` (all of it) and `eligibleCapital` (what the next credit is
+ * calculated on) can differ.
+ */
+async function monthlyPlansForUser(userId) {
+  const configs = await prisma.profitConfig.findMany({
+    where: { userId, profitType: 'MONTHLY_PERCENT', active: true },
+    include: { project: { select: { title: true } } },
+    orderBy: { effectiveFrom: 'desc' },
+  });
+  const now = new Date();
+  const plans = [];
+  for (const c of configs) {
+    const at = (offset) => {
+      const last = new Date(now.getFullYear(), now.getMonth() + offset + 1, 0).getDate();
+      return new Date(now.getFullYear(), now.getMonth() + offset, Math.min(c.monthlyProfitDay, last));
+    };
+    const next = at(0) > now ? at(0) : at(1);
+    const [capital, eligibleCapital] = await Promise.all([
+      getTotalCapital(userId, c.projectId),
+      getEligibleCapitalForDate(userId, c.projectId, next, c.monthlyProfitDay),
+    ]);
+    plans.push({
+      id: c.id, projectId: c.projectId, project: c.project?.title || null,
+      rate: c.rate, fixedAmount: c.fixedAmount ?? null, monthlyProfitDay: c.monthlyProfitDay,
+      nextDate: next, capital, eligibleCapital,
+      expectedAmount: eligibleCapital > 0 ? monthlyAmountFor(c, eligibleCapital) : 0,
+    });
+  }
+  return plans;
 }
 
 // ── One-time profit ─────────────────────────────
@@ -425,7 +496,9 @@ async function computeMonthlyProfitForPeriod({ userId, projectId, periodDate, cr
   const eligibleCapital = await getEligibleCapitalForDate(userId, projectId, periodDate, config.monthlyProfitDay);
   if (eligibleCapital <= 0) return { record: null, generated: false };
 
-  const amount = money(eligibleCapital * config.rate / 100);
+  const amount = monthlyAmountFor(config, eligibleCapital);
+  // A fixed amount is recorded with the % it works out to on this cycle's capital.
+  const appliedRate = config.fixedAmount != null ? Math.round((amount / eligibleCapital) * 10000) / 100 : config.rate;
   const project = projectId ? await prisma.project.findUnique({ where: { id: projectId } }) : null;
 
   try {
@@ -438,7 +511,7 @@ async function computeMonthlyProfitForPeriod({ userId, projectId, periodDate, cr
           type: 'MONTHLY',
           period: key,
           capitalSnapshot: eligibleCapital,
-          rate: config.rate,
+          rate: appliedRate,
           amount,
           generatedAt: periodDate,
           createdBy: createdBy || 'system',
@@ -455,7 +528,7 @@ async function computeMonthlyProfitForPeriod({ userId, projectId, periodDate, cr
           status: 'COMPLETED',
           projectId: projectId || null,
           profitType: 'MONTHLY_PERCENT',
-          profitRate: config.rate,
+          profitRate: appliedRate,
           profitRecordId: rec.id,
           createdBy: createdBy || 'system',
           createdAt: periodDate,
@@ -479,7 +552,7 @@ async function computeMonthlyProfitForPeriod({ userId, projectId, periodDate, cr
           user,
           amount: record.amount,
           projectTitle: project?.title || null,
-          rate: config.rate,
+          rate: appliedRate,
           capitalBase: eligibleCapital,
           period: key,
           generatedAt: record.generatedAt,
@@ -562,6 +635,8 @@ module.exports = {
   setMonthlyProfitConfig,
   getCurrentMonthlyProfitConfig,
   getApplicableMonthlyConfig,
+  monthlyAmountFor,
+  monthlyPlansForUser,
   previewMonthlyProfit,
   createOneTimeProfit,
   computeMonthlyProfitForPeriod,

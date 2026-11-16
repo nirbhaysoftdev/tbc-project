@@ -51,6 +51,12 @@ const ACTIVITY = {
   PROFIT_GIVEN:               { category: 'PROFIT',     label: 'Profit given (one-time)' },
   PROFIT_CONFIG_SET:          { category: 'PROFIT',     label: 'Monthly profit configured' },
   PROFIT_MONTHLY_GENERATED:   { category: 'PROFIT',     label: 'Monthly profit generated' },
+  INSURANCE_SET:              { category: 'PROFIT',     label: 'Insurance set up' },
+  INSURANCE_UPDATED:          { category: 'PROFIT',     label: 'Insurance updated' },
+  INSURANCE_DISABLED:         { category: 'PROFIT',     label: 'Insurance disabled' },
+  INSURANCE_ENABLED:          { category: 'PROFIT',     label: 'Insurance enabled' },
+  INSURANCE_CREDITED:         { category: 'PROFIT',     label: 'Insurance return credited' },
+  INSURANCE_SKIPPED:          { category: 'PROFIT',     label: 'Insurance renewal skipped' },
 
   // ── Withdrawal ──
   WITHDRAWAL_REQUESTED:       { category: 'WITHDRAWAL', label: 'Withdrawal requested' },
@@ -61,6 +67,8 @@ const ACTIVITY = {
   WALLET_UPDATED:             { category: 'WALLET',     label: 'Wallet updated' },
   WALLET_ACTIVATED:           { category: 'WALLET',     label: 'Wallet activated' },
   TRANSACTION_ADDED:          { category: 'WALLET',     label: 'Transaction added' },
+  TRANSACTION_EDITED:         { category: 'WALLET',     label: 'Transaction edited' },
+  TRANSACTION_UNDONE:         { category: 'WALLET',     label: 'Transaction undone' },
 
   // ── System ──
   STATEMENT_SENT:             { category: 'SYSTEM',     label: 'Statement sent' },
@@ -72,6 +80,9 @@ const ACTIVITY = {
   ENQUIRY_SENT:               { category: 'SYSTEM',     label: 'Enquiry sent' },
   ENQUIRY_RECIPIENT_CHANGED:  { category: 'SYSTEM',     label: 'Enquiry recipients changed' },
   SIGNUP_NOTIFY_CHANGED:      { category: 'SYSTEM',     label: 'New-signup recipients changed' },
+  PROFIT_REPORT_EMAIL_CHANGED:{ category: 'SYSTEM',     label: 'Monthly report recipients changed' },
+  PROFIT_REPORT_SENT:         { category: 'SYSTEM',     label: 'Monthly members report sent' },
+  REPORT_DOWNLOADED:          { category: 'SYSTEM',     label: 'Report downloaded' },
 
   // ── Super admin ──
   // Everything only a SUPER_ADMIN can do. Kept in its own category so the
@@ -154,9 +165,10 @@ async function logActivity(entry) {
 // admins; the actor is never told about their own action.
 const SUPER_ADMIN_ALERTS = new Set([
   'API_KEY_CREATED', 'API_KEY_ROTATED', 'API_KEY_REVOKED', 'API_KEY_UPDATED',
-  'ENQUIRY_RECIPIENT_CHANGED', 'SIGNUP_NOTIFY_CHANGED',
+  'ENQUIRY_RECIPIENT_CHANGED', 'SIGNUP_NOTIFY_CHANGED', 'PROFIT_REPORT_EMAIL_CHANGED',
+  'INSURANCE_UPDATED', 'INSURANCE_DISABLED', 'INSURANCE_ENABLED',
   'IMPERSONATION_STARTED', 'ROLE_CHANGED', 'PASSWORD_RESET_BY_ADMIN',
-  'TRANSACTION_REVERSED', 'WALLET_UPDATED', 'MEMBER_PURGED',
+  'TRANSACTION_REVERSED', 'TRANSACTION_EDITED', 'TRANSACTION_UNDONE', 'WALLET_UPDATED', 'MEMBER_PURGED',
 ]);
 const ADMIN_ALERTS = new Set(['EMAIL_FAILED', 'DOCUMENT_UPLOADED']);
 

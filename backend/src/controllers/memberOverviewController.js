@@ -9,6 +9,8 @@
 // rendered from exactly what the admin is looking at, so there is one shape to
 // keep correct instead of two.
 const prisma = require('../utils/prismaClient');
+const insuranceService = require('../services/insurance');
+const engine = require('../services/investmentEngine');
 const walletService = require('../services/walletService');
 const { sendMemberStatementEmail } = require('../services/mailer');
 const { logActivity } = require('../services/activityLog');
@@ -105,7 +107,7 @@ async function buildOverview(userId) {
 
   const [
     breakdown, byProject, investments, profitRecords,
-    transactions, withdrawRequests, profitConfigs, investmentRequests,
+    transactions, withdrawRequests, profitConfigs, investmentRequests, insurance, monthlyPlans,
   ] = await Promise.all([
     walletService.getWalletBreakdown(userId),
     walletService.getProjectBreakdown(userId),
@@ -136,6 +138,8 @@ async function buildOverview(userId) {
       include: { project: { select: { id: true, title: true } } },
       orderBy: { createdAt: 'desc' },
     }),
+    insuranceService.getForUser(userId),
+    engine.monthlyPlansForUser(userId),
   ]);
 
   const activeInvestments = investments.filter((i) => i.status === 'ACTIVE');
@@ -156,6 +160,8 @@ async function buildOverview(userId) {
     withdrawRequests,
     profitConfigs,
     investmentRequests,
+    insurance,
+    monthlyPlans,
     kpis: {
       investedCapital: breakdown.investedCapital,
       grossProfit: breakdown.grossProfit,

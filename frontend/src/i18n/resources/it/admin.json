@@ -267,6 +267,7 @@
     "emptySub": "Registra il capitale da una richiesta di investimento completata, oppure creane uno direttamente.",
     "allMembers": "Tutti i membri",
     "allProjects": "Tutti i progetti",
+    "openRequests": "Richieste aperte",
     "allStatuses": "Tutti gli stati",
     "clearProjectFilter": "× Azzera filtro progetto",
     "investorsCount_one": "{{count}} investitore",
@@ -289,7 +290,8 @@
       "generated": "Generato"
     },
     "typeMonthly": "Mensile",
-    "typeOneTime": "Una tantum"
+    "typeOneTime": "Una tantum",
+    "typeInsurance": "Assicurazione"
   },
   "requests": {
     "title": "Richieste di investimento",
@@ -356,6 +358,117 @@
     "working": "Elaborazione…",
     "detailFailed": "Impossibile caricare i dettagli completi della richiesta."
   },
+  "monthlyFix": {
+    "laterCapital": "{{total}} sono investiti; il prossimo accredito è calcolato su {{eligible}}. Il capitale aggiunto dopo la scadenza conta dal mese successivo.",
+    "title": "Profitto fisso mensile",
+    "current": "Attuale",
+    "fixedPerMonth": "fisso / mese",
+    "credit": "Accredito mensile",
+    "onCapital": "sul capitale idoneo",
+    "day": "Accreditato il giorno",
+    "next": "Prossimo",
+    "noCapital": "Nessun capitale idoneo per questo progetto, quindi non verrà accreditato nulla alla prossima data.",
+    "notSet": "Profitto fisso mensile non impostato",
+    "byPercent": "Percentuale (%)",
+    "byAmount": "Importo fisso (€)",
+    "amountLabel": "Importo mensile (€)",
+    "willCredit": "Accredita",
+    "eachMonth": "ogni mese",
+    "of": "di",
+    "noCapitalHint": "Questo membro non ha ancora capitale idoneo in questo progetto, quindi la percentuale equivale a €0. Il capitale conta dal giorno di accredito del mese successivo all'investimento.",
+    "dayLabel": "Giorno del mese per l'accredito",
+    "note": "Accreditato automaticamente ogni mese in quel giorno e il membro riceve un estratto via email. Gli accrediti passati non cambiano.",
+    "save": "Salva",
+    "update": "Aggiorna importo",
+    "setup": "Imposta",
+    "saved": "Profitto fisso mensile aggiornato.",
+    "errValue": "Inserisci un valore maggiore di zero.",
+    "errDay": "Il giorno deve essere tra 1 e 31.",
+    "general": "Nessun progetto (generale)"
+  },
+  "insurance": {
+    "tileOff": "Assicurazione (off)",
+    "badge": "Assicurato",
+    "badgeTitle": "Assicurazione {{rate}}% · rinnovo {{date}}",
+    "sectionTitle": "Assicurazione",
+    "sectionSub": "Rendimento assicurativo annuale: una % del capitale del membro accreditata come profitto a una data, poi automaticamente alla stessa data ogni anno.",
+    "setupBtn": "Aggiungi assicurazione",
+    "edit": "Modifica",
+    "notSet": "Nessuna assicurazione impostata per questo membro.",
+    "setupTitle": "Imposta assicurazione",
+    "updateTitle": "Modifica assicurazione",
+    "rateLabel": "Percentuale assicurazione (%) *",
+    "dateLabel": "Data assicurazione *",
+    "capital": "Capitale",
+    "willCredit": "Accredita",
+    "on": "il",
+    "note": "Questa percentuale del capitale del membro viene accreditata come profitto alla data di rinnovo e alla stessa data ogni anno. Il membro viene avvisato via notifica ed email ogni volta.",
+    "errRate": "Inserisci una percentuale tra 0 e 100.",
+    "errDate": "Scegli una data di rinnovo futura.",
+    "saveFailed": "Impossibile salvare l'assicurazione.",
+    "save": "Salva",
+    "disable": "Disattiva",
+    "enable": "Attiva",
+    "confirmDisable": "Disattivare l'assicurazione di {{name}}? Non verrà accreditato nulla alla data di rinnovo finché non viene riattivata.",
+    "lastCredited": "Ultimo accredito",
+    "loadFailed": "Impossibile caricare le assicurazioni.",
+    "none": "Nessuna assicurazione.",
+    "statPolicies": "Polizze attive",
+    "statCapital": "Capitale assicurato",
+    "statAmount": "Totale prossimi accrediti",
+    "addPlaceholder": "Aggiungi un membro all'assicurazione…",
+    "addBtn": "Imposta",
+    "footnote": "L'importo è una stima sul capitale di oggi; il valore reale viene calcolato alla data di rinnovo. Solo un super admin può modificare o disattivare una polizza.",
+    "cols": {
+      "member": "Membro",
+      "capital": "Capitale totale",
+      "rate": "Assicurazione %",
+      "amount": "Importo",
+      "renewal": "Data di rinnovo",
+      "status": "Stato"
+    },
+    "status": {
+      "ACTIVE": "Attiva",
+      "DISABLED": "Disattivata"
+    },
+    "addTitle": "Aggiungi assicurazione",
+    "noticeTitle": "Assicurazione",
+    "creditBtn": "Accredita assicurazione",
+    "alreadyCredited": "Accredito assicurazione già effettuato:",
+    "rateLabelShort": "Assicurazione",
+    "nextRenewal": "Prossimo rinnovo",
+    "nextRenewalLabel": "Data del prossimo rinnovo *",
+    "autoNote": "Dal prossimo anno viene accreditato automaticamente alla data di rinnovo.",
+    "addMore": "Aggiungi un'altra assicurazione",
+    "editBtn": "Modifica / disattiva",
+    "addNote": "Questa % del capitale del membro viene accreditata come profitto per questa data ora. Il rinnovo è impostato alla stessa data dell'anno prossimo e da allora viene accreditato automaticamente ogni anno.",
+    "editNote": "Modifica la % e la data del prossimo rinnovo. Gli accrediti già effettuati non cambiano."
+  },
+  "txAdjust": {
+    "edit": "Modifica",
+    "undo": "Annulla",
+    "editTitle": "Modifica transazione",
+    "undoTitle": "Annulla transazione",
+    "amount": "Importo (€)",
+    "date": "Data",
+    "reason": "Motivo *",
+    "reasonPlaceholder": "Perché viene modificata? Registrato nei Log.",
+    "saveBtn": "Salva modifiche",
+    "undoBtn": "Annulla transazione",
+    "errReason": "Inserisci un motivo (almeno 3 caratteri).",
+    "errNothing": "Modifica prima l'importo o la data.",
+    "failed": "Impossibile aggiornare la transazione.",
+    "editNote": {
+      "INVESTMENT": "Modifica il capitale investito dal membro, la data dell'investimento (l'idoneità al profitto mensile segue la data) e il totale raccolto dal progetto.",
+      "PROFIT": "Modifica il profitto accreditato al membro. Non può scendere sotto quanto già prelevato.",
+      "MANUAL": "Modifica il saldo del portafoglio del membro della differenza."
+    },
+    "undoNote": {
+      "INVESTMENT": "L'investimento viene annullato: il capitale del membro e il totale raccolto dal progetto tornano a prima. Il profitto già maturato non viene rimosso. Non possibile se è stato restituito del capitale.",
+      "PROFIT": "Il profitto viene rimosso dal saldo del membro. Il record resta a zero, così il processo mensile non accredita di nuovo quel ciclo. Non possibile se il profitto è già stato prelevato.",
+      "MANUAL": "Il portafoglio torna com'era prima di questa transazione."
+    }
+  },
   "wizard": {
     "title": "Nuovo investimento",
     "memberLabel": "Membro *",
@@ -387,6 +500,10 @@
       "ONE_TIME_PROFIT": {
         "title": "Aggiungi profitto una tantum",
         "desc": "Un singolo pagamento di profitto - importo o % del capitale, non ricorrente."
+      },
+      "INSURANCE": {
+        "title": "Aggiungi assicurazione",
+        "desc": "Rendimento assicurativo: una % del capitale a una data. Si ripete automaticamente ogni anno."
       },
       "MONTHLY_CONFIG": {
         "title": "Configura profitto mensile",
@@ -502,6 +619,16 @@
     "withdrawn": "Prelevato"
   },
   "memberDetail": {
+    "perMonth": "/ mese",
+    "tabs": {
+      "insurance": "Assicurazione",
+      "investments": "Investimenti",
+      "projects": "Per progetto",
+      "profit": "Profitto",
+      "transactions": "Transazioni",
+      "withdrawals": "Prelievi",
+      "requests": "Richieste di investimento"
+    },
     "noneSelected": "Nessun membro selezionato.",
     "loadFailed": "Impossibile caricare questo membro.",
     "notFound": "Membro non trovato.",
@@ -568,6 +695,8 @@
     "investmentsTitle": "Investimenti ({{count}})",
     "investmentsSub": "Ogni allocazione di capitale registrata, dalla più recente.",
     "capitalRecords": "Record di capitale",
+    "addInvestment": "Aggiungi investimento",
+    "monthlyFixProfitBtn": "Profitto fisso mensile",
     "investmentsHead": {
       "project": "Progetto",
       "investedOn": "Investito il",
@@ -594,6 +723,7 @@
     "ratesTitle": "Tassi di profitto mensile in vigore",
     "ratesSub": "Una modifica del tasso vale dal ciclo successivo; i record passati mantengono il tasso che li ha prodotti.",
     "ratesHead": {
+      "expected": "Previsto / mese",
       "project": "Progetto",
       "rate": "Tasso",
       "cycleDay": "Giorno del ciclo",
@@ -622,7 +752,7 @@
     },
     "noWithdrawals": "Nessuna richiesta di prelievo.",
     "requestsTitle": "Richieste di investimento ({{count}})",
-    "requestsSub": "Richieste dalla Deal Room. Una richiesta non ha effetti finanziari finché l'admin non la completa.",
+    "requestsSub": "Richieste dalla Deal Room. Una richiesta non ha effetti finanziari finché l'admin non la completa; una volta completata passa a Investimenti.",
     "reqHead": {
       "date": "Data",
       "project": "Progetto",

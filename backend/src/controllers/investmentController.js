@@ -180,9 +180,9 @@ const createOneTimeProfit = async (req, res) => {
 
 const setMonthlyProfitConfig = async (req, res) => {
   try {
-    const { userId, projectId, rate, monthlyProfitDay, effectiveFrom } = req.body;
+    const { userId, projectId, rate, fixedAmount, monthlyProfitDay, effectiveFrom } = req.body;
     const config = await engine.setMonthlyProfitConfig({
-      userId, projectId, rate, monthlyProfitDay, effectiveFrom, createdBy: req.user.id,
+      userId, projectId, rate, fixedAmount, monthlyProfitDay, effectiveFrom, createdBy: req.user.id,
     });
 
     await prisma.adminLog.create({
@@ -194,12 +194,12 @@ const setMonthlyProfitConfig = async (req, res) => {
 
     logActivity({
       type:        'PROFIT_CONFIG_SET',
-      title:       `Monthly profit set to ${config.rate}%`,
+      title:       config.fixedAmount != null ? `Monthly profit set to a fixed €${config.fixedAmount}` : `Monthly profit set to ${config.rate}%`,
       description: `Effective from ${effectiveFrom}`,
       actorId:     req.user.id,
       actorName:   req.user.name,
       targetId:    userId,
-      metadata:    { configId: config.id, projectId: projectId || null, rate: config.rate, monthlyProfitDay },
+      metadata:    { configId: config.id, projectId: projectId || null, rate: config.rate, fixedAmount: config.fixedAmount, monthlyProfitDay: config.monthlyProfitDay },
     });
 
     res.status(201).json({ config });
@@ -212,9 +212,10 @@ const setMonthlyProfitConfig = async (req, res) => {
 
 const previewMonthlyProfit = async (req, res) => {
   try {
-    const { userId, projectId } = req.query;
-    if (!userId || !projectId) return res.status(400).json({ error: 'userId and projectId are required' });
-    const preview = await engine.previewMonthlyProfit(userId, projectId);
+    // projectId is optional: capital held outside any project is a supported case.
+    const { userId, projectId, day } = req.query;
+    if (!userId) return res.status(400).json({ error: 'userId is required' });
+    const preview = await engine.previewMonthlyProfit(userId, projectId || null, day);
     res.json({ preview });
   } catch (err) {
     console.error(err);

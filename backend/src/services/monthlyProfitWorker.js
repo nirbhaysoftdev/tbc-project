@@ -3,6 +3,8 @@
 // the worker only has to ask "what is due?" on an interval.
 const engine = require('./investmentEngine');
 const { logActivity } = require('./activityLog');
+const memberReports = require('./memberReports');
+const insurance = require('./insurance');
 
 const CONFIG = {
   enabled: process.env.MONTHLY_PROFIT_WORKER !== 'off',
@@ -16,6 +18,16 @@ async function tick() {
   if (running) return;
   running = true;
   try {
+    // The 7th's report goes out before anything else so a failure below
+    // cannot hold it back (and the other way round: it has its own catch).
+    try { await memberReports.sendDueMonthlyReport(); }
+    catch (err) { console.error('[monthly-report] failed:', err); }
+
+    // Annual insurance returns whose renewal date has arrived. Logs and
+    // notifies per member itself.
+    try { await insurance.creditDue(); }
+    catch (err) { console.error('[insurance] run failed:', err); }
+
     const { credited } = await engine.generateDueMonthlyProfits();
     // One entry per member credited, so it shows on that member's trail with
     // the amount, the same as a manually given profit.

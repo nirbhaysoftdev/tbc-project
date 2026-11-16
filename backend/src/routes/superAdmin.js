@@ -20,6 +20,9 @@ const { authenticate, requireSuperAdmin } = require('../middleware/auth');
 const ctrl   = require('../controllers/superAdminController');
 const assets = require('../controllers/superAdminAssetsController');
 const apiKeys = require('../controllers/apiKeyController');
+const reports = require('../controllers/reportsController');
+const txAdjust = require('../controllers/transactionAdjustController');
+const insuranceCtrl = require('../controllers/insuranceController');
 const { limitFor } = require('../services/uploadLimits');
 
 // ── Impersonation status ──────────────────────
@@ -125,6 +128,9 @@ router.delete('/enquiries/:id', assets.deleteEnquiry);
 // ── Ledger ────────────────────────────────────
 // Books the mirror-image entry. No endpoint anywhere edits a balance directly.
 router.post('/transactions/:id/reverse', assets.reverseTransaction);
+// Correct a transaction's amount/date, or undo it (source record moves with it).
+router.put('/transactions/:id',         txAdjust.edit);
+router.post('/transactions/:id/undo',   txAdjust.undo);
 
 // ── API keys ──────────────────────────────────
 // Machine credentials for the read-only API (services/apiKeys.js). Super admin
@@ -141,5 +147,20 @@ router.put('/api-keys/:id',         apiKeys.updateKey);
 router.post('/api-keys/:id/rotate', apiKeys.rotateKey);
 // Revoke, not delete - the row is the record of what the key could reach.
 router.delete('/api-keys/:id',      apiKeys.revokeKey);
+
+// ── Insurance ─────────────────────────────────
+// The full policy list, and the only place a policy can be changed or switched off.
+router.get('/insurance',          insuranceCtrl.list);
+router.put('/insurance/:userId',  insuranceCtrl.update);
+
+// ── Reports ───────────────────────────────────
+// Full member financials (emails, balances, fix %), so super admin only. The
+// settings and send-now routes are declared before /:key so they are not read
+// as a report named "settings".
+router.get('/reports',                 reports.catalogue);
+router.get('/reports/settings',        reports.getRecipients);
+router.put('/reports/settings',        reports.updateRecipients);
+router.post('/reports/monthly/send-now', reports.sendNow);
+router.get('/reports/:key',            reports.run);
 
 module.exports = router;

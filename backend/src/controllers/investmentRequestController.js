@@ -126,7 +126,10 @@ const listRequests = async (req, res) => {
   try {
     const { status, userId, projectId, page = 1, limit = 50 } = req.query;
     const where = {};
-    if (status) where.status = status;
+    // OPEN = everything except COMPLETED: a completed request has become an
+    // investment and lives there, so the default view leaves it out.
+    if (status === 'OPEN') where.status = { not: 'COMPLETED' };
+    else if (status) where.status = status;
     if (userId) where.userId = userId;
     if (projectId) where.projectId = projectId;
 

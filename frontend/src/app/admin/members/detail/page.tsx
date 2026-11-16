@@ -17,6 +17,11 @@ import {
   PortfolioChart, MonthlyActivityChart, ProjectSplitChart,
 } from '@/components/admin/MemberCharts';
 import MemberCapitalModal from '@/components/admin/MemberCapitalModal';
+import { useHashTab } from '@/lib/useHashTab';
+import InvestmentWizard from '@/components/admin/InvestmentWizard';
+import MonthlyFixModal from '@/components/admin/MonthlyFixModal';
+import InsuranceModal from '@/components/admin/InsuranceModal';
+import TransactionAdjustModal, { canAdjust } from '@/components/admin/TransactionAdjustModal';
 import { openDocument } from '@/lib/openDocument';
 import { useAuth } from '@/lib/auth';
 import { isSuperAdminRole } from '@/lib/roles';
@@ -39,7 +44,9 @@ const badgeFor = (status?: string | null) =>
     ? 'badge-completed'
     : status === 'PENDING' || status === 'pending' || status === 'PAYMENT_RECEIVED'
       ? 'badge-pending'
-      : 'badge-failed';
+      : status === 'REVERSED'
+        ? 'badge-reversed'
+        : 'badge-failed';
 
 const cardStyle: React.CSSProperties = {
   background: 'var(--bg-card)',
@@ -47,6 +54,8 @@ const cardStyle: React.CSSProperties = {
   borderRadius: 'var(--radius-md)',
   padding: 20,
 };
+
+const MEMBER_TABS = ['investments', 'projects', 'profit', 'insurance', 'transactions', 'withdrawals', 'requests'] as const;
 
 function Section({
   title, subtitle, children, right,
@@ -112,7 +121,12 @@ function MemberDetailContent() {
   // Capital records, moved here off the Active Members list: the member's
   // capital belongs on the member's page, and this stays the only route into
   // returning capital.
+  const [tab, setTab] = useHashTab(MEMBER_TABS, 'investments');
   const [capitalOpen, setCapitalOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
+  const [fixOpen, setFixOpen] = useState(false);
+  const [insOpen, setInsOpen] = useState(false);
+  const [adjust, setAdjust] = useState<{ tx: any; mode: 'edit' | 'undo' } | null>(null);
 
   // Member actions, moved here off the Active Members list: every action that
   // changes one member now lives on that member's own page, so the list is
@@ -147,6 +161,19 @@ function MemberDetailContent() {
   const reload = () => {
     if (id) adminAPI.getMemberOverview(id).then(r => setData(r.data));
   };
+
+  // Capital can change while this page is open (an investment booked in another
+  // tab, a request completed), and the insurance and monthly-fix amounts follow
+  // it, so the overview is refreshed every 30 seconds and when the tab returns.
+  useEffect(() => {
+    if (!id) return;
+    const refresh = () => {
+      if (document.visibilityState === 'visible') adminAPI.getMemberOverview(id).then(r => setData(r.data)).catch(() => {});
+    };
+    const timer = setInterval(refresh, 30_000);
+    document.addEventListener('visibilitychange', refresh);
+    return () => { clearInterval(timer); document.removeEventListener('visibilitychange', refresh); };
+  }, [id]);
 
   // The flag only. The opening-balance form below is a separate path.
   const handleEnableWallet = async () => {
@@ -228,18 +255,69 @@ function MemberDetailContent() {
 
   const {
     member, kpis, breakdown, byProject, investments, profitRecords,
-    transactions, withdrawRequests, profitConfigs, investmentRequests, series,
+    transactions, withdrawRequests, profitConfigs, investmentRequests, series, insurance, monthlyPlans,
   } = data;
+  const planFor = (id: string) => (monthlyPlans || []).find((p: any) => p.id === id);
   const profile = member.profile || {};
 
   // The monthly fix profit is whatever the admin set in the active
   // MONTHLY_PERCENT configs; several projects can carry different rates.
-  const monthlyRates: number[] = Array.from(new Set<number>(
-    (profitConfigs || []).filter((c: any) => c.profitType === 'MONTHLY_PERCENT').map((c: any) => Number(c.rate)),
-  )).sort((a, b) => a - b);
-  const monthlyFixValue = monthlyRates.length === 0
+  const monthlyFixes = (profitConfigs || [])
+    .filter((c: any) => c.profitType === 'MONTHLY_PERCENT')
+    .map((c: any) => ({
+      id: c.id,
+      project: c.project?.title || t('admin:memberDetail.noProject'),
+      label: c.fixedAmount != null ? formatEur(c.fixedAmount) : `${formatNumber(Number(c.rate))}%`,
+      // What the next cycle credits on the capital held right now.
+      expected: planFor(c.id)?.expectedAmount as number | undefined,
+    }));
+  // One fix reads as a headline figure. Several are a list, one per project:
+  // joined into one line they overflow the tile and say nothing about which
+  // project each belongs to.
+  const monthlyFixValue: React.ReactNode = monthlyFixes.length === 0
     ? t('admin:memberDetail.tiles.monthlyFixProfitNotSet')
-    : monthlyRates.map(r => `${formatNumber(r)}%`).join(' / ');
+    : monthlyFixes.length === 1
+      ? (
+        <>
+          {monthlyFixes[0].label}
+          {monthlyFixes[0].expected != null && (
+            <span style={{ display:'block', fontSize:12, fontWeight:500, color:'var(--green)', marginTop:2 }}>
+              ≈ {formatEur(monthlyFixes[0].expected)} {t('admin:memberDetail.perMonth')}
+            </span>
+          )}
+        </>
+      )
+      : (
+        <span style={{ display:'flex', flexDirection:'column', gap:3, fontSize:13, fontWeight:600, lineHeight:1.35 }}>
+          {monthlyFixes.map((f: any) => (
+            <span key={f.id} style={{ display:'flex', justifyContent:'space-between', gap:10 }}>
+              <span style={{ color:'var(--text-muted)', fontWeight:500, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', minWidth:0 }}
+                title={f.project}>{f.project}</span>
+              <span style={{ flexShrink:0 }}>
+                {f.label}{f.expected != null ? <span style={{ color:'var(--green)', fontWeight:500 }}> · {formatEur(f.expected)}</span> : null}
+              </span>
+            </span>
+          ))}
+        </span>
+      );
+
+  // A completed request has become an investment (Investments tab), so it
+  // leaves this list; what stays is what is still open or never went through.
+  const openRequests = (investmentRequests || []).filter((r: any) => r.status !== 'COMPLETED');
+
+  // Where a fix can be set: any project this member holds capital in or already
+  // has a fix for, else the general (no project) scope.
+  const fixScopes = (() => {
+    const seen = new Map<string, string>();
+    const add = (pid: string | null | undefined, title?: string) => {
+      const k = pid || '';
+      if (!seen.has(k)) seen.set(k, title || t('admin:monthlyFix.general'));
+    };
+    (profitConfigs || []).forEach((c: any) => add(c.projectId, c.project?.title));
+    (investments || []).filter((i: any) => i.status === 'ACTIVE').forEach((i: any) => add(i.projectId, i.project?.title));
+    if (seen.size === 0) add('');
+    return Array.from(seen, ([id, label]) => ({ id, label }));
+  })();
 
   // `key` is the stable React key; `label` is translated.
   const tiles = [
@@ -251,6 +329,13 @@ function MemberDetailContent() {
     { key: 'pendingWithdrawal', label: t('admin:memberDetail.tiles.pendingWithdrawal'), value: formatEur(kpis.pendingWithdrawal) },
     { key: 'roi',               label: t('admin:memberDetail.tiles.roi'),               value: `${formatNumber(kpis.roi)}%` },
     { key: 'monthlyFixProfit',  label: t('admin:memberDetail.tiles.monthlyFixProfit'),  value: monthlyFixValue },
+    // Only for a member who opted in; shown before Projects.
+    ...(insurance ? [{
+      key: 'insurance',
+      label: insurance.status === 'ACTIVE' ? t('admin:insurance.badge') : t('admin:insurance.tileOff'),
+      value: `${formatNumber(insurance.ratePercent)}%`,
+      accent: insurance.status === 'ACTIVE' ? 'var(--green)' : undefined,
+    }] : []),
     { key: 'projects',          label: t('admin:memberDetail.tiles.projects'),          value: formatNumber(kpis.projectCount) },
   ];
 
@@ -447,7 +532,34 @@ function MemberDetailContent() {
         />
       </Section>
 
+      {/* ── Section tabs ── everything between the balance breakdown and the
+          member's own details. The tab lives in the URL hash so Back steps
+          between them and a pasted link opens the same one. */}
+      <div style={{ display:'flex', gap:4, borderBottom:'1px solid var(--border)', marginBottom:18, overflowX:'auto' }}>
+        {([
+          ['investments', t('admin:memberDetail.tabs.investments'), investments.length],
+          ['projects',    t('admin:memberDetail.tabs.projects'),    byProject.length],
+          ['profit',      t('admin:memberDetail.tabs.profit'),      profitRecords.length],
+          ['insurance',   t('admin:memberDetail.tabs.insurance'),   insurance ? 1 : 0],
+          ['transactions',t('admin:memberDetail.tabs.transactions'),transactions.length],
+          ['withdrawals', t('admin:memberDetail.tabs.withdrawals'), withdrawRequests.length],
+          ['requests',    t('admin:memberDetail.tabs.requests'),    openRequests.length],
+        ] as const).map(([key, label, count]) => (
+          <button key={key} type="button" onClick={() => setTab(key)}
+            style={{
+              padding:'9px 16px', fontSize:13, cursor:'pointer', background:'none', border:'none', whiteSpace:'nowrap',
+              fontWeight: tab === key ? 600 : 500,
+              borderBottom: tab === key ? '2px solid var(--accent-blue)' : '2px solid transparent',
+              color: tab === key ? 'var(--text-primary)' : 'var(--text-muted)',
+            }}>
+            {label} <span style={{ opacity:0.6 }}>({formatNumber(count)})</span>
+          </button>
+        ))}
+      </div>
+
       {/* ── Per project ── */}
+      {tab === 'projects' && (
+      <>
       <Section
         title={t('admin:memberDetail.projectsTitle')}
         subtitle={t('admin:memberDetail.projectsSub')}>
@@ -473,19 +585,38 @@ function MemberDetailContent() {
           ]}
         />
       </Section>
+      </>
+      )}
 
       {/* ── Investments ── */}
+      {tab === 'investments' && (
+      <>
       <Section
         title={t('admin:memberDetail.investmentsTitle', { count: investments.length })}
         subtitle={t('admin:memberDetail.investmentsSub')}
-        right={investments.length > 0 ? (
-          <button
-            style={{ padding:'6px 14px', fontSize:12, borderRadius:6, cursor:'pointer',
-              border:'1px solid var(--border)', background:'transparent', color:'var(--text-secondary)' }}
-            onClick={() => setCapitalOpen(true)}>
-            {t('admin:memberDetail.capitalRecords')}
-          </button>
-        ) : undefined}>
+        right={(
+          <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+            <button className="btn-primary"
+              style={{ width:'auto', padding:'6px 14px', fontSize:12 }}
+              onClick={() => setAddOpen(true)}>
+              {t('admin:memberDetail.addInvestment')}
+            </button>
+            <button
+              style={{ padding:'6px 14px', fontSize:12, borderRadius:6, cursor:'pointer',
+                border:'1px solid var(--accent-gold, #c8a84b)', background:'transparent', color:'var(--accent-gold, #c8a84b)' }}
+              onClick={() => setFixOpen(true)}>
+              {t('admin:memberDetail.monthlyFixProfitBtn')}
+            </button>
+            {investments.length > 0 && (
+              <button
+                style={{ padding:'6px 14px', fontSize:12, borderRadius:6, cursor:'pointer',
+                  border:'1px solid var(--border)', background:'transparent', color:'var(--text-secondary)' }}
+                onClick={() => setCapitalOpen(true)}>
+                {t('admin:memberDetail.capitalRecords')}
+              </button>
+            )}
+          </div>
+        )}>
         <Table
           head={[t('admin:memberDetail.investmentsHead.project'), t('admin:memberDetail.investmentsHead.investedOn'), t('admin:memberDetail.investmentsHead.amount'), t('admin:memberDetail.investmentsHead.returned'), t('admin:memberDetail.investmentsHead.outstanding'), t('admin:memberDetail.investmentsHead.status')]}
           align={[false, false, true, true, true, false]}
@@ -502,8 +633,12 @@ function MemberDetailContent() {
           ])}
         />
       </Section>
+      </>
+      )}
 
       {/* ── Profit ── */}
+      {tab === 'profit' && (
+      <>
       <Section
         title={t('admin:memberDetail.profitTitle', { count: profitRecords.length })}
         subtitle={t('admin:memberDetail.profitSub')}>
@@ -515,7 +650,7 @@ function MemberDetailContent() {
             r.project?.title || t('admin:memberDetail.noProject'),
             // A one-time period is an internal uniqueness token, not a cycle.
             String(r.period).startsWith('ONE_TIME') ? t('admin:memberDetail.oneTime') : r.period,
-            t(`admin:investments.type${r.type === 'MONTHLY' ? 'Monthly' : 'OneTime'}`),
+            t(`admin:investments.type${r.type === 'MONTHLY' ? 'Monthly' : r.type === 'INSURANCE' ? 'Insurance' : 'OneTime'}`),
             r.rate != null ? `${formatNumber(r.rate)}%` : '—',
             formatEur(r.capitalSnapshot),
             <span key="a" className="amount-credit">+{formatEur(r.amount)}</span>,
@@ -527,24 +662,61 @@ function MemberDetailContent() {
       {profitConfigs.length > 0 && (
         <Section title={t('admin:memberDetail.ratesTitle')} subtitle={t('admin:memberDetail.ratesSub')}>
           <Table
-            head={[t('admin:memberDetail.ratesHead.project'), t('admin:memberDetail.ratesHead.rate'), t('admin:memberDetail.ratesHead.cycleDay'), t('admin:memberDetail.ratesHead.effectiveFrom')]}
-            align={[false, true, true, false]}
+            head={[t('admin:memberDetail.ratesHead.project'), t('admin:memberDetail.ratesHead.rate'), t('admin:memberDetail.ratesHead.expected'), t('admin:memberDetail.ratesHead.cycleDay'), t('admin:memberDetail.ratesHead.effectiveFrom')]}
+            align={[false, true, true, true, false]}
             empty={t('admin:memberDetail.noRate')}
             rows={profitConfigs.map((c: any) => [
               c.project?.title || t('admin:memberDetail.noProject'),
-              `${formatNumber(c.rate)}%`,
+              c.fixedAmount != null ? `${formatEur(c.fixedAmount)} / mo` : `${formatNumber(c.rate)}%`,
+              planFor(c.id) ? <span key="e" className="amount-credit">{formatEur(planFor(c.id).expectedAmount)}</span> : '—',
               formatNumber(c.monthlyProfitDay),
               shortDate(c.effectiveFrom),
             ])}
           />
         </Section>
       )}
+      </>
+      )}
+
+      {tab === 'insurance' && (
+      <Section
+        title={t('admin:insurance.sectionTitle')}
+        subtitle={t('admin:insurance.sectionSub')}
+        right={(
+          <button className="btn-primary" style={{ width:'auto', padding:'6px 14px', fontSize:12 }}
+            onClick={() => setInsOpen(true)}>
+            {insurance ? t('admin:insurance.addMore') : t('admin:insurance.setupBtn')}
+          </button>
+        )}>
+        {insurance ? (
+          <Table
+            head={[t('admin:insurance.cols.capital'), t('admin:insurance.cols.rate'), t('admin:insurance.cols.amount'), t('admin:insurance.cols.renewal'), t('admin:insurance.cols.status'), t('admin:insurance.lastCredited')]}
+            align={[true, true, true, false, false, true]}
+            empty=""
+            rows={[[
+              formatEur(insurance.capital),
+              `${formatNumber(insurance.ratePercent)}%`,
+              <span key="a" className="amount-credit">{formatEur(insurance.expectedAmount)}</span>,
+              shortDate(insurance.renewalDate),
+              <span key="s" className={`badge ${insurance.status === 'ACTIVE' ? 'badge-completed' : 'badge-pending'}`}>
+                {t(`admin:insurance.status.${insurance.status}`)}
+              </span>,
+              insurance.lastCreditedAt ? `${formatEur(insurance.lastCreditedAmount)} · ${shortDate(insurance.lastCreditedAt)}` : '—',
+            ]]}
+          />
+        ) : (
+          <p style={{ color:'var(--text-muted)', fontSize:13, padding:'8px 0' }}>{t('admin:insurance.notSet')}</p>
+        )}
+      </Section>
+      )}
 
       {/* ── Transactions ── */}
+      {tab === 'transactions' && (
+      <>
       <Section title={t('admin:memberDetail.transactionsTitle', { count: transactions.length })} subtitle={t('admin:memberDetail.transactionsSub')}>
         <Table
-          head={[t('admin:memberDetail.txHead.date'), t('admin:memberDetail.txHead.description'), t('admin:memberDetail.txHead.category'), t('admin:memberDetail.txHead.project'), t('admin:memberDetail.txHead.amount'), t('admin:memberDetail.txHead.balanceAfter'), t('admin:memberDetail.txHead.status')]}
-          align={[false, false, false, false, true, true, false]}
+          head={[t('admin:memberDetail.txHead.date'), t('admin:memberDetail.txHead.description'), t('admin:memberDetail.txHead.category'), t('admin:memberDetail.txHead.project'), t('admin:memberDetail.txHead.amount'), t('admin:memberDetail.txHead.balanceAfter'), t('admin:memberDetail.txHead.status'), ...(isSuper ? [''] : [])]}
+          align={[false, false, false, false, true, true, false, ...(isSuper ? [true] : [])]}
           empty={t('admin:memberDetail.noTransactions')}
           // The map variable is `tx`, not `t`: it used to shadow the translator.
           rows={transactions.map((tx: any) => [
@@ -559,11 +731,26 @@ function MemberDetailContent() {
             <span key="s" className={`badge ${badgeFor(tx.status)}`}>
               {t(`dashboard:transactions.txStatus.${tx.status}`, { defaultValue: tx.status })}
             </span>,
+            // Super admin only: the API refuses everyone else too.
+            ...(isSuper ? [
+              canAdjust(tx) ? (
+                <span key="x" style={{ display:'inline-flex', gap:6 }}>
+                  <button className="btn-secondary" style={{ padding:'4px 10px', fontSize:11 }}
+                    onClick={() => setAdjust({ tx, mode: 'edit' })}>{t('admin:txAdjust.edit')}</button>
+                  <button className="btn-secondary" style={{ padding:'4px 10px', fontSize:11, color:'var(--red)' }}
+                    onClick={() => setAdjust({ tx, mode: 'undo' })}>{t('admin:txAdjust.undo')}</button>
+                </span>
+              ) : '',
+            ] : []),
           ])}
         />
       </Section>
+      </>
+      )}
 
       {/* ── Withdrawals & requests ── */}
+      {tab === 'withdrawals' && (
+      <>
       <Section title={t('admin:memberDetail.withdrawalsTitle', { count: withdrawRequests.length })}>
         <Table
           head={[t('admin:memberDetail.wdHead.date'), t('admin:memberDetail.wdHead.bank'), t('admin:memberDetail.wdHead.iban'), t('admin:memberDetail.wdHead.amount'), t('admin:memberDetail.wdHead.status')]}
@@ -580,13 +767,17 @@ function MemberDetailContent() {
           ])}
         />
       </Section>
+      </>
+      )}
 
-      <Section title={t('admin:memberDetail.requestsTitle', { count: investmentRequests.length })} subtitle={t('admin:memberDetail.requestsSub')}>
+      {tab === 'requests' && (
+      <>
+      <Section title={t('admin:memberDetail.requestsTitle', { count: openRequests.length })} subtitle={t('admin:memberDetail.requestsSub')}>
         <Table
           head={[t('admin:memberDetail.reqHead.date'), t('admin:memberDetail.reqHead.project'), t('admin:memberDetail.reqHead.requested'), t('admin:memberDetail.reqHead.actual'), t('admin:memberDetail.reqHead.status')]}
           align={[false, false, true, true, false]}
           empty={t('admin:memberDetail.noRequests')}
-          rows={investmentRequests.map((r: any) => [
+          rows={openRequests.map((r: any) => [
             shortDate(r.createdAt),
             r.project?.title || '—',
             formatEur(r.requestedAmount),
@@ -597,6 +788,8 @@ function MemberDetailContent() {
           ])}
         />
       </Section>
+      </>
+      )}
 
       {/* ── Member details ── */}
       <Section title={t('admin:memberDetail.detailsTitle')}>
@@ -721,6 +914,29 @@ function MemberDetailContent() {
             </form>
           </div>
         </div>
+      )}
+
+      <InvestmentWizard
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        members={[member]}
+        presetUserId={member.id}
+        actions={['INVESTMENT', 'ONE_TIME_PROFIT', 'INSURANCE']}
+        onPickInsurance={() => setInsOpen(true)}
+        onSuccess={reload}
+      />
+
+      {adjust && (
+        <TransactionAdjustModal tx={adjust.tx} mode={adjust.mode} onClose={() => setAdjust(null)} onDone={reload} />
+      )}
+
+      {insOpen && (
+        <InsuranceModal member={member} policy={insurance} capital={breakdown.investedCapital || 0} canEdit={isSuper}
+          onClose={() => setInsOpen(false)} onDone={reload} />
+      )}
+
+      {fixOpen && (
+        <MonthlyFixModal member={member} scopes={fixScopes} onClose={() => setFixOpen(false)} onDone={reload} />
       )}
 
       {capitalOpen && (

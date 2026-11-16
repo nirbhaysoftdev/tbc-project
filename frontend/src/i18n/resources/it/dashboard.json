@@ -75,15 +75,23 @@
       "ADMIN_DEBIT": "Addebito amministrativo"
     },
     "type": { "CREDIT": "Accredito", "DEBIT": "Addebito" },
-    "txStatus": { "COMPLETED": "Completata", "PENDING": "In attesa", "FAILED": "Non riuscita" }
+    "txStatus": { "COMPLETED": "Completata", "PENDING": "In attesa", "FAILED": "Non riuscita", "REVERSED": "Annullata" }
   },
   "portfolio": {
     "title": "Portafoglio",
     "investment": "Investimento",
     "profit": "Profitto",
     "totalBalance": "Saldo totale",
-    "analyticsTitle": "Analisi dettagliata del portafoglio",
-    "analyticsNote": "Il grafico a ciambella (allocazione del capitale) e il grafico a barre del profitto mensile arriveranno nella Fase 2."
+    "openingBalance": "Saldo iniziale",
+    "allocationTitle": "Allocazione del capitale",
+    "allocationNote": "Dove si trova il tuo capitale investito, per progetto.",
+    "noCapital": "Nessun capitale investito.",
+    "profitTitle": "Profitto mensile",
+    "profitNote": "Profitto accreditato ogni mese negli ultimi 12 mesi, per fonte.",
+    "noProfit": "Nessun profitto accreditato negli ultimi 12 mesi.",
+    "typeMonthly": "Fisso mensile",
+    "typeInsurance": "Assicurazione",
+    "typeOneTime": "Una tantum"
   },
   "cards": {
     "title": "Carte",
@@ -121,5 +129,27 @@
     "languageHint": "Scegli la lingua dell'interfaccia. La tua scelta viene salvata nel profilo e ti segue sugli altri dispositivi.",
     "updated": "Profilo aggiornato correttamente.",
     "updateFailed": "Aggiornamento non riuscito."
+  },
+  "insurance": {
+    "title": "Assicurazione",
+    "note": "Ogni anno, alla data di rinnovo, il {{rate}}% del tuo capitale viene accreditato sul tuo profitto.",
+    "disabledNote": "La tua assicurazione non è attualmente attiva.",
+    "rate": "Assicurazione",
+    "renewal": "Prossimo rinnovo",
+    "expected": "Accredito previsto",
+    "status": {
+      "ACTIVE": "Attiva",
+      "DISABLED": "Disattivata"
+    }
+  },
+  "returns": {
+    "monthlyTitle": "Profitto fisso mensile",
+    "monthlyNote": "Accreditato automaticamente ogni mese nel giorno indicato, sul capitale che detieni in quel momento.",
+    "project": "Progetto",
+    "fix": "Fisso",
+    "onCapital": "Sul capitale",
+    "next": "Prossimo accredito",
+    "credit": "Accredito previsto",
+    "yearly": "Rendimento annuale ricevuto"
   }
 }

@@ -6,6 +6,7 @@ import ProtectedLayout from '@/components/layout/ProtectedLayout';
 import { useAuth } from '@/lib/auth';
 import { transactionsAPI, formatEur, formatDate, downloadBlob } from '@/lib/api';
 import { isAdminRole } from '@/lib/roles';
+import ReturnsCard from '@/components/insurance/ReturnsCard';
 
 function TransactionsContent() {
   const { t } = useTranslation(['dashboard', 'common']);
@@ -87,6 +88,8 @@ function TransactionsContent() {
           </button>
         </div>
       </div>
+
+      {!showMember && <ReturnsCard />}
 
       {/* Filters */}
       <div className="filters-bar">

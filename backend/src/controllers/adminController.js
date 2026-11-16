@@ -29,7 +29,13 @@ const getMembers = async (req, res) => {
     // them — that is the only view from which they can be restored or purged.
     const includeDeleted = truthy(req.query.includeDeleted) && isSuperAdmin(req.user.role);
     const where = { role: 'MEMBER', ...(includeDeleted ? {} : LIVE_USER) };
+    // Applicants (PENDING) wait in the approvals queue and rejected ones are
+    // closed; neither is a member yet. A frozen member still is one, and the
+    // list has to show them or there is no way to unfreeze. An explicit
+    // ?status= still wins, and a super admin browsing deleted accounts sees
+    // them whatever state they were left in.
     if (status) where.status = status;
+    else if (!includeDeleted) where.status = { in: ['ACTIVE', 'FROZEN'] };
     if (search) {
       where.OR = [
         { name:  { contains: search, mode: 'insensitive' } },
@@ -40,7 +46,11 @@ const getMembers = async (req, res) => {
     const [members, total] = await Promise.all([
       prisma.user.findMany({
         where,
-        include: { wallet: true, kycDocuments: true },
+        include: {
+          wallet: true, kycDocuments: true,
+          // For the "Insured" badge on the list.
+          insurancePolicy: { select: { status: true, ratePercent: true, renewalDate: true } },
+        },
         orderBy: { createdAt: 'desc' },
         skip:    (parseInt(page) - 1) * parseInt(limit),
         take:    parseInt(limit),

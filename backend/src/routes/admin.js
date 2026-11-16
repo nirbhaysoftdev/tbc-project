@@ -9,6 +9,7 @@ const adminController = require('../controllers/adminController');
 const memberOverviewController = require('../controllers/memberOverviewController');
 const activityLogController = require('../controllers/activityLogController');
 const signupNotifyController = require('../controllers/signupNotifyController');
+const insuranceController = require('../controllers/insuranceController');
 
 // Multer config for profile photos
 const storage = multer.diskStorage({
@@ -96,6 +97,9 @@ router.put('/members/:id/freeze',   requireSuperAdmin, adminController.toggleFre
 // is routine admin work; writing an opening balance overwrites a number with
 // no Transaction row to explain it, so it is super-admin only.
 router.put('/members/:id/wallet-enabled', adminController.setWalletEnabled);
+// Any admin may record an insurance credit (a % and a date); the yearly renewal
+// follows from it. Changing or disabling the policy is super admin only.
+router.post('/members/:id/insurance', insuranceController.setUp);
 router.put('/members/:id/wallet',   requireSuperAdmin, adminController.updateWallet);
 
 // Transactions

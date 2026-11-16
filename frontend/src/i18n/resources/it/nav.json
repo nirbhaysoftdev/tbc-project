@@ -1,5 +1,8 @@
 {
   "main": {
+    "events": "Eventi",
+    "dealRoom": "Deal Room",
+    "messages": "Messaggi",
     "community": "Community",
     "dashboard": "Dashboard",
     "projects": "Progetti",

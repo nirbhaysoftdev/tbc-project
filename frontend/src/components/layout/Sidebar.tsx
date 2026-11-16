@@ -26,12 +26,13 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useLocationHash } from '@/lib/useHashTab';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/lib/auth';
 import { useSidebar } from '@/lib/sidebar';
 import { useTranslation } from 'react-i18next';
 import { useAdminAlerts } from '@/lib/adminAlerts';
 import NotifBadge from './NotifBadge';
+import { messagesAPI } from '@/lib/api';
 import { isAdminRole, isSuperAdminRole } from '@/lib/roles';
 
 const API_URL = process.env.NODE_ENV === 'production'
@@ -43,7 +44,7 @@ type Item = {
   href: string;
   icon?: () => JSX.Element;
   /** Which alert count rides on this row, if any. */
-  badge?: 'members' | 'investments' | 'withdrawals' | 'adminQueue';
+  badge?: 'members' | 'investments' | 'withdrawals' | 'adminQueue' | 'messages';
   /** Super admin only. */
   superOnly?: boolean;
 };
@@ -53,21 +54,12 @@ type Group = {
   /** Null for the opening group, which needs no heading. */
   label: string | null;
   items: Item[];
-  /** Collapsible groups remember their state; the opening one is always open. */
+  /** Collapsible groups stay shut unless they hold the current page; the opening one is always open. */
   collapsible?: boolean;
 };
 
-/** Remembered per viewer, and never load-bearing: a failed read just means open. */
-const COLLAPSE_KEY = 'tbc_nav_collapsed';
-
-function readCollapsed(): string[] {
-  try {
-    const raw = localStorage.getItem(COLLAPSE_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-}
+/** How long a group the viewer opened by hand stays open before it folds itself away. */
+const AUTO_CLOSE_MS = 6000;
 
 export default function Sidebar() {
   const { t } = useTranslation(['nav', 'common', 'admin']);
@@ -87,28 +79,51 @@ export default function Sidebar() {
   // `hashchange` listener here was not enough.
   const hash = useLocationHash();
 
-  const [collapsed, setCollapsed] = useState<string[]>([]);
-  useEffect(() => { setCollapsed(readCollapsed()); }, []);
+  // Sections are shut by default and only the one holding the current page is
+  // open. Opening another by hand is temporary: it folds itself away after
+  // AUTO_CLOSE_MS, so the sidebar settles back to "where you are".
+  // Unread messages ride on the Messages row, since it moved here from the
+  // community sub-nav, which used to carry the count.
+  const [unreadMsg, setUnreadMsg] = useState(0);
+  useEffect(() => {
+    const load = () => { messagesAPI.getUnreadCount().then((r) => setUnreadMsg(r.data.unreadCount || 0)).catch(() => {}); };
+    load();
+    const id = setInterval(load, 30_000);
+    return () => clearInterval(id);
+  }, []);
+
+  const [opened, setOpened] = useState<string[]>([]);
+  const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+
+  const clearTimer = (key: string) => {
+    clearTimeout(timers.current[key]);
+    delete timers.current[key];
+  };
 
   const toggleGroup = useCallback((key: string) => {
-    setCollapsed((prev) => {
-      const next = prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key];
-      try { localStorage.setItem(COLLAPSE_KEY, JSON.stringify(next)); } catch { /* per-viewer nicety */ }
-      return next;
+    setOpened((prev) => {
+      if (prev.includes(key)) { clearTimer(key); return prev.filter((k) => k !== key); }
+      clearTimer(key);
+      timers.current[key] = setTimeout(() => {
+        setOpened((cur) => cur.filter((k) => k !== key));
+        delete timers.current[key];
+      }, AUTO_CLOSE_MS);
+      return [...prev, key];
     });
   }, []);
+
+  useEffect(() => () => { Object.keys(timers.current).forEach(clearTimer); }, []);
 
   const groups: Group[] = isAdmin
     ? [
         {
           key: 'admin', label: t('nav:groups.administration', 'Administration'), collapsible: true,
           items: [
-            { key: 'adminOverview',   href: '/admin#overview',   icon: OverviewIcon },
-            { key: 'adminMembers',    href: '/admin#members',    icon: MembersIcon },
-            { key: 'adminApprovals',  href: '/admin#pending',    icon: ApprovalIcon, badge: 'members' },
-            { key: 'adminRequests',   href: '/admin#requests',   icon: InvestIcon,   badge: 'investments' },
+            // Members, Approvals, Investment Requests and Enquiries are tabs of
+            // the panel itself, one click from here - so their queue counts ride
+            // on this row instead of being repeated as four more.
+            { key: 'adminOverview',   href: '/admin#overview',   icon: OverviewIcon, badge: 'adminQueue' },
             { key: 'withdrawalRequests', href: '/admin/withdrawals', icon: WithdrawIcon, badge: 'withdrawals' },
-            { key: 'adminEnquiries',  href: '/admin#enquiries',  icon: EnquiryIcon },
             { key: 'adminBroadcasts', href: '/admin/broadcasts', icon: MailIcon },
             { key: 'adminAnalytics',  href: '/admin/analytics',  icon: AnalyticsIcon },
             { key: 'activityLogs',    href: '/admin/logs',       icon: LogsIcon },
@@ -120,7 +135,6 @@ export default function Sidebar() {
           items: [
             { key: 'projects',  href: '/projects',  icon: ProjectsIcon },
             { key: 'companies', href: '/companies', icon: CompaniesIcon },
-            { key: 'news',      href: '/news',      icon: NewsIcon },
             { key: 'transactions', href: '/transactions', icon: TxIcon },
           ],
         },
@@ -128,33 +142,29 @@ export default function Sidebar() {
           key: 'communityAdmin', label: t('nav:groups.community', 'Community'), collapsible: true,
           items: [
             { key: 'community', href: '/community', icon: CommIcon },
-            { key: 'settings',  href: '/settings',  icon: SettingsIcon },
+            { key: 'dealRoom',  href: '/community/deal-room', icon: DealRoomIcon },
+            { key: 'events',    href: '/community/events',    icon: EventsIcon },
+            { key: 'messages',  href: '/community/messages',  icon: MessagesIcon, badge: 'messages' },
+            { key: 'news',      href: '/news',      icon: NewsIcon },
           ],
         },
       ]
     : [
+        // A member has few enough destinations that one list, with no headings
+        // to open and close, is quicker than sections.
         {
-          key: 'wallet', label: null,
+          key: 'member', label: null,
           items: [
             { key: 'dashboard',    href: '/dashboard',    icon: DashIcon },
-            { key: 'portfolio',    href: '/portfolio',    icon: PortfolioIcon },
             { key: 'transactions', href: '/transactions', icon: TxIcon },
             { key: 'cards',        href: '/cards',        icon: CardIcon },
-          ],
-        },
-        {
-          key: 'explore', label: t('nav:groups.explore', 'Explore'), collapsible: true,
-          items: [
             { key: 'community', href: '/community', icon: CommIcon },
+            { key: 'dealRoom',  href: '/community/deal-room', icon: DealRoomIcon },
+            { key: 'events',    href: '/community/events',    icon: EventsIcon },
+            { key: 'messages',  href: '/community/messages',  icon: MessagesIcon, badge: 'messages' },
             { key: 'projects',  href: '/projects',  icon: ProjectsIcon },
             { key: 'companies', href: '/companies', icon: CompaniesIcon },
             { key: 'news',      href: '/news',      icon: NewsIcon },
-          ],
-        },
-        {
-          key: 'account', label: t('nav:groups.account', 'Account'), collapsible: true,
-          items: [
-            { key: 'settings', href: '/settings', icon: SettingsIcon },
           ],
         },
       ];
@@ -165,6 +175,7 @@ export default function Sidebar() {
       case 'investments': return alerts.investmentRequests;
       case 'withdrawals': return alerts.withdrawRequests;
       case 'adminQueue':  return alerts.newMembers + alerts.investmentRequests;
+      case 'messages':    return unreadMsg;
       default:            return 0;
     }
   };
@@ -181,10 +192,14 @@ export default function Sidebar() {
     const [rawPath, tab] = href.split('#');
     const path = normalise(rawPath);
     if (tab) {
-      // '/admin#overview' is also the active row when there is no hash at all,
-      // because that is the tab the page opens on.
+      // The Overview row stands for the whole panel now that Members, Approvals,
+      // Requests and Enquiries are its tabs, so it is lit on every one of them.
+      if (path === '/admin' && tab === 'overview') return here === path;
       return here === path && (hash === tab || (!hash && tab === 'overview'));
     }
+    // The Community row is the feed and the member directory only: Deal Room,
+    // Events and Messages are /community/* too, but have rows of their own.
+    if (path === '/community') return here === path || here.startsWith('/community/network');
     // An exact match, or a child route: /projects/detail keeps Projects lit.
     return here === path || here.startsWith(`${path}/`);
   };
@@ -206,11 +221,13 @@ export default function Sidebar() {
           block is a label, not the point of the screen - every pixel it gives
           back is a nav row that does not need scrolling to. */}
       <div className="sidebar-profile">
-        <div className="sidebar-avatar">
+        {/* Settings has no row of its own: the avatar is the way in. */}
+        <Link href="/settings" onClick={onNav} className={`sidebar-avatar ${here === '/settings' ? 'is-current' : ''}`}
+          title={t('nav:main.settings')} aria-label={t('nav:main.settings')}>
           {photoUrl
-            ? <img src={photoUrl} alt={user?.name} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+            ? <img src={photoUrl} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
             : initial}
-        </div>
+        </Link>
         <div className="sidebar-identity">
           <p className="sidebar-username" title={user?.name}>{user?.name}</p>
           {isAdmin && (
@@ -224,8 +241,8 @@ export default function Sidebar() {
       <nav className="sidebar-nav">
         {groups.map((group) => {
           const shut = Boolean(group.collapsible)
-            && collapsed.includes(group.key)
-            && !groupIsLive(group);
+            && !groupIsLive(group)
+            && !opened.includes(group.key);
           const items = group.items.filter((i) => !i.superOnly || isSuper);
           // The count that stays visible when a group is folded away, so a
           // collapsed section can never hide a queue.
@@ -261,18 +278,16 @@ export default function Sidebar() {
       </nav>
 
       <div className="sidebar-footer">
-        <p className="sidebar-email">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none"
-            stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="12" r="9"/></svg>
-          <span style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-            {user?.email}
-          </span>
-        </p>
-        <p className="sidebar-logout" onClick={() => { logout(); onNav?.(); }}>
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none"
-            stroke="#e05252" strokeWidth="1.5"><circle cx="12" cy="12" r="9"/></svg>
-          {t('common:action.logOut')}
-        </p>
+        <button type="button" className="sidebar-logout" onClick={() => { logout(); onNav?.(); }}>
+          {/* The standard "log out" glyph: a door frame with an arrow leaving it. */}
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"
+            strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+            <polyline points="16 17 21 12 16 7"/>
+            <line x1="21" y1="12" x2="9" y2="12"/>
+          </svg>
+          <span>{t('common:action.logOut')}</span>
+        </button>
       </div>
     </>
   );
@@ -313,23 +328,43 @@ function ChevronIcon({ open }: { open: boolean }) {
   );
 }
 
+function EventsIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <rect x="3" y="5" width="18" height="16" rx="2"/>
+      <path d="M3 10h18M8 3v4M16 3v4" strokeLinecap="round"/>
+      <path d="M8 14h2M12 14h2M8 17.5h2" strokeLinecap="round"/>
+    </svg>
+  );
+}
+function DealRoomIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <rect x="3" y="7" width="18" height="13" rx="2"/>
+      <path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3 13h18" strokeLinecap="round"/>
+      <path d="M11 13v2h2v-2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+}
+function MessagesIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z" strokeLinejoin="round"/>
+      <path d="M8.5 11h7M8.5 14h4" strokeLinecap="round"/>
+    </svg>
+  );
+}
 function CommIcon() {
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>;
 }
 function DashIcon() {
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3" strokeLinecap="round"/></svg>;
 }
-function PortfolioIcon() {
-  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>;
-}
 function TxIcon() {
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>;
 }
 function CardIcon() {
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20M6 15h2"/></svg>;
-}
-function SettingsIcon() {
-  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>;
 }
 
 /** The Overview: a small bar chart, which is what the page is. */
@@ -340,41 +375,6 @@ function OverviewIcon() {
       <rect x="5" y="12" width="3.4" height="6" rx="1"/>
       <rect x="10.3" y="8" width="3.4" height="10" rx="1"/>
       <rect x="15.6" y="4" width="3.4" height="14" rx="1"/>
-    </svg>
-  );
-}
-function MembersIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-      <circle cx="9" cy="8" r="3.2"/>
-      <path d="M3.5 20v-1.6A4.4 4.4 0 0 1 7.9 14h2.2a4.4 4.4 0 0 1 4.4 4.4V20"/>
-      <path d="M16.5 14.2A4 4 0 0 1 20.5 18v2" strokeLinecap="round"/>
-      <path d="M15.5 5.3a3.2 3.2 0 0 1 0 5.4" strokeLinecap="round"/>
-    </svg>
-  );
-}
-/** Approvals: a person with a tick. */
-function ApprovalIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-      <circle cx="10" cy="8" r="3.2"/>
-      <path d="M4 20v-1.6A4.4 4.4 0 0 1 8.4 14h2.6"/>
-      <path d="M14.5 17.5l2 2 4-4.5" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-  );
-}
-function InvestIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-      <path d="M4 18l5-5 3.5 3.5L20 9" strokeLinecap="round" strokeLinejoin="round"/>
-      <path d="M15 9h5v5" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-  );
-}
-function EnquiryIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-      <path d="M21 15a2 2 0 0 1-2 2H8l-5 4V6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
     </svg>
   );
 }

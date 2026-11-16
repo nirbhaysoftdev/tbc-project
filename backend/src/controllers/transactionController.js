@@ -26,7 +26,14 @@ if (!isAdmin(req.user.role)) {
 }
 
     if (type)      where.type   = type;
-    if (status)    where.status = status;
+    // An undone transaction is a correction by the administration, not part of
+    // the member's history: members never see it, and cannot ask for it by
+    // filtering on its status. Admins still do.
+    if (!isAdmin(req.user.role)) {
+      where.status = status && status !== 'REVERSED' ? status : { not: 'REVERSED' };
+    } else if (status) {
+      where.status = status;
+    }
     if (category) where.category = category;
     if (from || to) {
       where.createdAt = {};
@@ -157,7 +164,7 @@ const exportPDF = async (req, res) => {
 const exportCSV = async (req, res) => {
   try {
     const transactions = await prisma.transaction.findMany({
-      where:   { userId: req.user.id },
+      where:   { userId: req.user.id, status: { not: 'REVERSED' } },
       orderBy: { createdAt: 'desc' },
     });
 

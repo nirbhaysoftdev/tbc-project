@@ -4,12 +4,22 @@ import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/lib/auth';
-import { dashboardAPI, formatEur, formatDate } from '@/lib/api';
-import DebitCard from '@/components/cards/DebitCard';
+import { dashboardAPI, formatEur } from '@/lib/api';
 import WithdrawModal from '@/components/withdraw/WithdrawModal';
+import ReturnsCard from '@/components/insurance/ReturnsCard';
 
 // Import chart dynamically (no SSR) because Chart.js needs window
 const BalanceChart = dynamic(() => import('@/components/charts/BalanceChart'), { ssr: false });
+const AllocationDonut = dynamic(() => import('@/components/charts/AllocationDonut'), { ssr: false });
+const MonthlyProfitBars = dynamic(() => import('@/components/charts/MonthlyProfitBars'), { ssr: false });
+
+const PANEL: React.CSSProperties = {
+  background: 'var(--bg-card)', border: '1px solid var(--border-strong)', borderRadius: 'var(--radius-md)',
+  boxShadow: '0 10px 30px rgba(0,0,0,0.35)', overflow: 'hidden',
+};
+const PANEL_HEAD: React.CSSProperties = {
+  padding: '12px 20px', borderBottom: '1px solid var(--border-strong)', background: 'rgba(20,38,96,0.28)',
+};
 
 const PERIODS = ['1M','3M','6M','1Y','All'];
 
@@ -22,11 +32,19 @@ export default function DashboardPage() {
   const [loading,   setLoading]   = useState(true);
   const [showWithdraw, setShowWithdraw] = useState(false);
 
+  // Profit credited per month (last 12), for the bar chart.
+  const [monthlyProfit, setMonthlyProfit] = useState<any[] | null>(null);
+
+  // The figures follow the ledger, so refresh them every 30 seconds while the
+  // tab is in view rather than showing what was true when the page opened.
   useEffect(() => {
-    dashboardAPI.getSummary().then(r => {
-      setSummary(r.data);
-      setLoading(false);
-    }).catch(() => setLoading(false));
+    const load = () => {
+      dashboardAPI.getSummary().then(r => { setSummary(r.data); setLoading(false); }).catch(() => setLoading(false));
+      dashboardAPI.getPortfolio().then(r => setMonthlyProfit(r.data.monthlyProfit || [])).catch(() => {});
+    };
+    load();
+    const id = setInterval(() => { if (document.visibilityState === 'visible') load(); }, 30_000);
+    return () => clearInterval(id);
   }, []);
 
   useEffect(() => {
@@ -35,6 +53,16 @@ export default function DashboardPage() {
 
   const wallet = summary?.wallet;
   const byProject = summary?.byProject || [];
+
+  // Capital allocation: every project, then the opening balance, which sits
+  // outside any project but is real capital - without it the slices would not
+  // add up to the invested capital shown above.
+  const allocation = [
+    ...byProject.map((r: any) => ({ label: r.projectTitle || t('dashboard:byProject.noProject'), capital: r.capital })),
+    ...(wallet?.openingCapital > 0 ? [{ label: t('dashboard:portfolio.openingBalance'), capital: wallet.openingCapital }] : []),
+  ];
+  const hasCapital = allocation.some((r: any) => r.capital > 0);
+  const hasProfit = (monthlyProfit || []).some((p: any) => p.total > 0);
   const firstName =
     summary?.user?.name?.split(' ')[0] ||
     user?.name?.split(' ')[0] ||
@@ -122,10 +150,44 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      <ReturnsCard />
+
+      {/* Where the capital sits, and the profit received each month. */}
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(440px, 1fr))', gap:20 }}>
+        <div style={PANEL}>
+          <div style={PANEL_HEAD}>
+            <p style={{ fontWeight:700, fontSize:14 }}>{t('dashboard:portfolio.allocationTitle')}</p>
+            <p style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>{t('dashboard:portfolio.allocationNote')}</p>
+          </div>
+          <div style={{ padding:20 }}>
+            {!summary ? <div className="spinner" style={{ margin:'24px auto' }} />
+              : hasCapital ? <AllocationDonut rows={allocation} totalLabel={t('dashboard:portfolio.investment')} />
+              : <p style={{ color:'var(--text-muted)', fontSize:13, textAlign:'center', padding:24 }}>{t('dashboard:portfolio.noCapital')}</p>}
+          </div>
+        </div>
+
+        <div style={PANEL}>
+          <div style={PANEL_HEAD}>
+            <p style={{ fontWeight:700, fontSize:14 }}>{t('dashboard:portfolio.profitTitle')}</p>
+            <p style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>{t('dashboard:portfolio.profitNote')}</p>
+          </div>
+          <div style={{ padding:20 }}>
+            {monthlyProfit === null ? <div className="spinner" style={{ margin:'24px auto' }} />
+              : hasProfit ? (
+                <div style={{ height:260 }}>
+                  <MonthlyProfitBars series={monthlyProfit} labels={{
+                    monthly: t('dashboard:portfolio.typeMonthly'), insurance: t('dashboard:portfolio.typeInsurance'), oneTime: t('dashboard:portfolio.typeOneTime'),
+                  }} />
+                </div>
+              ) : <p style={{ color:'var(--text-muted)', fontSize:13, textAlign:'center', padding:24 }}>{t('dashboard:portfolio.noProfit')}</p>}
+          </div>
+        </div>
+      </div>
+
       {/* Project-wise capital and profit */}
       {byProject.length > 0 && (
-        <div style={{ background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:'var(--radius-lg)', overflow:'hidden', marginBottom:20 }}>
-          <div style={{ padding:'16px 20px', borderBottom:'1px solid var(--border)' }}>
+        <div style={{ background:'var(--bg-card)', border:'1px solid var(--border-strong)', borderRadius:'var(--radius-md)', boxShadow:'0 10px 30px rgba(0,0,0,0.35)', overflow:'hidden', marginBottom:20 }}>
+          <div style={{ padding:'14px 20px', borderBottom:'1px solid var(--border-strong)', background:'rgba(20,38,96,0.28)' }}>
             <p style={{ fontWeight:700, fontSize:14 }}>{t('dashboard:byProject.title')}</p>
             <p style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>
               {t('dashboard:byProject.note')}
@@ -164,70 +226,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Card section */}
-      <div className="card-section">
-        {/* Apple Pay */}
-        <div className="apple-pay-badge">
-          <svg viewBox="0 0 814 1000" width="18" height="18" fill="white">
-            <path d="M788.1 340.9c-5.8 4.5-108.2 62.2-108.2 190.5 0 148.4 130.3 200.9 134.2 202.2-.6 3.2-20.7 71.9-68.7 141.9-42.8 61.6-87.5 123.1-155.5 123.1s-85.5-39.5-164-39.5c-76 0-103.7 40.8-165.9 40.8s-105-36.8-155.5-103.4C157.1 793.7 95 672.4 95 555.5c0-176 114.2-276.5 231.6-276.5 61.2 0 112.1 40.2 150.2 40.2 36.4 0 93.8-42.5 163.1-42.5 26.3 0 108.3 2.6 168.4 80.8zm-203.3-159.8c31.1-36.9 53.1-88.1 53.1-139.3 0-7.1-.6-14.3-1.9-20.1-50.6 1.9-110.8 33.7-147.1 75.8-28.5 32.4-55.1 83.6-55.1 135.5 0 7.8 1.3 15.6 1.9 18.1 3.2.6 8.4 1.3 13.6 1.3 45.4 0 102.5-30.4 135.5-71.3z"/>
-          </svg>
-          <span>{t('dashboard:cards.applePay')}</span>
-        </div>
-
-        {/* Debit Card */}
-        <DebitCard name={summary?.user?.name || user?.name || ''} />
-      </div>
-
-      {/* Recent transactions preview */}
-      {summary?.recentTransactions?.length > 0 && (
-        <div style={{ background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:'var(--radius-lg)', overflow:'hidden' }}>
-          <div style={{ padding:'16px 20px', borderBottom:'1px solid var(--border)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-            <p style={{ fontWeight:700, fontSize:14 }}>{t('dashboard:recent.title')}</p>
-            <a href="/transactions" style={{ fontSize:12, color:'var(--accent-blue)', fontWeight:600 }}>{t('dashboard:recent.viewAll')}</a>
-          </div>
-          <table className="tx-table">
-            <thead>
-              <tr>
-                <th>{t('dashboard:transactions.columns.date')}</th>
-                <th>{t('dashboard:transactions.columns.description')}</th>
-                <th>{t('dashboard:transactions.columns.type')}</th>
-                <th>{t('dashboard:transactions.columns.amount')}</th>
-                <th>{t('dashboard:transactions.columns.status')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {summary.recentTransactions.map((tx: any) => (
-                <tr key={tx.id}>
-                  {/* formatDate replaces a hardcoded 'en-GB' locale, so the
-                      date format follows the chosen language. */}
-                  <td>{formatDate(tx.createdAt)}</td>
-                  <td>{tx.description}</td>
-                  <td>
-                    {/* The CLASS keeps the raw enum (badge-credit / badge-debit);
-                        only the visible label is translated. */}
-                    <span className={`badge badge-${tx.type.toLowerCase()}`}>
-                      {t(`dashboard:transactions.type.${tx.type}`)}
-                    </span>
-                  </td>
-                  <td className={tx.type === 'CREDIT' ? 'amount-credit' : 'amount-debit'}>
-                    <span className="ltr-embed">
-                      {tx.type === 'CREDIT' ? '+' : '-'}{formatEur(tx.amount)}
-                    </span>
-                  </td>
-                  <td>
-                    <span className={`badge badge-${tx.status.toLowerCase()}`}>
-                      {t(`dashboard:transactions.txStatus.${tx.status}`)}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      
-{/* Withdraw Modal */}
+      {/* Withdraw Modal */}
       {showWithdraw && (
         <WithdrawModal
           balance={wallet?.availableProfit || 0}

@@ -267,6 +267,7 @@
     "emptySub": "Book capital from a completed investment request, or create one directly.",
     "allMembers": "All members",
     "allProjects": "All projects",
+    "openRequests": "Open requests",
     "allStatuses": "All statuses",
     "clearProjectFilter": "× Clear project filter",
     "investorsCount_one": "{{count}} investor",
@@ -289,7 +290,8 @@
       "generated": "Generated"
     },
     "typeMonthly": "Monthly",
-    "typeOneTime": "One-Time"
+    "typeOneTime": "One-Time",
+    "typeInsurance": "Insurance"
   },
   "requests": {
     "title": "Investment Requests",
@@ -356,6 +358,117 @@
     "working": "Working…",
     "detailFailed": "Could not load the full request details."
   },
+  "monthlyFix": {
+    "laterCapital": "{{total}} is invested; the next credit is calculated on {{eligible}}. Capital added after the cut-off counts from the following month.",
+    "title": "Monthly fix profit",
+    "current": "Current",
+    "fixedPerMonth": "fixed / month",
+    "credit": "Credit each month",
+    "onCapital": "on eligible capital",
+    "day": "Credited on day",
+    "next": "Next",
+    "noCapital": "No capital is eligible for this project yet, so nothing will be credited on the next date.",
+    "notSet": "Monthly fix profit not set",
+    "byPercent": "Percentage (%)",
+    "byAmount": "Fixed amount (€)",
+    "amountLabel": "Monthly amount (€)",
+    "willCredit": "Credits",
+    "eachMonth": "each month",
+    "of": "of",
+    "noCapitalHint": "This member has no eligible capital in this project yet, so a percentage works out to €0. Capital counts from the credit day of the month after it was invested.",
+    "dayLabel": "Credit on day of month",
+    "note": "Credited automatically on that day every month, and the member is emailed a statement. Past credits are not changed.",
+    "save": "Save",
+    "update": "Update fix",
+    "setup": "Set up fix",
+    "saved": "Monthly fix profit updated.",
+    "errValue": "Enter a value greater than zero.",
+    "errDay": "Profit day must be between 1 and 31.",
+    "general": "No project (general)"
+  },
+  "insurance": {
+    "tileOff": "Insurance (off)",
+    "badge": " Insurance Return (Yearly)",
+    "badgeTitle": "Insurance {{rate}}% · renews {{date}}",
+    "sectionTitle": "Insurance",
+    "sectionSub": "Annual insurance return: a % of this member's capital credited as profit on a date, then automatically on the same date every year.",
+    "setupBtn": "Add insurance",
+    "edit": "Update",
+    "notSet": "No insurance is set up for this member.",
+    "setupTitle": "Set up insurance",
+    "updateTitle": "Update insurance",
+    "rateLabel": "Insurance percentage (%) *",
+    "dateLabel": "Insurance date *",
+    "capital": "Capital",
+    "willCredit": "Credits",
+    "on": "on",
+    "note": "This percentage of the member's capital is credited as profit on the renewal date and on the same date every year after. The member is notified and emailed each time.",
+    "errRate": "Enter a percentage between 0 and 100.",
+    "errDate": "Choose a renewal date in the future.",
+    "saveFailed": "Could not save the insurance.",
+    "save": "Save",
+    "disable": "Disable",
+    "enable": "Enable",
+    "confirmDisable": "Disable insurance for {{name}}? Nothing will be credited on the renewal date until it is enabled again.",
+    "lastCredited": "Last credited",
+    "loadFailed": "Could not load the insurance policies.",
+    "none": "No insurance policies yet.",
+    "statPolicies": "Active policies",
+    "statCapital": "Insured capital",
+    "statAmount": "Next credits total",
+    "addPlaceholder": "Add a member to insurance…",
+    "addBtn": "Set up",
+    "footnote": "The amount is an estimate on today's capital; the real figure is taken on the renewal date. Only a super admin can change or disable a policy.",
+    "cols": {
+      "member": "Member",
+      "capital": "Total capital",
+      "rate": "Insurance %",
+      "amount": "Amount",
+      "renewal": "Renewal date",
+      "status": "Status"
+    },
+    "status": {
+      "ACTIVE": "Active",
+      "DISABLED": "Disabled"
+    },
+    "addTitle": "Add insurance",
+    "noticeTitle": "Insurance",
+    "creditBtn": "Credit insurance",
+    "alreadyCredited": "Insurance credit already done:",
+    "rateLabelShort": "Insurance",
+    "nextRenewal": "Next renewal",
+    "nextRenewalLabel": "Next renewal date *",
+    "autoNote": "From next year this is credited automatically on the renewal date.",
+    "addMore": "Add one more insurance",
+    "editBtn": "Edit / disable",
+    "addNote": "This % of the member's capital is credited as profit for this date now. The renewal is set to the same date next year, and from then on it is credited automatically every year.",
+    "editNote": "Changes the % and the next renewal date. Credits already made are not changed."
+  },
+  "txAdjust": {
+    "edit": "Edit",
+    "undo": "Undo",
+    "editTitle": "Edit transaction",
+    "undoTitle": "Undo transaction",
+    "amount": "Amount (€)",
+    "date": "Date",
+    "reason": "Reason *",
+    "reasonPlaceholder": "Why is this being changed? Recorded in Logs.",
+    "saveBtn": "Save changes",
+    "undoBtn": "Undo transaction",
+    "errReason": "Enter a reason (at least 3 characters).",
+    "errNothing": "Change the amount or the date first.",
+    "failed": "Could not update the transaction.",
+    "editNote": {
+      "INVESTMENT": "Changes the member's invested capital and the investment date (monthly profit eligibility follows the date) and the project's raised total.",
+      "PROFIT": "Changes the profit credited to the member. It cannot be lowered below what has already been withdrawn.",
+      "MANUAL": "Changes the member's wallet balance by the difference."
+    },
+    "undoNote": {
+      "INVESTMENT": "The investment is cancelled: the member's capital and the project's raised total go back to before it existed. Profit already earned on it is not removed. Not possible once any capital has been returned.",
+      "PROFIT": "The profit is removed from the member's balance. The record is kept at zero, so the monthly job does not credit that cycle again. Not possible if the profit has already been withdrawn.",
+      "MANUAL": "The wallet returns to how it was before this transaction."
+    }
+  },
   "wizard": {
     "title": "New Investment",
     "memberLabel": "Member *",
@@ -387,6 +500,10 @@
       "ONE_TIME_PROFIT": {
         "title": "Add One-Time Profit",
         "desc": "A single profit payout - amount or % of capital, not recurring."
+      },
+      "INSURANCE": {
+        "title": "Add Insurance",
+        "desc": "Insurance return: a % of capital on a date. Repeats automatically every year."
       },
       "MONTHLY_CONFIG": {
         "title": "Configure Monthly Profit",
@@ -502,6 +619,16 @@
     "withdrawn": "Withdrawn"
   },
   "memberDetail": {
+    "perMonth": "/ month",
+    "tabs": {
+      "insurance": "Insurance",
+      "investments": "Investments",
+      "projects": "Per project",
+      "profit": "Profit",
+      "transactions": "Transactions",
+      "withdrawals": "Withdrawals",
+      "requests": "Investment requests"
+    },
     "noneSelected": "No member selected.",
     "loadFailed": "Could not load this member.",
     "notFound": "Member not found.",
@@ -568,6 +695,8 @@
     "investmentsTitle": "Investments ({{count}})",
     "investmentsSub": "Every capital allocation on record, newest first.",
     "capitalRecords": "Capital records",
+    "addInvestment": "Add investment",
+    "monthlyFixProfitBtn": "Monthly fix profit",
     "investmentsHead": {
       "project": "Project",
       "investedOn": "Invested on",
@@ -594,6 +723,7 @@
     "ratesTitle": "Monthly profit rates in force",
     "ratesSub": "A rate change takes effect from the next cycle; past records keep the rate that produced them.",
     "ratesHead": {
+      "expected": "Expected / month",
       "project": "Project",
       "rate": "Rate",
       "cycleDay": "Cycle day",
@@ -622,7 +752,7 @@
     },
     "noWithdrawals": "No withdrawal requests.",
     "requestsTitle": "Investment requests ({{count}})",
-    "requestsSub": "Asks from the Deal Room. A request has no financial effect until admin completes it.",
+    "requestsSub": "Asks from the Deal Room. A request has no financial effect until admin completes it; once completed it moves to Investments.",
     "reqHead": {
       "date": "Date",
       "project": "Project",

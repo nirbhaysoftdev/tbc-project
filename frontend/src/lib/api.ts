@@ -83,6 +83,12 @@ export const authAPI = {
 export const dashboardAPI = {
   getSummary:  ()                    => api.get('/dashboard/summary'),
   getChart:    (period: string = '1Y') => api.get(`/dashboard/chart?period=${period}`),
+  // The signed-in member's own insurance policy (null when none).
+  getInsurance: ()                   => api.get('/dashboard/insurance'),
+  // Insurance + monthly fix profit, amounts recomputed from current capital.
+  getReturns:   ()                   => api.get('/dashboard/returns'),
+  // Live balance, capital by project, and profit credited per month.
+  getPortfolio: ()                   => api.get('/dashboard/portfolio'),
 };
 
 // ── Transactions ──────────────────────────────
@@ -276,6 +282,12 @@ export const superAdminAPI = {
    */
   reverseTransaction: (id: string) =>
     api.post(`/super-admin/transactions/${id}/reverse`),
+  // Correct a transaction's amount/date, or undo it. The source record (investment,
+  // profit record or wallet field) moves with it; a reason is required.
+  editTransaction: (id: string, data: { amount?: number | string; date?: string; reason: string }) =>
+    api.put(`/super-admin/transactions/${id}`, data),
+  undoTransaction: (id: string, reason: string) =>
+    api.post(`/super-admin/transactions/${id}/undo`, { reason }),
 };
 
 // ── Investment / Profit Engine (admin) ────────
@@ -288,6 +300,29 @@ export const superAdminAPI = {
 // `create` and `rotate` are the ONLY responses that ever contain the key. Show
 // it once, with a copy button, and tell the user it cannot be recovered - there
 // is no endpoint that can read it back. Never write it to localStorage.
+// Annual insurance return. Setting up is open to any admin (from the member's
+// page); the list and every change are super admin only.
+export const insuranceAPI = {
+  // Credits `ratePercent` of capital for `date` now and sets the yearly renewal; repeating it adds one more.
+  setup:  (userId: string, data: { ratePercent: number | string; date: string }) =>
+    api.post(`/admin/members/${userId}/insurance`, data),
+  list:   () => api.get('/super-admin/insurance'),
+  update: (userId: string, data: { ratePercent?: number | string; renewalDate?: string; status?: 'ACTIVE' | 'DISABLED' }) =>
+    api.put(`/super-admin/insurance/${userId}`, data),
+};
+
+// Super admin only: every member's balance and email.
+export const reportsAPI = {
+  catalogue:  () => api.get('/super-admin/reports'),
+  run:        (key: string, params?: Record<string, string>) =>
+    api.get(`/super-admin/reports/${key}`, { params }),
+  download:   (key: string, params?: Record<string, string>) =>
+    api.get(`/super-admin/reports/${key}`, { params: { ...params, format: 'csv' }, responseType: 'blob' }),
+  getSettings:    () => api.get('/super-admin/reports/settings'),
+  updateSettings: (emails: string[]) => api.put('/super-admin/reports/settings', { emails }),
+  sendNow:        () => api.post('/super-admin/reports/monthly/send-now'),
+};
+
 export const apiKeysAPI = {
   list:   (includeRevoked = true) =>
     api.get('/super-admin/api-keys', { params: { includeRevoked: String(includeRevoked) } }),
@@ -313,10 +348,10 @@ export const investmentAPI = {
     api.post(`/admin/investments/${investmentId}/return-capital`, data),
   createOneTimeProfit:  (data: { userId: string; projectId?: string | null; profitType: 'ONE_TIME_AMOUNT' | 'ONE_TIME_PERCENT'; value: number | string; effectiveDate: string; description?: string }) =>
     api.post('/admin/profit/one-time', data),
-  setMonthlyProfitConfig: (data: { userId: string; projectId?: string | null; rate: number | string; monthlyProfitDay?: number; effectiveFrom: string }) =>
+  setMonthlyProfitConfig: (data: { userId: string; projectId?: string | null; rate?: number | string; fixedAmount?: number | string; monthlyProfitDay?: number; effectiveFrom: string }) =>
     api.put('/admin/profit/monthly-config', data),
-  previewMonthlyProfit: (userId: string, projectId?: string | null) =>
-    api.get('/admin/profit/monthly-preview', { params: { userId, projectId: projectId || '' } }),
+  previewMonthlyProfit: (userId: string, projectId?: string | null, day?: number | string) =>
+    api.get('/admin/profit/monthly-preview', { params: { userId, projectId: projectId || '', day: day || '' } }),
   listProfitRecords:    (params?: Record<string, string>) => api.get('/admin/profit/records', { params }),
   runMonthlyGeneration: (periodDate?: string)   => api.post('/admin/profit/generate-monthly', periodDate ? { periodDate } : {}),
 };

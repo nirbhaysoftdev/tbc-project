@@ -515,9 +515,9 @@ async function sendInvestmentInvoiceEmail({ user, amount, projectTitle, invested
 }
 
 // ── Profit statement ───────────────────────────
-function profitStatementHtml({ user, amount, projectTitle, rate, capitalBase, period, generatedAt, docNumber, isMonthly }) {
+function profitStatementHtml({ user, amount, projectTitle, rate, capitalBase, period, generatedAt, docNumber, isMonthly, label }) {
   const rows = [
-    { label: 'Description', value: isMonthly ? 'Monthly profit distribution' : 'One-time profit distribution' },
+    { label: 'Description', value: label || (isMonthly ? 'Monthly profit distribution' : 'One-time profit distribution') },
     { label: 'Project', value: projectLine(projectTitle) },
   ];
   if (rate != null) rows.push({ label: 'Profit rate', value: `${rate}%`, muted: true });
@@ -554,7 +554,7 @@ function profitStatementHtml({ user, amount, projectTitle, rate, capitalBase, pe
   });
 }
 
-async function sendProfitStatementEmail({ user, amount, projectTitle, rate, capitalBase, period, generatedAt, profitRecordId, isMonthly }) {
+async function sendProfitStatementEmail({ user, amount, projectTitle, rate, capitalBase, period, generatedAt, profitRecordId, isMonthly, label }) {
   const docNumber = documentNumber('PRF', profitRecordId, generatedAt);
   return sendMail({
     to: user.email,
@@ -563,7 +563,43 @@ async function sendProfitStatementEmail({ user, amount, projectTitle, rate, capi
         + `Statement: ${docNumber}\nProject: ${projectLine(projectTitle)}\n`
         + `${rate != null ? `Rate: ${rate}%\n` : ''}${capitalBase != null ? `Calculated on capital: ${eur(capitalBase)}\n` : ''}`
         + `\nIssued by ${COMPANY.legalName}.`,
-    html: profitStatementHtml({ user, amount, projectTitle, rate, capitalBase, period, generatedAt, docNumber, isMonthly }),
+    html: profitStatementHtml({ user, amount, projectTitle, rate, capitalBase, period, generatedAt, docNumber, isMonthly, label }),
+  });
+}
+
+// ── Monthly members' profit report (sent on the 7th) ─────────────────────────
+async function sendMonthlyProfitReportEmail({ to, financials, forecast, now, attachments }) {
+  const month = new Date(now).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+  const t = forecast.totals || {};
+  const f = financials.totals || {};
+  const cell = 'padding:8px 10px;border-top:1px solid rgba(255,255,255,0.06);font-size:12px;color:#c9cddb;';
+  const lines = forecast.rows.map((r) => `
+    <tr>
+      <td style="${cell}">${r[0]}</td>
+      <td style="${cell}">${r[3]}</td>
+      <td align="right" style="${cell}">${r[5]}%</td>
+      <td align="right" style="${cell}font-weight:600;color:#e6e8ee;">${eur(r[6])}</td>
+    </tr>`).join('');
+  const body = `
+    <div style="font-size:14px;line-height:1.6;color:#aab0c0;padding-bottom:14px;">
+      ${financials.rows.length} active members hold ${eur(f[2])} of capital and ${eur(f[6])} in total balances.
+      ${forecast.rows.length} monthly credits totalling <strong style="color:#c8a84b;">${eur(t[6])}</strong> are due next.
+      The full member list (investment, profit, balance and fix %) is attached as CSV.
+    </div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+      <tr>
+        <td style="padding:8px 10px;font-size:11px;color:#c8a84b;letter-spacing:1px;">MEMBER</td>
+        <td style="padding:8px 10px;font-size:11px;color:#c8a84b;letter-spacing:1px;">DATE</td>
+        <td align="right" style="padding:8px 10px;font-size:11px;color:#c8a84b;letter-spacing:1px;">%</td>
+        <td align="right" style="padding:8px 10px;font-size:11px;color:#c8a84b;letter-spacing:1px;">AMOUNT</td>
+      </tr>${lines || `<tr><td colspan="4" style="${cell}">No monthly profit is configured for any member.</td></tr>`}
+    </table>`;
+  return sendMail({
+    to,
+    subject: `TBC members report - ${month}`,
+    text: `Members report for ${month}.\n${financials.rows.length} active members; ${forecast.rows.length} monthly credits totalling ${eur(t[6])} are due next.\nFull lists are attached as CSV.`,
+    html: shell({ title: `Members report — ${month}`, intro: 'Monthly investment, profit and upcoming credits for all members.', bodyHtml: body, footerNote: 'Confidential: contains member balances. Sent on the 7th of each month.' }),
+    attachments,
   });
 }
 
@@ -1398,6 +1434,7 @@ module.exports = {
   sendMemberWelcomeEmail,
   sendInvestmentInvoiceEmail,
   sendProfitStatementEmail,
+  sendMonthlyProfitReportEmail,
   sendWithdrawalConfirmationEmail,
   sendMemberStatementEmail,
   sendWalletActivatedEmail,

@@ -292,16 +292,16 @@ function AdminContent() {
           two drift. */}
 
       {/* ── Tab Switcher ── */}
-      <div style={{ display: 'flex', gap: 4, marginBottom: 16, borderBottom: '1px solid var(--border)', paddingBottom: 0 }}>
+      <div style={{ display: 'flex', gap: 4, marginBottom: 16, borderBottom: '1px solid var(--border-strong)', paddingBottom: 0 }}>
         {ADMIN_TABS.map(tab => (
-          <button key={tab}
+          <button key={tab} className="panel-tab"
             onClick={() => setActiveTab(tab)}
             style={{
               display: 'inline-flex', alignItems: 'center', gap: 7,
-              padding: '9px 20px', fontSize: 13, fontWeight: 600,
+              padding: '10px 20px', fontSize: 13.5, fontWeight: 600,
               background: 'none', border: 'none', cursor: 'pointer',
               borderBottom: activeTab === tab ? '2px solid var(--accent-blue)' : '2px solid transparent',
-              color: activeTab === tab ? 'var(--text-primary)' : 'var(--text-muted)',
+              color: activeTab === tab ? '#fff' : 'var(--text-secondary)',
               marginBottom: -1,
             }}>
             {t(`admin:tabs.${tab}`)}
@@ -371,7 +371,14 @@ function AdminContent() {
                             {t('common:status.frozen', { defaultValue: 'Frozen' })}
                           </span>
                         )}
-                        {/* "Go deeper" chevron — directional, so it mirrors. */}
+                        {/* Insured: an active insurance policy (annual return). */}
+                        {m.insurancePolicy?.status === 'ACTIVE' && (
+                          <span className="badge badge-completed" style={{ fontSize:10, padding:'1px 7px' }}
+                            title={t('admin:insurance.badgeTitle', { rate: formatNumber(m.insurancePolicy.ratePercent), date: formatDate(m.insurancePolicy.renewalDate) })}>
+                            {t('admin:insurance.badge')}
+                          </span>
+                        )}
+                                                {/* "Go deeper" chevron — directional, so it mirrors. */}
                         <svg className="rtl-mirror" viewBox="0 0 24 24" width="12" height="12" fill="none"
                           stroke="currentColor" strokeWidth="2" style={{ color:'var(--text-muted)' }}>
                           <path d="M9 18l6-6-6-6" />

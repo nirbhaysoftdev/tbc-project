@@ -1,5 +1,8 @@
 {
   "main": {
+    "events": "События",
+    "dealRoom": "Deal Room",
+    "messages": "Сообщения",
     "community": "Сообщество",
     "dashboard": "Панель",
     "projects": "Проекты",

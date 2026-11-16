@@ -9,7 +9,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { investmentAPI, formatEur, formatDate, formatDateLong, formatNumber } from '@/lib/api';
 import { Trans, useTranslation } from 'react-i18next';
 
-type ActionType = 'INVESTMENT' | 'ONE_TIME_PROFIT' | 'MONTHLY_CONFIG';
+type ActionType = 'INVESTMENT' | 'ONE_TIME_PROFIT' | 'MONTHLY_CONFIG' | 'INSURANCE';
 type Step = 1 | 2 | 3;
 
 interface Member { id: string; name: string; email: string; }
@@ -20,12 +20,19 @@ interface Project { id: string; name: string; title?: string; category?: string;
 const NO_PROJECT = '';
 
 export default function InvestmentWizard({
-  open, onClose, members, onSuccess,
+  open, onClose, members, onSuccess, presetUserId, actions, onPickInsurance,
 }: {
   open: boolean;
   onClose: () => void;
   members: Member[];
   onSuccess: () => void;
+  // Opened from one member's page: the member is fixed rather than picked.
+  presetUserId?: string;
+  // Which actions step 1 offers. Defaults to all three.
+  actions?: ActionType[];
+  // Insurance needs only a date and a %, so choosing it hands over to the
+  // insurance popup instead of walking through this wizard's steps.
+  onPickInsurance?: () => void;
 }) {
   const { t } = useTranslation(['admin', 'common']);
   const [step, setStep] = useState<Step>(1);
@@ -55,7 +62,7 @@ export default function InvestmentWizard({
     setStep(1);
     setActionType('');
     setForm({
-      userId: '', projectId: '',
+      userId: presetUserId || '', projectId: '',
       amount: '', investedAt: todayIso(),
       profitType: 'ONE_TIME_PERCENT', value: '', effectiveDate: todayIso(),
       rate: '', monthlyEffectiveFrom: todayIso(),
@@ -119,6 +126,7 @@ export default function InvestmentWizard({
   const goNext = () => {
     if (step === 1) {
       if (!actionType) { setError(t('admin:wizard.errors.action')); return; }
+      if (actionType === 'INSURANCE') { onPickInsurance?.(); onClose(); return; }
       setError('');
       setStep(2);
       return;
@@ -206,7 +214,7 @@ export default function InvestmentWizard({
             {/* Keys only; the titles and descriptions come from
                 admin:wizard.actions.<KEY>. The key itself is the ActionType the
                 API receives and is never translated. */}
-            {(['INVESTMENT', 'ONE_TIME_PROFIT', 'MONTHLY_CONFIG'] as const).map(key => (
+            {((actions || ['INVESTMENT', 'ONE_TIME_PROFIT', 'MONTHLY_CONFIG']) as ActionType[]).map(key => (
               { key, title: t(`admin:wizard.actions.${key}.title`), desc: t(`admin:wizard.actions.${key}.desc`) }
             )).map(opt => (
               <button
@@ -234,7 +242,8 @@ export default function InvestmentWizard({
             <div className="form-group">
               <label className="form-label">{t('admin:wizard.userLabel')}</label>
               <select className="filter-select" style={{ width:'100%' }}
-                value={form.userId} onChange={e => setForm(p => ({ ...p, userId: e.target.value }))}>
+                value={form.userId} disabled={!!presetUserId}
+                onChange={e => setForm(p => ({ ...p, userId: e.target.value }))}>
                 <option value="">{t('admin:wizard.selectMemberOption')}</option>
                 {members.map(m => <option key={m.id} value={m.id}>{m.name} - {m.email}</option>)}
               </select>

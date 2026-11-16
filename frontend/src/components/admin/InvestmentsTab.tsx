@@ -197,7 +197,7 @@ export default function InvestmentsTab({ members }: { members: Member[] }) {
                   <td>{rec.project?.title || <span style={{ color:'var(--text-muted)' }}>{t('admin:investments.noProject')}</span>}</td>
                   <td>
                     <span className={`badge ${rec.type === 'MONTHLY' ? 'badge-pending' : 'badge-completed'}`}>
-                      {rec.type === 'MONTHLY' ? t('admin:investments.typeMonthly') : t('admin:investments.typeOneTime')}
+                      {rec.type === 'MONTHLY' ? t('admin:investments.typeMonthly') : rec.type === 'INSURANCE' ? t('admin:investments.typeInsurance') : t('admin:investments.typeOneTime')}
                     </span>
                   </td>
                   <td style={{ fontSize:12, color:'var(--text-muted)' }}>{rec.period.startsWith('ONE_TIME') ? '-' : rec.period}</td>

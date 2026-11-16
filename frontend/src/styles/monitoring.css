@@ -9,7 +9,7 @@
 .mn-stack { display: flex; flex-direction: column; gap: 16px; }
 
 /* Section tabs: one row that scrolls sideways on a narrow screen rather than wrapping into a wall. */
-.mn-tabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 14px; border-bottom: 1px solid var(--border); scrollbar-width: thin; }
+.mn-tabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 14px; border-bottom: 1px solid var(--border); scrollbar-width: unset; }
 .mn-tab {
   flex: 0 0 auto; padding: 8px 12px; border-radius: 8px; border: 1px solid transparent; background: transparent;
   color: var(--text-secondary); font-size: 12.5px; font-weight: 600; cursor: pointer; white-space: nowrap;
