@@ -13,6 +13,7 @@ import ProjectCard, { ProjectSummary, prettyCategory } from '@/components/projec
 import { projectsAPI, formatEur } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import '@/styles/projects.css';
+import SearchableSelect from '@/components/ui/SearchableSelect';
 import { isAdminRole } from '@/lib/roles';
 
 interface Facets {
@@ -233,11 +234,10 @@ export default function ProjectsPage() {
 
             <div className="pj-field">
               <label className="pj-label" htmlFor="pj-f-owner">Project owner</label>
-              <select id="pj-f-owner" className="pj-select" value={filters.ownerId}
-                onChange={(e) => set('ownerId', e.target.value)}>
-                <option value="">All owners</option>
-                {facets?.owners.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
-              </select>
+              <SearchableSelect id="pj-f-owner" className="pj-select" style={{ display: 'block' }}
+                value={filters.ownerId} onChange={(v) => set('ownerId', v)}
+                searchPlaceholder="Search owners…"
+                options={[{ value: '', label: 'All owners' }, ...(facets?.owners || []).map((o) => ({ value: o.id, label: o.name }))]} />
             </div>
 
             <div className="pj-field">

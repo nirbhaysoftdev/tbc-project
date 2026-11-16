@@ -13,6 +13,7 @@ import CompanyCard, { CompanySummary, prettyCategory } from '@/components/compan
 import { companiesAPI, formatEur } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import '@/styles/projects.css';
+import SearchableSelect from '@/components/ui/SearchableSelect';
 import '@/styles/companies.css';
 import { isAdminRole } from '@/lib/roles';
 
@@ -226,11 +227,10 @@ function CompaniesPage() {
 
             <div className="pj-field">
               <label className="pj-label" htmlFor="cp-f-owner">Owner</label>
-              <select id="cp-f-owner" className="pj-select" value={filters.ownerId}
-                onChange={(e) => set('ownerId', e.target.value)}>
-                <option value="">All owners</option>
-                {facets?.owners.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
-              </select>
+              <SearchableSelect id="cp-f-owner" className="pj-select" style={{ display: 'block' }}
+                value={filters.ownerId} onChange={(v) => set('ownerId', v)}
+                searchPlaceholder="Search owners…"
+                options={[{ value: '', label: 'All owners' }, ...(facets?.owners || []).map((o) => ({ value: o.id, label: o.name }))]} />
             </div>
 
             <div className="pj-field">

@@ -315,7 +315,8 @@ function MemberDetailContent() {
     };
     (profitConfigs || []).forEach((c: any) => add(c.projectId, c.project?.title));
     (investments || []).filter((i: any) => i.status === 'ACTIVE').forEach((i: any) => add(i.projectId, i.project?.title));
-    if (seen.size === 0) add('');
+    // An opening balance sits in the general scope, so it can carry a fix too.
+    if (breakdown.openingCapital > 0 || seen.size === 0) add('');
     return Array.from(seen, ([id, label]) => ({ id, label }));
   })();
 
@@ -504,8 +505,10 @@ function MemberDetailContent() {
             {t('admin:memberDetail.capitalByProjectSub')}
           </p>
           <div style={{ height: 260 }}>
-            {byProject.some((p: any) => p.capital > 0)
-              ? <ProjectSplitChart rows={byProject} />
+            {(byProject.some((p: any) => p.capital > 0) || breakdown.openingCapital > 0)
+              ? <ProjectSplitChart rows={breakdown.openingCapital > 0
+                  ? [...byProject, { projectTitle: t('admin:memberDetail.openingBalance'), capital: breakdown.openingCapital, profit: breakdown.openingProfit }]
+                  : byProject} />
               : <p style={{ color: 'var(--text-muted)', fontSize: 13, padding: 24, textAlign: 'center' }}>{t('admin:memberDetail.noCapitalBooked')}</p>}
           </div>
         </div>
@@ -537,7 +540,7 @@ function MemberDetailContent() {
           between them and a pasted link opens the same one. */}
       <div style={{ display:'flex', gap:4, borderBottom:'1px solid var(--border)', marginBottom:18, overflowX:'auto' }}>
         {([
-          ['investments', t('admin:memberDetail.tabs.investments'), investments.length],
+          ['investments', t('admin:memberDetail.tabs.investments'), investments.length + (breakdown.openingCapital > 0 ? 1 : 0)],
           ['projects',    t('admin:memberDetail.tabs.projects'),    byProject.length],
           ['profit',      t('admin:memberDetail.tabs.profit'),      profitRecords.length],
           ['insurance',   t('admin:memberDetail.tabs.insurance'),   insurance ? 1 : 0],
@@ -621,7 +624,7 @@ function MemberDetailContent() {
           head={[t('admin:memberDetail.investmentsHead.project'), t('admin:memberDetail.investmentsHead.investedOn'), t('admin:memberDetail.investmentsHead.amount'), t('admin:memberDetail.investmentsHead.returned'), t('admin:memberDetail.investmentsHead.outstanding'), t('admin:memberDetail.investmentsHead.status')]}
           align={[false, false, true, true, true, false]}
           empty={t('admin:memberDetail.noInvestments')}
-          rows={investments.map((i: any) => [
+          rows={[...investments.map((i: any) => [
             i.project?.title || t('admin:memberDetail.noProject'),
             shortDate(i.investedAt),
             formatEur(i.amount),
@@ -630,7 +633,14 @@ function MemberDetailContent() {
             <span key="s" className={`badge ${badgeFor(i.status)}`}>
               {t(`common:status.${String(i.status).toLowerCase()}`, { defaultValue: i.status })}
             </span>,
-          ])}
+          ]),
+          // The opening balance is capital too, just with no project and no
+          // date behind it, so it is listed here rather than only in totals.
+          ...(breakdown.openingCapital > 0 ? [[
+            t('admin:memberDetail.openingBalance'), '—',
+            formatEur(breakdown.openingCapital), formatEur(0), formatEur(breakdown.openingCapital),
+            <span key="open" className={`badge ${badgeFor("ACTIVE")}`}>{t('common:status.active')}</span>,
+          ]] : [])]}
         />
       </Section>
       </>

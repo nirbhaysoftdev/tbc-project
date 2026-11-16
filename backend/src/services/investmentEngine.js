@@ -94,22 +94,40 @@ const projectLabel = (project) => project?.title || 'general investment';
 
 // ── Capital ────────────────────────────────────
 
+/**
+ * The member's opening balance, which counts as capital in the general (no
+ * project) scope only: it has no project behind it. It is real money the member
+ * already held before investments were tracked, so it earns from the first
+ * cycle - there is no investment date to wait out.
+ */
+async function openingCapitalFor(userId, projectId, client = prisma) {
+  if (projectId) return 0;
+  const wallet = await client.wallet.findUnique({ where: { userId }, select: { investmentAmount: true } });
+  return Math.max(0, wallet?.investmentAmount || 0);
+}
+
 /** Total capital currently invested (ACTIVE only), regardless of profit eligibility. */
 async function getTotalCapital(userId, projectId, client = prisma) {
-  const investments = await client.walletInvestment.findMany({
-    where: { userId, projectId: projectId || null, status: 'ACTIVE' },
-    select: { amount: true, returnedAmount: true },
-  });
-  return money(investments.reduce((sum, inv) => sum + Math.max(0, inv.amount - (inv.returnedAmount || 0)), 0));
+  const [investments, opening] = await Promise.all([
+    client.walletInvestment.findMany({
+      where: { userId, projectId: projectId || null, status: 'ACTIVE' },
+      select: { amount: true, returnedAmount: true },
+    }),
+    openingCapitalFor(userId, projectId, client),
+  ]);
+  return money(opening + investments.reduce((sum, inv) => sum + Math.max(0, inv.amount - (inv.returnedAmount || 0)), 0));
 }
 
 /** Capital eligible to earn profit for a given monthly cycle date. */
 async function getEligibleCapitalForDate(userId, projectId, asOfDate, monthlyProfitDay = 15, client = prisma) {
-  const investments = await client.walletInvestment.findMany({
-    where: { userId, projectId: projectId || null, status: 'ACTIVE' },
-    select: { amount: true, returnedAmount: true, investedAt: true },
-  });
-  return money(investments.reduce((sum, inv) => {
+  const [investments, opening] = await Promise.all([
+    client.walletInvestment.findMany({
+      where: { userId, projectId: projectId || null, status: 'ACTIVE' },
+      select: { amount: true, returnedAmount: true, investedAt: true },
+    }),
+    openingCapitalFor(userId, projectId, client),
+  ]);
+  return money(opening + investments.reduce((sum, inv) => {
     const eligibleFrom = firstEligibleCycleDate(inv.investedAt, monthlyProfitDay);
     if (eligibleFrom > asOfDate) return sum;
     return sum + Math.max(0, inv.amount - (inv.returnedAmount || 0));

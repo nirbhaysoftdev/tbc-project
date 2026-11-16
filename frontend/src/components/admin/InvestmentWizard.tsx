@@ -8,6 +8,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { investmentAPI, formatEur, formatDate, formatDateLong, formatNumber } from '@/lib/api';
 import { Trans, useTranslation } from 'react-i18next';
+import SearchableSelect from '@/components/ui/SearchableSelect';
 
 type ActionType = 'INVESTMENT' | 'ONE_TIME_PROFIT' | 'MONTHLY_CONFIG' | 'INSURANCE';
 type Step = 1 | 2 | 3;
@@ -241,23 +242,23 @@ export default function InvestmentWizard({
           <>
             <div className="form-group">
               <label className="form-label">{t('admin:wizard.userLabel')}</label>
-              <select className="filter-select" style={{ width:'100%' }}
+              <SearchableSelect style={{ width:'100%' }}
                 value={form.userId} disabled={!!presetUserId}
-                onChange={e => setForm(p => ({ ...p, userId: e.target.value }))}>
-                <option value="">{t('admin:wizard.selectMemberOption')}</option>
-                {members.map(m => <option key={m.id} value={m.id}>{m.name} - {m.email}</option>)}
-              </select>
+                onChange={v => setForm(p => ({ ...p, userId: v }))}
+                placeholder={t('admin:wizard.selectMemberOption')}
+                searchPlaceholder={t('common:action.search')} noMatchText={t('common:state.noResults')}
+                options={members.map(m => ({ value: m.id, label: m.name, hint: m.email }))} />
             </div>
 
             <div className="form-group">
               <label className="form-label">{t('admin:wizard.projectLabel')}</label>
-              <select className="filter-select" style={{ width:'100%' }}
-                value={form.projectId} onChange={e => setForm(p => ({ ...p, projectId: e.target.value }))}>
-                <option value={NO_PROJECT}>
-                  {loadingProjects ? t('common:state.loading') : t('admin:wizard.noProjectOption')}
-                </option>
-                {projects.map(p => <option key={p.id} value={p.id}>{p.title || p.name}</option>)}
-              </select>
+              <SearchableSelect style={{ width:'100%' }}
+                value={form.projectId} onChange={v => setForm(p => ({ ...p, projectId: v }))}
+                searchPlaceholder={t('common:action.search')} noMatchText={t('common:state.noResults')}
+                options={[
+                  { value: NO_PROJECT, label: loadingProjects ? t('common:state.loading') : t('admin:wizard.noProjectOption') },
+                  ...projects.map(p => ({ value: p.id, label: p.title || p.name })),
+                ]} />
               <p style={{ fontSize:11, color:'var(--text-muted)', marginTop:6 }}>
                 {t('admin:wizard.projectHint')}
               </p>

@@ -645,6 +645,30 @@ width: 65px;
 .filter-select:hover, .filter-input:hover { border-color: var(--border-strong); background: var(--bg-card-hover); }
 .filter-select:focus, .filter-input:focus { border-color: var(--accent-blue); }
 
+/* Searchable dropdown (components/ui/SearchableSelect.tsx) */
+.ss-box { position: relative; display: inline-block; min-width: 0; max-width: 100%; }
+.ss-trigger { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px; text-align: start; cursor: pointer; }
+.ss-trigger > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ss-placeholder { color: var(--text-muted); }
+.ss-caret { font-size: 10px; color: var(--text-muted); flex-shrink: 0; }
+.ss-panel {
+  position: absolute; z-index: 60; inset-inline: 0; top: calc(100% + 4px); min-width: 240px;
+  background: var(--bg-sidebar); border: 1px solid var(--border); border-radius: 10px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45); padding: 8px;
+}
+.ss-search { width: 100%; box-sizing: border-box; margin-bottom: 6px; }
+.ss-list { max-height: 240px; overflow-y: auto; }
+.ss-item {
+  width: 100%; display: flex; flex-direction: column; align-items: flex-start; gap: 1px; text-align: start;
+  border: none; background: none; padding: 8px 10px; border-radius: 6px; cursor: pointer;
+  font-family: inherit; color: var(--text-primary);
+}
+.ss-item.highlight { background: var(--bg-active); }
+.ss-item.chosen .ss-label { color: var(--accent-blue); }
+.ss-label { font-size: 13px; }
+.ss-hint { font-size: 11px; color: var(--text-muted); }
+.ss-note { padding: 10px; font-size: 12px; color: var(--text-muted); }
+
 .export-btn {
   padding: 9px 16px;
   background: transparent;

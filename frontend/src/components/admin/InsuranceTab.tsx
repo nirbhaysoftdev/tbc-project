@@ -11,6 +11,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { insuranceAPI, formatEur, formatNumber, formatDate } from '@/lib/api';
 import InsuranceModal from './InsuranceModal';
+import SearchableSelect from '@/components/ui/SearchableSelect';
 
 export default function InsuranceTab() {
   const { t } = useTranslation(['admin', 'common']);
@@ -61,10 +62,10 @@ export default function InsuranceTab() {
       </div>
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-        <select className="filter-select" value={pick} onChange={e => setPick(e.target.value)} style={{ minWidth: 260 }}>
-          <option value="">{t('admin:insurance.addPlaceholder')}</option>
-          {candidates.map(c => <option key={c.id} value={c.id}>{c.name} — {c.email}</option>)}
-        </select>
+        <SearchableSelect value={pick} onChange={setPick} style={{ minWidth: 260 }}
+          placeholder={t('admin:insurance.addPlaceholder')}
+          searchPlaceholder={t('common:action.search')} noMatchText={t('common:state.noResults')}
+          options={candidates.map(c => ({ value: c.id, label: c.name, hint: c.email }))} />
         <button className="btn-primary" style={{ width: 'auto', padding: '8px 18px' }} disabled={!picked}
           onClick={() => { setAdding(picked); setPick(''); }}>
           {t('admin:insurance.addBtn')}

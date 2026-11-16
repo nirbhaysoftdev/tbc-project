@@ -61,6 +61,12 @@ export default function DashboardPage() {
     ...byProject.map((r: any) => ({ label: r.projectTitle || t('dashboard:byProject.noProject'), capital: r.capital })),
     ...(wallet?.openingCapital > 0 ? [{ label: t('dashboard:portfolio.openingBalance'), capital: wallet.openingCapital }] : []),
   ];
+  // The same opening balance as a table row, so the project table adds up to
+  // the invested capital and profit shown in the cards above it.
+  const openingRow = (wallet?.openingCapital > 0 || wallet?.openingProfit > 0)
+    ? { projectId: '__opening', projectTitle: t('dashboard:portfolio.openingBalance'), capital: wallet.openingCapital || 0, profit: wallet.openingProfit || 0 }
+    : null;
+  const tableRows = openingRow ? [...byProject, openingRow] : byProject;
   const hasCapital = allocation.some((r: any) => r.capital > 0);
   const hasProfit = (monthlyProfit || []).some((p: any) => p.total > 0);
   const firstName =
@@ -185,7 +191,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Project-wise capital and profit */}
-      {byProject.length > 0 && (
+      {tableRows.length > 0 && (
         <div style={{ background:'var(--bg-card)', border:'1px solid var(--border-strong)', borderRadius:'var(--radius-md)', boxShadow:'0 10px 30px rgba(0,0,0,0.35)', overflow:'hidden', marginBottom:20 }}>
           <div style={{ padding:'14px 20px', borderBottom:'1px solid var(--border-strong)', background:'rgba(20,38,96,0.28)' }}>
             <p style={{ fontWeight:700, fontSize:14 }}>{t('dashboard:byProject.title')}</p>
@@ -202,7 +208,7 @@ export default function DashboardPage() {
               </tr>
             </thead>
             <tbody>
-              {byProject.map((row: any) => (
+              {tableRows.map((row: any) => (
                 <tr key={row.projectId || 'no-project'}>
                   {/* The project title arrives already translated by the API
                       (Accept-Language -> translation store -> English
@@ -216,9 +222,9 @@ export default function DashboardPage() {
               ))}
               <tr>
                 <td style={{ fontWeight:700, color:'var(--text-primary)' }}>{t('common:label.total')}</td>
-                <td style={{ fontWeight:700 }}>{formatEur(byProject.reduce((s: number, r: any) => s + r.capital, 0))}</td>
+                <td style={{ fontWeight:700 }}>{formatEur(tableRows.reduce((s: number, r: any) => s + r.capital, 0))}</td>
                 <td style={{ fontWeight:700 }} className="amount-credit">
-                  {formatEur(byProject.reduce((s: number, r: any) => s + r.profit, 0))}
+                  {formatEur(tableRows.reduce((s: number, r: any) => s + r.profit, 0))}
                 </td>
               </tr>
             </tbody>
