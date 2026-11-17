@@ -6,9 +6,10 @@ import { useTranslation } from 'react-i18next';
 interface Props {
   name:    string;
   number?: string;
+  expiry?: string;
 }
 
-export default function DebitCard({ name, number = '**** **** **** 3456' }: Props) {
+export default function DebitCard({ name, number = '**** **** **** 0000', expiry = '--/--' }: Props) {
   const { t } = useTranslation('dashboard');
   const [flipped, setFlipped]   = useState(false);
   const [rotation, setRotation] = useState({ x: 0, y: 0 });
@@ -134,7 +135,7 @@ export default function DebitCard({ name, number = '**** **** **** 3456' }: Prop
                 <div style={{ fontSize: 7, color: 'rgba(255,255,255,0.4)', letterSpacing: 1, marginBottom: 2 }}>
                   EXPIRES
                 </div>
-                <div style={{ fontSize: 12, color: '#fff', fontFamily: 'monospace' }}>12/28</div>
+                <div style={{ fontSize: 12, color: '#fff', fontFamily: 'monospace' }}>{expiry}</div>
               </div>
             </div>
           </div>

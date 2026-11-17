@@ -4,16 +4,28 @@ import ProtectedLayout from '@/components/layout/ProtectedLayout';
 import DebitCard from '@/components/cards/DebitCard';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/lib/auth';
+import { useEffect, useState } from 'react';
+import { dashboardAPI } from '@/lib/api';
 
 function CardsContent() {
   const { t } = useTranslation('dashboard');
   const { user } = useAuth();
+  // undefined = still loading; null = no card, or a super admin has switched it off.
+  const [card, setCard] = useState<{ last4: string; expiryMonth: number; expiryYear: number } | null | undefined>(undefined);
+  useEffect(() => {
+    dashboardAPI.getCard().then(r => setCard(r.data.card)).catch(() => setCard(null));
+  }, []);
+  if (card === undefined) return null;
+  const expiry = card ? `${String(card.expiryMonth).padStart(2, '0')}/${String(card.expiryYear).slice(-2)}` : '';
   return (
     <div className="content-left">
       <div className="page-header">
         <h1 className="page-title">{t('cards.pageTitle')}</h1>
       </div>
 
+      {!card ? (
+        <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>No membership card is available on your account.</p>
+      ) : (
       <div style={{
         background: 'var(--bg-card)',
         border: '1px solid var(--border)',
@@ -24,7 +36,7 @@ function CardsContent() {
         alignItems: 'flex-start',
         flexWrap: 'wrap',
       }}>
-        <DebitCard name={user?.name || ''} />
+        <DebitCard name={user?.name || ''} number={`**** **** **** ${card.last4}`} expiry={expiry} />
 
         <div style={{ flex: 1, minWidth: 220 }}>
           <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 20 }}>{t('cards.cardTitle')}</h3>
@@ -35,7 +47,8 @@ function CardsContent() {
               { key: 'type',         label: t('cards.cardType'),    value: t('cards.typeValue') },
               // A masked card number is a value, not language: never translated
               // and always rendered LTR (§10).
-              { key: 'number',       label: t('cards.cardNumber'),  value: '**** **** **** 3456', ltr: true },
+              { key: 'number',       label: t('cards.cardNumber'),  value: `**** **** **** ${card.last4}`, ltr: true },
+              { key: 'expiry',       label: 'Expires',               value: expiry, ltr: true },
               { key: 'network',      label: t('cards.network'),     value: t('cards.networkValue') },
               { key: 'contactless',  label: t('cards.contactless'), value: t('cards.enabled') },
             ].map(({ key, label, value, green, ltr }) => (
@@ -59,6 +72,7 @@ function CardsContent() {
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 }

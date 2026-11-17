@@ -245,6 +245,7 @@ model User {
   walletInvestments WalletInvestment[]
   profitConfigs     ProfitConfig[]
   insurancePolicy   InsurancePolicy?
+  memberCard        MemberCard?
 profitRecords     ProfitRecord[]
 
   // Community
@@ -524,6 +525,25 @@ model InsurancePolicy {
 
   @@index([status, renewalDate])
   @@map("insurance_policies")
+}
+
+// A member's TBC membership card. Only the last four digits and the expiry are
+// ever stored - never a full number. One per member, assigned by a super admin
+// only. `enabled` off hides the card from the member without losing its details.
+model MemberCard {
+  id          String   @id @default(uuid())
+  userId      String   @unique
+  last4       String
+  expiryMonth Int
+  expiryYear  Int
+  enabled     Boolean  @default(true)
+  createdBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("member_cards")
 }
 
 // One row per profit event (one-time or a single monthly cycle). `period` is

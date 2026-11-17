@@ -23,6 +23,7 @@ const apiKeys = require('../controllers/apiKeyController');
 const reports = require('../controllers/reportsController');
 const txAdjust = require('../controllers/transactionAdjustController');
 const insuranceCtrl = require('../controllers/insuranceController');
+const cardCtrl = require('../controllers/memberCardController');
 const { limitFor } = require('../services/uploadLimits');
 
 // ── Impersonation status ──────────────────────
@@ -152,6 +153,12 @@ router.delete('/api-keys/:id',      apiKeys.revokeKey);
 // The full policy list, and the only place a policy can be changed or switched off.
 router.get('/insurance',          insuranceCtrl.list);
 router.put('/insurance/:userId',  insuranceCtrl.update);
+
+// ── Membership cards ──────────────────────────
+// Assigning and editing is super admin only; the member can only read their own.
+router.get('/cards',                   cardCtrl.list);
+router.put('/cards/:userId',           cardCtrl.upsert);
+router.put('/cards/:userId/enabled',   cardCtrl.setEnabled);
 
 // ── Reports ───────────────────────────────────
 // Full member financials (emails, balances, fix %), so super admin only. The

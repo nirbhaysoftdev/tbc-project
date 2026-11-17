@@ -55,6 +55,10 @@ const ACTIVITY = {
   INSURANCE_UPDATED:          { category: 'PROFIT',     label: 'Insurance updated' },
   INSURANCE_DISABLED:         { category: 'PROFIT',     label: 'Insurance disabled' },
   INSURANCE_ENABLED:          { category: 'PROFIT',     label: 'Insurance enabled' },
+  MEMBER_CARD_SET:            { category: 'SUPER_ADMIN', label: 'Member card assigned' },
+  MEMBER_CARD_UPDATED:        { category: 'SUPER_ADMIN', label: 'Member card updated' },
+  MEMBER_CARD_ENABLED:        { category: 'SUPER_ADMIN', label: 'Member card enabled' },
+  MEMBER_CARD_DISABLED:       { category: 'SUPER_ADMIN', label: 'Member card disabled' },
   INSURANCE_CREDITED:         { category: 'PROFIT',     label: 'Insurance return credited' },
   INSURANCE_SKIPPED:          { category: 'PROFIT',     label: 'Insurance renewal skipped' },
 

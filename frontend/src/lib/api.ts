@@ -85,6 +85,8 @@ export const dashboardAPI = {
   getChart:    (period: string = '1Y') => api.get(`/dashboard/chart?period=${period}`),
   // The signed-in member's own insurance policy (null when none).
   getInsurance: ()                   => api.get('/dashboard/insurance'),
+  // The member's own membership card; card is null when none is assigned or it is switched off.
+  getCard:      ()                   => api.get('/dashboard/card'),
   // Insurance + monthly fix profit, amounts recomputed from current capital.
   getReturns:   ()                   => api.get('/dashboard/returns'),
   // Live balance, capital by project, and profit credited per month.
@@ -309,6 +311,14 @@ export const insuranceAPI = {
   list:   () => api.get('/super-admin/insurance'),
   update: (userId: string, data: { ratePercent?: number | string; renewalDate?: string; status?: 'ACTIVE' | 'DISABLED' }) =>
     api.put(`/super-admin/insurance/${userId}`, data),
+};
+
+// Membership cards: last 4 digits + expiry only. Assigned and switched on/off by a super admin.
+export const memberCardAPI = {
+  list:       () => api.get('/super-admin/cards'),
+  save:       (userId: string, data: { last4: string; expiryMonth: number | string; expiryYear: number | string }) =>
+    api.put(`/super-admin/cards/${userId}`, data),
+  setEnabled: (userId: string, enabled: boolean) => api.put(`/super-admin/cards/${userId}/enabled`, { enabled }),
 };
 
 // Super admin only: every member's balance and email.
