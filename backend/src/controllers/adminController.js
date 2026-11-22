@@ -84,7 +84,11 @@ const createMember = async (req, res) => {
       mobileDialCode,
       companyName,
       fullName,
+      streetAddress,
       city,
+      province,
+      state,
+      postalCode,
       country,
       enableWallet = false,
       investmentAmount = 0,
@@ -102,7 +106,11 @@ const createMember = async (req, res) => {
     if (!mobile || !String(mobile).trim()) {
       return res.status(400).json({ error: 'Mobile number is required' });
     }
+    if (!streetAddress || !String(streetAddress).trim()) return res.status(400).json({ error: 'Street is required' });
     if (!city || !String(city).trim())       return res.status(400).json({ error: 'City is required' });
+    if (!province || !String(province).trim())     return res.status(400).json({ error: 'Province is required' });
+    if (!state || !String(state).trim())           return res.status(400).json({ error: 'State is required' });
+    if (!postalCode || !String(postalCode).trim()) return res.status(400).json({ error: 'Pin code is required' });
     if (!country || !String(country).trim()) return res.status(400).json({ error: 'Country is required' });
 
     const files = req.files || {};
@@ -145,7 +153,11 @@ const createMember = async (req, res) => {
 
     const profileData = {
       company:         isCompany ? companyName.trim() : null,
+      streetAddress:   streetAddress.trim(),
       city:            city.trim(),
+      province:        province.trim(),
+      state:           state.trim(),
+      postalCode:      postalCode.trim(),
       country:         country.trim(),
       phone:           mobile.trim(),
       phoneCountry:    mobileCountry   || null,

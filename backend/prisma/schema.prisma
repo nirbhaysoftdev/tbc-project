@@ -306,6 +306,10 @@ model Profile {
   industry        String?
   country         String?
   city            String?
+  streetAddress   String?
+  province        String?
+  state           String?
+  postalCode      String?
   phone           String?
   phoneCountry    String? // ISO code, e.g. "IT"
   phoneDialCode   String? // e.g. "+39"

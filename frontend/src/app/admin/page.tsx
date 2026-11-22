@@ -109,7 +109,7 @@ function AdminContent() {
   const [addError, setAddError] = useState('');
   const emptyAddMemberForm = {
     email: '', mobile: '', memberType: '' as '' | 'COMPANY' | 'PERSONAL',
-    companyName: '', fullName: '', city: '', country: '',
+    companyName: '', fullName: '', streetAddress: '', city: '', province: '', state: '', postalCode: '', country: '',
     enableWallet: 'false', investmentAmount: '', profitAmount: '',
   };
   const [addMemberForm, setAddMemberForm] = useState(emptyAddMemberForm);
@@ -182,7 +182,11 @@ function AdminContent() {
       return '';
     }
     if (step === 2) {
+      if (!f.streetAddress.trim()) return t('admin:addMember.errors.street');
       if (!f.city.trim())    return t('admin:addMember.errors.city');
+      if (!f.province.trim()) return t('admin:addMember.errors.province');
+      if (!f.state.trim())   return t('admin:addMember.errors.state');
+      if (!f.postalCode.trim()) return t('admin:addMember.errors.postalCode');
       if (!f.country.trim()) return t('admin:addMember.errors.country');
       if (f.memberType === 'COMPANY') {
         if (!f.companyName.trim()) return t('admin:addMember.errors.companyName');
@@ -223,7 +227,11 @@ function AdminContent() {
       fd.append('mobile', f.mobile.trim());
       fd.append('mobileCountry', dialCountry.code);
       fd.append('mobileDialCode', dialCountry.dial);
+      fd.append('streetAddress', f.streetAddress.trim());
       fd.append('city', f.city.trim());
+      fd.append('province', f.province.trim());
+      fd.append('state', f.state.trim());
+      fd.append('postalCode', f.postalCode.trim());
       fd.append('country', f.country.trim());
       if (f.memberType === 'COMPANY') fd.append('companyName', f.companyName.trim());
       else                            fd.append('fullName', f.fullName.trim());
@@ -789,12 +797,36 @@ function AdminContent() {
                     </div>
                   )}
 
+                  <div className="form-group">
+                    <label className="form-label">{t('admin:addMember.streetLabel')}</label>
+                    <input className="form-input" value={addMemberForm.streetAddress}
+                      onChange={e => setAddMemberForm(p => ({ ...p, streetAddress: e.target.value }))} />
+                  </div>
                   <div style={{ display:'flex', gap:10 }}>
                     <div className="form-group" style={{ flex:1 }}>
                       <label className="form-label">{t('admin:addMember.cityLabel')}</label>
                       <input className="form-input" value={addMemberForm.city}
                         onChange={e => setAddMemberForm(p => ({ ...p, city: e.target.value }))} />
                     </div>
+                    <div className="form-group" style={{ flex:1 }}>
+                      <label className="form-label">{t('admin:addMember.provinceLabel')}</label>
+                      <input className="form-input" value={addMemberForm.province}
+                        onChange={e => setAddMemberForm(p => ({ ...p, province: e.target.value }))} />
+                    </div>
+                  </div>
+                  <div style={{ display:'flex', gap:10 }}>
+                    <div className="form-group" style={{ flex:1 }}>
+                      <label className="form-label">{t('admin:addMember.stateLabel')}</label>
+                      <input className="form-input" value={addMemberForm.state}
+                        onChange={e => setAddMemberForm(p => ({ ...p, state: e.target.value }))} />
+                    </div>
+                    <div className="form-group" style={{ flex:1 }}>
+                      <label className="form-label">{t('admin:addMember.postalCodeLabel')}</label>
+                      <input className="form-input" value={addMemberForm.postalCode}
+                        onChange={e => setAddMemberForm(p => ({ ...p, postalCode: e.target.value }))} />
+                    </div>
+                  </div>
+                  <div style={{ display:'flex', gap:10 }}>
                     <div className="form-group" style={{ flex:1 }}>
                       <label className="form-label">{t('admin:addMember.countryLabel')}</label>
                       <select className="filter-select" style={{ width:'100%' }}

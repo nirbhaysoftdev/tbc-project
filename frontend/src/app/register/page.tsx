@@ -33,7 +33,11 @@ export default function RegisterPage() {
   // Step 2 - type-specific details & documents
   const [companyName, setCompanyName]   = useState('');
   const [fullName, setFullName]         = useState('');
+  const [streetAddress, setStreetAddress] = useState('');
   const [city, setCity]                 = useState('');
+  const [province, setProvince]         = useState('');
+  const [state, setState]               = useState('');
+  const [postalCode, setPostalCode]     = useState('');
   const [country, setCountry]           = useState('');
   const [tradeLicenseFile, setTradeLicenseFile] = useState<File | null>(null);
   const [residentIdFile, setResidentIdFile]     = useState<File | null>(null);
@@ -95,7 +99,11 @@ export default function RegisterPage() {
   };
 
   const validateDetails = () => {
+    if (!streetAddress.trim()) return t('auth:register.errors.street');
     if (!city.trim())    return t('auth:register.errors.city');
+    if (!province.trim()) return t('auth:register.errors.province');
+    if (!state.trim())   return t('auth:register.errors.state');
+    if (!postalCode.trim()) return t('auth:register.errors.postalCode');
     if (!country.trim()) return t('auth:register.errors.country');
     if (memberType === 'COMPANY') {
       if (!companyName.trim()) return t('auth:register.errors.companyName');
@@ -197,7 +205,11 @@ export default function RegisterPage() {
       fd.append('mobile', mobile.trim());
       fd.append('mobileCountry', selectedCountry.code);
       fd.append('mobileDialCode', selectedCountry.dial);
+      fd.append('streetAddress', streetAddress.trim());
       fd.append('city', city.trim());
+      fd.append('province', province.trim());
+      fd.append('state', state.trim());
+      fd.append('postalCode', postalCode.trim());
       fd.append('country', country.trim());
 
       if (memberType === 'COMPANY') fd.append('companyName', companyName.trim());
@@ -409,6 +421,18 @@ export default function RegisterPage() {
                 </div>
               )}
 
+              <div className="comm-form-group">
+                <label className="comm-form-label">{t('auth:register.streetLabel')}</label>
+                <input
+                  className="comm-form-input"
+                  type="text"
+                  placeholder={t('auth:register.streetPlaceholder')}
+                  value={streetAddress}
+                  onChange={(e) => setStreetAddress(e.target.value)}
+                  required
+                />
+              </div>
+
               <div className="comm-register-row">
                 <div className="comm-form-group">
                   <label className="comm-form-label">{t('auth:register.cityLabel')}</label>
@@ -421,6 +445,45 @@ export default function RegisterPage() {
                     required
                   />
                 </div>
+                <div className="comm-form-group">
+                  <label className="comm-form-label">{t('auth:register.provinceLabel')}</label>
+                  <input
+                    className="comm-form-input"
+                    type="text"
+                    placeholder={t('auth:register.provincePlaceholder')}
+                    value={province}
+                    onChange={(e) => setProvince(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="comm-register-row">
+                <div className="comm-form-group">
+                  <label className="comm-form-label">{t('auth:register.stateLabel')}</label>
+                  <input
+                    className="comm-form-input"
+                    type="text"
+                    placeholder={t('auth:register.statePlaceholder')}
+                    value={state}
+                    onChange={(e) => setState(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="comm-form-group">
+                  <label className="comm-form-label">{t('auth:register.postalCodeLabel')}</label>
+                  <input
+                    className="comm-form-input"
+                    type="text"
+                    placeholder={t('auth:register.postalCodePlaceholder')}
+                    value={postalCode}
+                    onChange={(e) => setPostalCode(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="comm-register-row">
                 <div className="comm-form-group">
                   <label className="comm-form-label">{t('auth:register.countryLabel')}</label>
                   <select

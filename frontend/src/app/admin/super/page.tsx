@@ -86,8 +86,12 @@ const PROFILE_GROUPS: { title: string; fields: { key: string; label: string; typ
     { key: 'phone',          label: 'Phone' },
     { key: 'phoneDialCode',  label: 'Dial code' },
     { key: 'phoneCountry',   label: 'Phone country (ISO)' },
-    { key: 'country',        label: 'Country' },
+    { key: 'streetAddress',  label: 'Street' },
     { key: 'city',           label: 'City' },
+    { key: 'province',       label: 'Province' },
+    { key: 'state',          label: 'State' },
+    { key: 'postalCode',     label: 'Pin code' },
+    { key: 'country',        label: 'Country' },
   ]},
   { title: 'Professional', fields: [
     { key: 'company',         label: 'Company' },

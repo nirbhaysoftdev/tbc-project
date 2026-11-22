@@ -55,7 +55,11 @@ const register = async (req, res) => {
     mobileDialCode,
     companyName,
     fullName,
+    streetAddress,
     city,
+    province,
+    state,
+    postalCode,
     country,
   } = req.body;
 
@@ -65,7 +69,11 @@ const register = async (req, res) => {
     return res.status(400).json({ error: 'Member type must be COMPANY or PERSONAL' });
   }
   if (!mobile || !String(mobile).trim())   return res.status(400).json({ error: 'Mobile number is required' });
+  if (!streetAddress || !String(streetAddress).trim()) return res.status(400).json({ error: 'Street is required' });
   if (!city || !String(city).trim())       return res.status(400).json({ error: 'City is required' });
+  if (!province || !String(province).trim())     return res.status(400).json({ error: 'Province is required' });
+  if (!state || !String(state).trim())           return res.status(400).json({ error: 'State is required' });
+  if (!postalCode || !String(postalCode).trim()) return res.status(400).json({ error: 'Pin code is required' });
   if (!country || !String(country).trim()) return res.status(400).json({ error: 'Country is required' });
 
   const files = req.files || {};
@@ -111,7 +119,11 @@ const register = async (req, res) => {
 
     const profileData = {
       company:         isCompany ? companyName.trim() : null,
+      streetAddress:   streetAddress.trim(),
       city:            city.trim(),
+      province:        province.trim(),
+      state:           state.trim(),
+      postalCode:      postalCode.trim(),
       country:         country.trim(),
       phone:           mobile.trim(),
       phoneCountry:    mobileCountry  || null,
@@ -432,9 +444,12 @@ const forgotPassword = async (req, res) => {
   try {
     const user = await prisma.user.findUnique({ where: { email: normalized } });
     if (user && !user.deletedAt) {
-      await otpService.issueOtp(normalized, 'RESET').catch((e) => {
-        // Swallow resend-cooldown/etc. errors so the response never differs
-        // based on whether an account exists.
+      // Not awaited: the SMTP send can take long enough for the proxy to time
+      // out, and the member then saw "could not send" for a code that arrived.
+      // It also keeps the response time identical for existing and unknown
+      // accounts. Errors (resend cooldown, SMTP) are swallowed so the response
+      // never differs based on whether an account exists.
+      otpService.issueOtp(normalized, 'RESET').catch((e) => {
         if (e.status !== 429) console.error('forgotPassword issueOtp error:', e.message);
       });
     }

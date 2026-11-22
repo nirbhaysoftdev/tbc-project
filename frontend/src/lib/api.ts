@@ -396,6 +396,8 @@ export const mmsAPI = {
 
 // ── Profile ───────────────────────────────────
 export const profileAPI = {
+  updateAddress: (data: Record<string, string>) => api.patch('/profile/address', data),
+
   update: (data: FormData) => api.put('/profile', data, { headers: { 'Content-Type': 'multipart/form-data' } }),
 
   /**

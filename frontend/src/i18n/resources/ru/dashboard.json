@@ -120,6 +120,19 @@
     "languageSection": "Язык",
     "languageHint": "Выберите язык интерфейса. Выбор сохраняется в вашем профиле и действует на других устройствах.",
     "updated": "Профиль успешно обновлён.",
+    "addressSection": "Адрес",
+    "addressNone": "Адрес не указан",
+    "addressStreet": "Улица",
+    "addressCity": "Город",
+    "addressProvince": "Провинция",
+    "addressState": "Штат/область",
+    "addressPostalCode": "Индекс",
+    "addressCountry": "Страна",
+    "addressEdit": "Изменить адрес",
+    "addressSave": "Сохранить адрес",
+    "addressCancel": "Отмена",
+    "addressUpdated": "Адрес обновлён.",
+    "addressRequired": "Поле «{{field}}» обязательно",
     "updateFailed": "Не удалось обновить."
   }
 }

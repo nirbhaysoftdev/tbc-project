@@ -48,6 +48,39 @@ router.put('/', authenticate, upload.single('photo'), async (req, res) => {
 });
 
 /**
+ * PATCH /api/profile/address
+ *
+ * A member saving their own address must supply every field. Existing members
+ * registered before the address was mandatory, so this is where they complete
+ * it. (A super admin editing someone else's record is exempt: see
+ * superAdminController.updateUser.)
+ */
+const ADDRESS_FIELDS = [
+  ['streetAddress', 'Street'], ['city', 'City'], ['province', 'Province'],
+  ['state', 'State'], ['postalCode', 'Pin code'], ['country', 'Country'],
+];
+router.patch('/address', authenticate, async (req, res) => {
+  try {
+    const data = {};
+    for (const [key, label] of ADDRESS_FIELDS) {
+      const v = req.body?.[key] == null ? '' : String(req.body[key]).trim();
+      if (!v) return res.status(400).json({ error: `${label} is required` });
+      data[key] = v;
+    }
+    const profile = await prisma.profile.upsert({
+      where:  { userId: req.user.id },
+      update: data,
+      create: { userId: req.user.id, ...data },
+      select: { streetAddress: true, city: true, province: true, state: true, postalCode: true, country: true },
+    });
+    res.json({ profile });
+  } catch (err) {
+    console.error('address update error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+/**
  * PATCH /api/profile/language
  *
  * Saves the signed-in member's UI language so it follows them to another

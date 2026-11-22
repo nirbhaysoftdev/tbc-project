@@ -37,7 +37,8 @@ const UPLOADS_ROOT = path.resolve(__dirname, '../../uploads');
 const USER_FIELDS = ['name', 'profilePhoto', 'status', 'kycStatus', 'walletEnabled',
                      'accountType', 'locale', 'emailVerified'];
 
-const PROFILE_FIELDS = ['bio', 'company', 'industry', 'country', 'city', 'phone',
+const PROFILE_FIELDS = ['bio', 'company', 'industry', 'country', 'city', 'streetAddress',
+                        'province', 'state', 'postalCode', 'phone',
                         'phoneCountry', 'phoneDialCode', 'linkedIn', 'website',
                         'interests', 'jobTitle', 'experienceYears',
                         'billingAddress', 'businessAddress', 'vatNumber'];
@@ -167,6 +168,14 @@ const updateUser = async (req, res) => {
     if ('walletEnabled' in userData)  userData.walletEnabled  = truthy(userData.walletEnabled);
     if ('emailVerified' in userData)  userData.emailVerified  = truthy(userData.emailVerified);
 
+    // Unlike a member editing their own address, a super admin may leave any
+    // address field empty. Blank strings are stored as NULL.
+    for (const key of ['streetAddress', 'city', 'province', 'state', 'postalCode', 'country']) {
+      if (key in profileData) {
+        const v = profileData[key] == null ? '' : String(profileData[key]).trim();
+        profileData[key] = v || null;
+      }
+    }
     if ('experienceYears' in profileData) {
       const years = profileData.experienceYears;
       profileData.experienceYears = years === null || years === ''

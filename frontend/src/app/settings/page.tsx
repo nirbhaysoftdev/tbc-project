@@ -1,6 +1,7 @@
 'use client';
 // src/app/settings/page.tsx
 import { useState } from 'react';
+import { COUNTRIES } from '@/lib/countries';
 import { useTranslation } from 'react-i18next';
 import ProtectedLayout from '@/components/layout/ProtectedLayout';
 import { useAuth } from '@/lib/auth';
@@ -12,6 +13,15 @@ const API_URL = process.env.NODE_ENV === 'production'
   ? (process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || '')
   : '';
   
+const ADDRESS_KEYS = [
+  { key: 'streetAddress', label: 'dashboard:settings.addressStreet' },
+  { key: 'city',          label: 'dashboard:settings.addressCity' },
+  { key: 'province',      label: 'dashboard:settings.addressProvince' },
+  { key: 'state',         label: 'dashboard:settings.addressState' },
+  { key: 'postalCode',    label: 'dashboard:settings.addressPostalCode' },
+  { key: 'country',       label: 'dashboard:settings.addressCountry' },
+];
+
 function SettingsContent() {
   const { t } = useTranslation(['dashboard', 'common', 'validation']);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
@@ -22,6 +32,38 @@ function SettingsContent() {
   const [msg,     setMsg]     = useState('');
   const [err,     setErr]     = useState('');
   const [loading, setLoading] = useState(false);
+
+  const [editingAddr, setEditingAddr] = useState(false);
+  const [addrForm, setAddrForm] = useState<Record<string, string>>({});
+  const [addrErr, setAddrErr] = useState('');
+  const [addrSaving, setAddrSaving] = useState(false);
+
+  const startAddrEdit = () => {
+    const p = user?.profile;
+    setAddrForm({
+      streetAddress: p?.streetAddress || '', city: p?.city || '', province: p?.province || '',
+      state: p?.state || '', postalCode: p?.postalCode || '', country: p?.country || '',
+    });
+    setAddrErr(''); setMsg('');
+    setEditingAddr(true);
+  };
+
+  const saveAddress = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAddrErr('');
+    const missing = ADDRESS_KEYS.find(k => !addrForm[k.key]?.trim());
+    if (missing) return setAddrErr(t(`dashboard:settings.addressRequired`, { field: t(missing.label) }));
+    setAddrSaving(true);
+    try {
+      await profileAPI.updateAddress(addrForm);
+      await refresh();
+      setEditingAddr(false);
+      setMsg(t('dashboard:settings.addressUpdated'));
+    } catch (e: any) {
+      setAddrErr(e.response?.data?.error || t('dashboard:settings.updateFailed'));
+    }
+    setAddrSaving(false);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,6 +87,15 @@ function SettingsContent() {
   const photoUrl = user?.profilePhoto
     ? (user.profilePhoto.startsWith('http') ? user.profilePhoto : `${API_URL}${user.profilePhoto}`)
     : null;
+  const p = user?.profile;
+  const address = [
+    { key: 'street',   label: t('dashboard:settings.addressStreet'),     value: p?.streetAddress },
+    { key: 'city',     label: t('dashboard:settings.addressCity'),       value: p?.city },
+    { key: 'province', label: t('dashboard:settings.addressProvince'),   value: p?.province },
+    { key: 'state',    label: t('dashboard:settings.addressState'),      value: p?.state },
+    { key: 'pin',      label: t('dashboard:settings.addressPostalCode'), value: p?.postalCode },
+    { key: 'country',  label: t('dashboard:settings.addressCountry'),    value: p?.country },
+  ];
   const initial  = user?.name?.charAt(0).toUpperCase() || '?';
 
   return (
@@ -67,6 +118,60 @@ function SettingsContent() {
             </p>
           </div>
         </div>
+
+        {!isAdminRole(user?.role) && (
+          <div style={{ marginBottom:28, paddingBottom:20, borderBottom:'1px solid var(--border)' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
+              <p style={{ fontSize:13, fontWeight:700, color:'var(--text-secondary)' }}>
+                {t('dashboard:settings.addressSection')}
+              </p>
+              {!editingAddr && (
+                <button type="button" className="btn btn-ghost" style={{ fontSize:12 }} onClick={startAddrEdit}>
+                  {t('dashboard:settings.addressEdit')}
+                </button>
+              )}
+            </div>
+            {editingAddr ? (
+              <form onSubmit={saveAddress}>
+                {ADDRESS_KEYS.map(({ key, label }) => (
+                  <div className="form-group" key={key}>
+                    <label className="form-label">{t(label)} *</label>
+                    {key === 'country' ? (
+                      <select className="form-input" value={addrForm.country || ''}
+                        onChange={e => setAddrForm(p => ({ ...p, country: e.target.value }))}>
+                        <option value="" />
+                        {COUNTRIES.map(c => <option key={c.code} value={c.name}>{c.flag} {c.name}</option>)}
+                      </select>
+                    ) : (
+                      <input className="form-input" value={addrForm[key] || ''}
+                        onChange={e => setAddrForm(p => ({ ...p, [key]: e.target.value }))} />
+                    )}
+                  </div>
+                ))}
+                {addrErr && <p className="form-error">{addrErr}</p>}
+                <div style={{ display:'flex', gap:10 }}>
+                  <button type="submit" className="btn btn-primary" disabled={addrSaving}>
+                    {t('dashboard:settings.addressSave')}
+                  </button>
+                  <button type="button" className="btn btn-ghost" disabled={addrSaving} onClick={() => setEditingAddr(false)}>
+                    {t('dashboard:settings.addressCancel')}
+                  </button>
+                </div>
+              </form>
+            ) : address.some(a => a.value) ? (
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(160px, 1fr))', gap:14 }}>
+                {address.map(({ key, label, value }) => (
+                  <div key={key}>
+                    <p style={{ fontSize:11, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:4 }}>{label}</p>
+                    <p style={{ fontSize:13, wordBreak:'break-word' }}>{value || '—'}</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p style={{ fontSize:12, color:'var(--text-muted)' }}>{t('dashboard:settings.addressNone')}</p>
+            )}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">

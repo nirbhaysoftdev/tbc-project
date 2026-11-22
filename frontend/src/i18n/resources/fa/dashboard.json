@@ -120,6 +120,19 @@
     "languageSection": "زبان",
     "languageHint": "زبان رابط کاربری را انتخاب کنید. انتخاب شما در نمایه‌تان ذخیره می‌شود و روی دستگاه‌های دیگر هم اعمال می‌شود.",
     "updated": "نمایه با موفقیت به‌روزرسانی شد.",
+    "addressSection": "نشانی",
+    "addressNone": "نشانی ثبت نشده است",
+    "addressStreet": "خیابان",
+    "addressCity": "شهر",
+    "addressProvince": "استان",
+    "addressState": "ایالت",
+    "addressPostalCode": "کد پستی",
+    "addressCountry": "کشور",
+    "addressEdit": "ویرایش نشانی",
+    "addressSave": "ذخیره نشانی",
+    "addressCancel": "انصراف",
+    "addressUpdated": "نشانی به‌روز شد.",
+    "addressRequired": "{{field}} الزامی است",
     "updateFailed": "به‌روزرسانی ممکن نشد."
   }
 }

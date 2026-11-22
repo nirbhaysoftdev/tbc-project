@@ -120,6 +120,19 @@
     "languageSection": "اللغة",
     "languageHint": "اختر لغة الواجهة. يُحفظ اختيارك في ملفك الشخصي ويتبعك على الأجهزة الأخرى.",
     "updated": "تم تحديث الملف الشخصي بنجاح.",
+    "addressSection": "العنوان",
+    "addressNone": "لا يوجد عنوان مسجل",
+    "addressStreet": "الشارع",
+    "addressCity": "المدينة",
+    "addressProvince": "المقاطعة",
+    "addressState": "الولاية",
+    "addressPostalCode": "الرمز البريدي",
+    "addressCountry": "الدولة",
+    "addressEdit": "تعديل العنوان",
+    "addressSave": "حفظ العنوان",
+    "addressCancel": "إلغاء",
+    "addressUpdated": "تم تحديث العنوان.",
+    "addressRequired": "{{field}} مطلوب",
     "updateFailed": "فشل التحديث."
   }
 }

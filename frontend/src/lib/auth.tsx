@@ -18,6 +18,14 @@ interface User {
   profilePhoto: string | null;
   /** Saved UI language, e.g. "it". Null until the member picks one. */
   locale?: string | null;
+  profile?: {
+    streetAddress?: string | null;
+    city?:          string | null;
+    province?:      string | null;
+    state?:         string | null;
+    postalCode?:    string | null;
+    country?:       string | null;
+  } | null;
   wallet?: {
     investmentAmount: number;
     profitAmount:     number;
