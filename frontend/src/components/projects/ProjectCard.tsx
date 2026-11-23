@@ -42,8 +42,15 @@ const STATUS_CLASS: Record<string, string> = {
 // Stored categories are identifiers (REAL_ESTATE); the listing shows them as
 // words. Anything not in this map is title-cased rather than hidden, so a
 // category added later still reads properly without a code change.
+// Names that title-casing would get wrong (an ampersand).
+const CATEGORY_LABELS: Record<string, string> = {
+  OIL_GAS: 'Oil & Gas',
+  FOOD_BEVERAGES: 'Food & Beverages',
+};
+
 export const prettyCategory = (value?: string | null) => {
   if (!value) return '—';
+  if (CATEGORY_LABELS[value]) return CATEGORY_LABELS[value];
   return value
     .replace(/_/g, ' ')
     .toLowerCase()

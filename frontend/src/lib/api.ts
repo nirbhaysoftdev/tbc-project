@@ -94,6 +94,11 @@ export const dashboardAPI = {
 };
 
 // ── Transactions ──────────────────────────────
+export const receiptsAPI = {
+  pdf:   (id: string) => api.get(`/receipts/${id}/pdf`, { responseType: 'blob' }),
+  retry: (id: string) => api.post(`/receipts/${id}/retry`),
+};
+
 export const transactionsAPI = {
   getAll:    (params?: Record<string, string>) => api.get('/transactions', { params }),
   exportPDF: ()                                => api.get('/transactions/export',  { responseType: 'blob' }),
@@ -105,6 +110,7 @@ export const adminAPI = {
   getStats:        ()                      => api.get('/admin/stats'),
   // Counts behind the gold notification badge (pending members / requests)
   getNotifications:()                      => api.get('/admin/notifications'),
+  zohoStatus:      () => api.get<{ active: boolean }>('/admin/zoho-status'),
   getMembers:      (params?: Record<string, string>) => api.get('/admin/members', { params }),
   getPending:      (params?: Record<string, string>) => api.get('/admin/pending', { params }),
   approveUser:     (id: string, data?: FormData | object) =>
@@ -290,6 +296,9 @@ export const superAdminAPI = {
     api.put(`/super-admin/transactions/${id}`, data),
   undoTransaction: (id: string, reason: string) =>
     api.post(`/super-admin/transactions/${id}/undo`, { reason }),
+  // Add or correct the note on an investment. Moves no money.
+  setInvestmentNote: (investmentId: string, note: string | null) =>
+    api.patch(`/super-admin/investments/${investmentId}/note`, { note }),
 };
 
 // ── Investment / Profit Engine (admin) ────────
@@ -333,6 +342,23 @@ export const reportsAPI = {
   sendNow:        () => api.post('/super-admin/reports/monthly/send-now'),
 };
 
+export const zohoAPI = {
+  get:          () => api.get('/super-admin/zoho'),
+  // Secrets (clientSecret, refreshToken) are only sent when typed; an empty
+  // value leaves the stored one alone.
+  save:         (body: Record<string, unknown>) => api.put('/super-admin/zoho', body),
+  test:         () => api.post('/super-admin/zoho/test'),
+  // Trades the one-time Self Client code for a refresh token and saves it.
+  exchangeCode: (code: string) => api.post('/super-admin/zoho/exchange-code', { code }),
+  accounts:     () => api.get('/super-admin/zoho/accounts'),
+  receipts:     (params?: Record<string, string>) => api.get('/super-admin/zoho/receipts', { params }),
+  retryDead:    () => api.post('/super-admin/zoho/receipts/retry-dead'),
+  sendDrafts:   () => api.post('/super-admin/zoho/invoices/send-drafts'),
+  members:      (params?: Record<string, string>) => api.get('/super-admin/zoho/members', { params }),
+  setMember:    (id: string, enabled: boolean) => api.put(`/super-admin/zoho/members/${id}`, { enabled }),
+  syncCustomers: () => api.post('/super-admin/zoho/customers/sync'),
+};
+
 export const apiKeysAPI = {
   list:   (includeRevoked = true) =>
     api.get('/super-admin/api-keys', { params: { includeRevoked: String(includeRevoked) } }),
@@ -352,7 +378,7 @@ export const apiKeysAPI = {
 export const investmentAPI = {
   listProjects:         ()                      => api.get('/admin/investment-projects'),
   listInvestments:      (params?: Record<string, string>) => api.get('/admin/investments', { params }),
-  createInvestment:     (data: { userId: string; projectId?: string | null; amount: number | string; investedAt: string; description?: string }) =>
+  createInvestment:     (data: { userId: string; projectId?: string | null; amount: number | string; investedAt: string; description?: string; category?: string | null; note?: string | null }) =>
     api.post('/admin/investments', data),
   returnCapital:        (investmentId: string, data: { amount?: number | string; description?: string }) =>
     api.post(`/admin/investments/${investmentId}/return-capital`, data),

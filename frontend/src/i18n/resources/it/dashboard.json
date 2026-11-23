@@ -61,7 +61,8 @@
       "amount": "Importo",
       "status": "Stato",
       "balance": "Saldo",
-      "reference": "Riferimento"
+      "reference": "Riferimento",
+      "receipt": "Fattura"
     },
     "empty": "Ancora nessuna transazione",
     "emptyFiltered": "Nessuna transazione corrisponde a questi filtri.",
@@ -75,6 +76,8 @@
       "ADMIN_DEBIT": "Addebito amministrativo"
     },
     "type": { "CREDIT": "Accredito", "DEBIT": "Addebito" },
+    "receipt": { "view": "Vedi fattura", "preparing": "In preparazione…", "failed": "Non riuscita", "retry": "Riprova", "unavailable": "Impossibile aprire la fattura in questo momento. Riprova tra poco." },
+    "note": { "label": "Nota", "edit": "Modifica nota", "add": "Aggiungi nota", "prompt": "Nota per questo investimento (lascia vuoto per rimuoverla):", "failed": "Impossibile salvare la nota." },
     "txStatus": { "COMPLETED": "Completata", "PENDING": "In attesa", "FAILED": "Non riuscita", "REVERSED": "Annullata" }
   },
   "portfolio": {

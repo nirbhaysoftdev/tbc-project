@@ -10,6 +10,7 @@
 // member's capital, open one record, reveal the restricted actions, then type a
 // confirmation phrase before the button will submit.
 import { useEffect, useState } from 'react';
+import { prettyCategory } from '@/components/projects/ProjectCard';
 import { investmentAPI, formatEur, formatDate } from '@/lib/api';
 import { Trans, useTranslation } from 'react-i18next';
 
@@ -110,7 +111,7 @@ export default function MemberCapitalModal({
                   ) : investments.map((inv: any) => (
                     <tr key={inv.id} onClick={() => { setRecordTarget(inv); setAdvancedOpen(false); }}
                         style={{ cursor:'pointer' }} title={t('admin:capitalModal.openRecord')}>
-                      <td>{inv.project?.title || <span style={{ color:'var(--text-muted)' }}>{t('admin:capitalModal.noProject')}</span>}</td>
+                      <td>{inv.project?.title || (inv.category ? prettyCategory(inv.category) : <span style={{ color:'var(--text-muted)' }}>{t('admin:capitalModal.noProject')}</span>)}</td>
                       <td className="ltr-embed">{formatEur(inv.amount)}</td>
                       <td className="ltr-embed" style={{ fontWeight:600, color:'var(--text-primary)' }}>{formatEur(outstandingOf(inv))}</td>
                       <td style={{ color:'var(--text-muted)', fontSize:12 }}>{formatDate(inv.investedAt)}</td>
@@ -141,7 +142,7 @@ export default function MemberCapitalModal({
               {([
                 { id:'member',   label: t('admin:capitalModal.member'),          value: member.name },
                 { id:'email',    label: t('admin:capitalModal.email'),           value: member.email, ltr: true },
-                { id:'project',  label: t('admin:capitalModal.cols.project'),    value: recordTarget.project?.title || t('admin:capitalModal.noProject') },
+                { id:'project',  label: t('admin:capitalModal.cols.project'),    value: recordTarget.project?.title || (recordTarget.category ? prettyCategory(recordTarget.category) : t('admin:capitalModal.noProject')) },
                 { id:'booked',   label: t('admin:capitalModal.capitalBooked'),   value: formatEur(recordTarget.amount), ltr: true },
                 { id:'returned', label: t('admin:capitalModal.capitalReturned'), value: formatEur(recordTarget.returnedAmount || 0), ltr: true },
                 { id:'out',      label: t('admin:capitalModal.outstanding'),     value: formatEur(outstandingOf(recordTarget)), ltr: true },

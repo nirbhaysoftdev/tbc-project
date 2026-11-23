@@ -3,7 +3,7 @@
 const PDFDocument = require('pdfkit');
 const prisma = require('../utils/prismaClient');
 const walletService = require('../services/walletService');
-const { isAdmin } = require('../utils/roles');
+const { isAdmin, isSuperAdmin } = require('../utils/roles');
 // ── Get transactions with filters ────────────
 const getTransactions = async (req, res) => {
   try {
@@ -55,12 +55,42 @@ if (!isAdmin(req.user.role)) {
         include: viewerIsAdmin
           ? { user: { select: { id: true, name: true, email: true } } }
           : undefined,
-        orderBy: { createdAt: 'desc' },
+        orderBy: [{ loggedAt: 'desc' }, { createdAt: 'desc' }],
         skip:    (parseInt(page) - 1) * parseInt(limit),
         take:    parseInt(limit),
       }),
       prisma.transaction.count({ where }),
     ]);
+
+    // The investment's note and its Deal Room category.
+    const ids = transactions.map((t) => t.investmentId).filter(Boolean);
+    if (ids.length) {
+      const invs = await prisma.walletInvestment.findMany({
+        where: { id: { in: ids } },
+        select: { id: true, note: true, category: true, project: { select: { title: true } } },
+      });
+      const byId = new Map(invs.map((i) => [i.id, i]));
+      for (const t of transactions) {
+        const i = t.investmentId && byId.get(t.investmentId);
+        if (i) { t.note = i.note; t.projectCategory = i.category || null; t.projectTitle = i.project?.title || null; }
+      }
+    }
+
+    // Receipts are shown to the member they belong to and to a super admin.
+    // `error` is for the super admin only: it can name an internal Zoho fault.
+    if (ids.length && (!viewerIsAdmin || isSuperAdmin(req.user.role))) {
+      const rows = await prisma.receipt.findMany({ where: { investmentId: { in: ids } } });
+      const byInvestment = new Map(rows.map((r) => [r.investmentId, r]));
+      for (const t of transactions) {
+        const r = t.investmentId && byInvestment.get(t.investmentId);
+        if (r) {
+          t.receipt = {
+            id: r.id, status: r.status, receiptNumber: r.receiptNumber,
+            ...(isSuperAdmin(req.user.role) ? { error: r.lastError, emailedAt: r.emailedAt } : {}),
+          };
+        }
+      }
+    }
 
     res.json({
       transactions,
@@ -88,7 +118,7 @@ const exportPDF = async (req, res) => {
     const [transactions, wallet] = await Promise.all([
       prisma.transaction.findMany({
         where:   { userId: req.user.id, status: 'COMPLETED' },
-        orderBy: { createdAt: 'desc' },
+        orderBy: [{ loggedAt: 'desc' }, { createdAt: 'desc' }],
       }),
       walletService.getWalletBreakdown(req.user.id),
     ]);
@@ -165,7 +195,7 @@ const exportCSV = async (req, res) => {
   try {
     const transactions = await prisma.transaction.findMany({
       where:   { userId: req.user.id, status: { not: 'REVERSED' } },
-      orderBy: { createdAt: 'desc' },
+      orderBy: [{ loggedAt: 'desc' }, { createdAt: 'desc' }],
     });
 
     const header = 'Date,Type,Description,Amount,Status,Reference\n';

@@ -91,7 +91,7 @@ function AdminContent() {
   const [selectedUser, setSelectedUser] = useState<any>(null);
 
   // Forms
-  const [approveForm,  setApproveForm]  = useState({ rejectReason:'', enableWallet:'true' });
+  const [approveForm,  setApproveForm]  = useState({ rejectReason:'', enableWallet:'true', createZoho:true });
   const [approveDocs,  setApproveDocs]  = useState<FileList | null>(null);
   const [formMsg,      setFormMsg]      = useState('');
   // Whether `formMsg` is an error.
@@ -105,12 +105,14 @@ function AdminContent() {
   const [approveMode,  setApproveMode]  = useState<'approve' | 'reject'>('approve');
 
   // Add Member - multi-step wizard
+  const [zohoActive, setZohoActive] = useState(false);
+  useEffect(() => { adminAPI.zohoStatus().then(r => setZohoActive(!!r.data.active)).catch(() => {}); }, []);
   const [addStep, setAddStep] = useState(1);
   const [addError, setAddError] = useState('');
   const emptyAddMemberForm = {
     email: '', mobile: '', memberType: '' as '' | 'COMPANY' | 'PERSONAL',
     companyName: '', fullName: '', streetAddress: '', city: '', province: '', state: '', postalCode: '', country: '',
-    enableWallet: 'false', investmentAmount: '', profitAmount: '',
+    enableWallet: 'false', investmentAmount: '', profitAmount: '', createZoho: true,
   };
   const [addMemberForm, setAddMemberForm] = useState(emptyAddMemberForm);
   const [addMobileCountry, setAddMobileCountry] = useState(DEFAULT_COUNTRY.code);
@@ -151,6 +153,7 @@ function AdminContent() {
       if (approveMode === 'approve') {
         const fd = new FormData();
         fd.append('enableWallet', approveForm.enableWallet);
+        if (zohoActive) fd.append('createZohoCustomer', String(approveForm.createZoho));
         if (approveDocs) {
           Array.from(approveDocs).forEach(file => fd.append('documents', file));
         }
@@ -236,6 +239,7 @@ function AdminContent() {
       if (f.memberType === 'COMPANY') fd.append('companyName', f.companyName.trim());
       else                            fd.append('fullName', f.fullName.trim());
       fd.append('enableWallet', f.enableWallet);
+      if (zohoActive) fd.append('createZohoCustomer', String(f.createZoho));
       if (f.enableWallet === 'true') {
         fd.append('investmentAmount', f.investmentAmount || '0');
         fd.append('profitAmount', f.profitAmount || '0');
@@ -486,7 +490,7 @@ function AdminContent() {
                         onClick={() => {
                           setSelectedUser(u);
                           setApproveMode('approve');
-                          setApproveForm({ rejectReason:'', enableWallet:'true' });
+                          setApproveForm({ rejectReason:'', enableWallet:'true', createZoho:true });
                           setApproveDocs(null);
                           setFormMsg('');
                           setShowApprove(true);
@@ -506,7 +510,7 @@ function AdminContent() {
                         onClick={() => {
                           setSelectedUser(u);
                           setApproveMode('reject');
-                          setApproveForm({ rejectReason:'', enableWallet:'true' });
+                          setApproveForm({ rejectReason:'', enableWallet:'true', createZoho:true });
                           setFormMsg('');
                           setShowApprove(true);
                         }}>
@@ -595,7 +599,7 @@ function AdminContent() {
                 onClick={() => {
                   setShowDetails(false);
                   setApproveMode('approve');
-                  setApproveForm({ rejectReason:'', enableWallet:'true' });
+                  setApproveForm({ rejectReason:'', enableWallet:'true', createZoho:true });
                   setApproveDocs(null);
                   setFormMsg('');
                   setShowApprove(true);
@@ -619,6 +623,19 @@ function AdminContent() {
             <form onSubmit={handleApproveOrReject}>
               {approveMode === 'approve' ? (
                 <>
+{zohoActive && (
+                  <div className="form-group">
+                    <label style={{ display:'flex', gap:8, alignItems:'center', fontSize:13 }}>
+                      <input type="checkbox" checked={approveForm.createZoho}
+                        onChange={e => setApproveForm(p => ({ ...p, createZoho: e.target.checked }))} />
+                      Connect this member to Zoho Books (create customer and invoice their investments)
+                    </label>
+                    <p style={{ fontSize:11, color:'var(--text-muted)', marginTop:6 }}>
+                      Unticked: this member is never invoiced in Zoho Books. A super admin can change it later on the member's page.
+                    </p>
+                  </div>
+                )}
+
                 <div className="form-group">
                   <label className="form-label">{t('admin:approve.enableWalletLabel')}</label>
                   <select className="filter-select" style={{ width:'100%' }}
@@ -886,6 +903,19 @@ function AdminContent() {
               {/* ── Step 3: Wallet & review ── */}
               {addStep === 3 && (
                 <>
+{zohoActive && (
+                  <div className="form-group">
+                    <label style={{ display:'flex', gap:8, alignItems:'center', fontSize:13 }}>
+                      <input type="checkbox" checked={addMemberForm.createZoho}
+                        onChange={e => setAddMemberForm(p => ({ ...p, createZoho: e.target.checked }))} />
+                      Connect this member to Zoho Books (create customer and invoice their investments)
+                    </label>
+                    <p style={{ fontSize:11, color:'var(--text-muted)', marginTop:6 }}>
+                      Unticked: this member is never invoiced in Zoho Books. A super admin can change it later on the member's page.
+                    </p>
+                  </div>
+                )}
+
                   <div className="form-group">
                     <label className="form-label">{t('admin:addMember.enableWalletLabel')}</label>
                     <select className="filter-select" style={{ width:'100%' }}

@@ -740,7 +740,29 @@ const reverseTransaction = async (req, res) => {
   }
 };
 
+// Add or correct the free-text note on an investment. Changes a remark only:
+// no amount, balance or transaction moves.
+const setInvestmentNote = async (req, res) => {
+  try {
+    const note = req.body?.note == null ? '' : String(req.body.note).trim();
+    if (note.length > 500) return res.status(400).json({ error: 'Note must be 500 characters or fewer' });
+    const inv = await prisma.walletInvestment.findUnique({ where: { id: req.params.id }, select: { id: true, userId: true, amount: true } });
+    if (!inv) return res.status(404).json({ error: 'Investment not found' });
+    await prisma.walletInvestment.update({ where: { id: inv.id }, data: { note: note || null } });
+    logActivity({
+      type: 'INVESTMENT_NOTE_CHANGED', title: 'Investment note changed',
+      actorId: req.user.id, actorName: req.user.name, targetId: inv.userId, amount: inv.amount,
+      metadata: { investmentId: inv.id },
+    });
+    res.json({ investmentId: inv.id, note: note || null });
+  } catch (err) {
+    console.error('setInvestmentNote:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
 module.exports = {
+  setInvestmentNote,
   DOCUMENT_COLUMNS,
   uploadDocument, deleteDocument,
   addKycDocument, reviewKycDocument, deleteKycDocument,

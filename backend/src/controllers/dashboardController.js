@@ -21,7 +21,7 @@ const getSummary = async (req, res) => {
       prisma.transaction.findMany({
         // Undone transactions are the administration's correction, not the member's history.
         where:   { userId: req.user.id, status: { not: 'REVERSED' } },
-        orderBy: { createdAt: 'desc' },
+        orderBy: [{ loggedAt: 'desc' }, { createdAt: 'desc' }],
         take:    5,
         include: { project: { select: { id: true, title: true } } },
       }),

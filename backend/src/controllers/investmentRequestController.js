@@ -304,6 +304,8 @@ const completeRequest = async (req, res) => {
       return { investment, request: updated };
     });
 
+    require('../services/receipts').kick();
+
     // Sent here rather than inside the engine: the engine ran as part of the
     // transaction above, so this is the first point the money is committed.
     const member = await prisma.user.findUnique({

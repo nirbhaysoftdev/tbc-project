@@ -24,7 +24,8 @@
     "adminRequests": "Richieste di investimento",
     "adminEnquiries": "Richieste",
     "adminBroadcasts": "Comunicazioni email",
-    "superAdmin": "Super Admin"
+    "superAdmin": "Super Admin",
+    "integrations": "Integrazioni"
   },
   "community": {
     "feed": "Feed",

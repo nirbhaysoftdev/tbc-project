@@ -66,7 +66,8 @@
       "amount": "Amount",
       "status": "Status",
       "balance": "Balance",
-      "reference": "Reference"
+      "reference": "Reference",
+      "receipt": "Invoice"
     },
     "empty": "No transactions yet",
     "emptyFiltered": "No transactions match these filters.",
@@ -83,6 +84,8 @@
       "CREDIT": "Credit",
       "DEBIT": "Debit"
     },
+    "receipt": { "view": "View invoice", "preparing": "Preparing…", "failed": "Failed", "retry": "Retry", "unavailable": "This invoice could not be opened right now. Please try again shortly." },
+    "note": { "label": "Note", "edit": "Edit note", "add": "Add note", "prompt": "Note for this investment (leave empty to remove):", "failed": "Could not save the note." },
     "txStatus": {
       "COMPLETED": "Completed",
       "PENDING": "Pending",

@@ -20,6 +20,7 @@ const { authenticate, requireSuperAdmin } = require('../middleware/auth');
 const ctrl   = require('../controllers/superAdminController');
 const assets = require('../controllers/superAdminAssetsController');
 const apiKeys = require('../controllers/apiKeyController');
+const zohoCtrl = require('../controllers/zohoController');
 const reports = require('../controllers/reportsController');
 const txAdjust = require('../controllers/transactionAdjustController');
 const insuranceCtrl = require('../controllers/insuranceController');
@@ -133,6 +134,8 @@ router.post('/transactions/:id/reverse', assets.reverseTransaction);
 router.put('/transactions/:id',         txAdjust.edit);
 router.post('/transactions/:id/undo',   txAdjust.undo);
 
+router.patch('/investments/:id/note', assets.setInvestmentNote);
+
 // ── API keys ──────────────────────────────────
 // Machine credentials for the read-only API (services/apiKeys.js). Super admin
 // only, like everything else in this file: a key is a standing grant to read
@@ -140,6 +143,21 @@ router.post('/transactions/:id/undo',   txAdjust.undo);
 //
 // `create` and `rotate` are the only two places a key is ever readable, and
 // only in their own response. There is deliberately no GET that returns one.
+// ── Zoho Books ────────────────────────────────
+// Connection settings (secrets are write-only), a connection test, and the
+// receipt queue. Super admin only, like everything in this file.
+router.get('/zoho',                  zohoCtrl.getSettings);
+router.put('/zoho',                  zohoCtrl.updateSettings);
+router.post('/zoho/test',            zohoCtrl.testConnection);
+router.post('/zoho/exchange-code',   zohoCtrl.exchangeCode);
+router.get('/zoho/accounts',         zohoCtrl.listAccounts);
+router.get('/zoho/receipts',         zohoCtrl.listReceipts);
+router.post('/zoho/receipts/retry-dead', zohoCtrl.retryDead);
+router.post('/zoho/customers/sync',  zohoCtrl.syncCustomers);
+router.get('/zoho/members',         zohoCtrl.listMembers);
+router.put('/zoho/members/:id',     zohoCtrl.setMemberZoho);
+router.post('/zoho/invoices/send-drafts', zohoCtrl.sendDrafts);
+
 router.get('/api-keys',             apiKeys.listKeys);
 router.post('/api-keys',            apiKeys.createKey);
 router.put('/api-keys/:id',         apiKeys.updateKey);

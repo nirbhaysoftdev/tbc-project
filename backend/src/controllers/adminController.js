@@ -213,6 +213,7 @@ const createMember = async (req, res) => {
 
     sendMemberWelcomeEmail(user, tempPassword, walletOn)
       .catch((e) => console.error('member welcome email failed:', e.message));
+    require('../services/zohoCustomers').applyChoice(user.id, req.body.createZohoCustomer);
 
     // A member created with money already in the wallet gets the balance in
     // writing too. With an empty wallet the welcome email above already says
@@ -796,6 +797,7 @@ const approveUser = async (req, res) => {
 
     sendAccountApprovedEmail(user, walletOn)
       .catch((e) => console.error('approval email failed:', e.message));
+    require('../services/zohoCustomers').applyChoice(id, req.body.createZohoCustomer);
 
     res.json({
       message: `Member activated successfully.${walletOn ? ' Wallet enabled.' : ''}`,

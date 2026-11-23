@@ -4,12 +4,13 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import ProtectedLayout from '@/components/layout/ProtectedLayout';
 import { useAuth } from '@/lib/auth';
-import { transactionsAPI, formatEur, formatDate, downloadBlob } from '@/lib/api';
-import { isAdminRole } from '@/lib/roles';
+import { transactionsAPI, receiptsAPI, superAdminAPI, formatEur, formatDate, downloadBlob } from '@/lib/api';
+import { isAdminRole, isSuperAdminRole } from '@/lib/roles';
+import { prettyCategory } from '@/components/projects/ProjectCard';
 import ReturnsCard from '@/components/insurance/ReturnsCard';
 
 function TransactionsContent() {
-  const { t } = useTranslation(['dashboard', 'common']);
+  const { t } = useTranslation(['dashboard', 'admin', 'common']);
   const { user } = useAuth();
   // An admin's list spans every member, so the rows have to name their owner.
   // A member only ever sees their own rows, where the column is noise.
@@ -48,6 +49,37 @@ function TransactionsContent() {
     const updated = { ...filters, [key]: val, page: '1' };
     setFilters(updated);
     fetchTx(updated);
+  };
+
+  const isSuper = user?.role === 'SUPER_ADMIN';
+
+  // Opened as a blob: the PDF endpoint needs the Bearer token, which a plain
+  // link cannot send. The tab is opened first so the popup is not blocked.
+  const openReceipt = async (id: string) => {
+    const tab = window.open('', '_blank');
+    try {
+      const res = await receiptsAPI.pdf(id);
+      const url = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+      if (tab) tab.location.href = url; else window.location.href = url;
+    } catch (e: any) {
+      if (tab) tab.close();
+      alert(t('dashboard:transactions.receipt.unavailable'));
+    }
+  };
+
+  const editNote = async (tx: any) => {
+    const next = window.prompt(t('dashboard:transactions.note.prompt'), tx.note || '');
+    if (next === null) return;
+    try {
+      await superAdminAPI.setInvestmentNote(tx.investmentId, next.trim() || null);
+      setTx(rows => rows.map(r => r.id === tx.id ? { ...r, note: next.trim() || null } : r));
+    } catch (e: any) {
+      alert(e?.response?.data?.error || t('dashboard:transactions.note.failed'));
+    }
+  };
+
+  const retryReceipt = async (id: string) => {
+    try { await receiptsAPI.retry(id); fetchTx(filters); } catch {}
   };
 
   const handlePage = (p: number) => {
@@ -152,6 +184,7 @@ function TransactionsContent() {
                 <th>{t('dashboard:transactions.columns.status')}</th>
                 <th>{t('dashboard:transactions.columns.balance')}</th>
                 <th>{t('dashboard:transactions.columns.reference')}</th>
+                <th>{t('dashboard:transactions.columns.receipt')}</th>
               </tr>
             </thead>
             <tbody>
@@ -184,6 +217,22 @@ function TransactionsContent() {
                      <div style={{ fontSize:12, color:'var(--text-muted)' }}>
                        {tx.description}
                      </div>
+                     {tx.projectTitle && (
+                       <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:2 }}>
+                         {tx.projectTitle}{tx.projectCategory ? ` · ${prettyCategory(tx.projectCategory)}` : ''}
+                       </div>
+                     )}
+                     {tx.note && (
+                       <div style={{ fontSize:12, color:'var(--text-secondary)', marginTop:4 }}>
+                         <strong>{t('dashboard:transactions.note.label')}:</strong> {tx.note}
+                       </div>
+                     )}
+                     {isSuper && tx.category === 'INVESTMENT' && tx.investmentId && (
+                       <button className="btn btn-secondary" style={{ padding:'2px 8px', fontSize:11, marginTop:4 }}
+                         onClick={() => editNote(tx)}>
+                         {tx.note ? t('dashboard:transactions.note.edit') : t('dashboard:transactions.note.add')}
+                       </button>
+                     )}
                   </td>
                   <td className={tx.type === 'CREDIT' ? 'amount-credit' : 'amount-debit'}>
                     <span className="ltr-embed">
@@ -200,6 +249,31 @@ function TransactionsContent() {
                       always rendered LTR (§10, §6.A.13). */}
                   <td className="ltr-embed" style={{ fontFamily:'monospace', fontSize:11, color:'var(--text-muted)' }}>
                     {tx.reference?.slice(0,16)}…
+                  </td>
+                  <td>
+                    {tx.receipt?.status === 'ISSUED' ? (
+                      <button className="btn btn-secondary" style={{ padding:'4px 10px', fontSize:12 }}
+                        title={tx.receipt.receiptNumber || ''}
+                        onClick={() => openReceipt(tx.receipt.id)}>
+                        {t('dashboard:transactions.receipt.view')}
+                      </button>
+                    ) : tx.receipt?.status === 'DEAD' && isSuper ? (
+                      <span title={tx.receipt.error || ''} style={{ fontSize:12, color:'var(--danger, #e5484d)' }}>
+                        {t('dashboard:transactions.receipt.failed')}{' '}
+                        <button className="btn btn-secondary" style={{ padding:'2px 8px', fontSize:11 }}
+                          onClick={() => retryReceipt(tx.receipt.id)}>
+                          {t('dashboard:transactions.receipt.retry')}
+                        </button>
+                      </span>
+                    ) : tx.receipt?.status === 'DRAFT' && isSuper ? (
+                      <span style={{ fontSize:12, color:'var(--text-muted)' }}>
+                        {t('dashboard:transactions.receipt.draft', { defaultValue: 'Draft' })}
+                      </span>
+                    ) : tx.receipt ? (
+                      <span style={{ fontSize:12, color:'var(--text-muted)' }}>
+                        {t('dashboard:transactions.receipt.preparing')}
+                      </span>
+                    ) : null}
                   </td>
                 </tr>
               ))}

@@ -47,6 +47,10 @@ type Item = {
   badge?: 'members' | 'investments' | 'withdrawals' | 'adminQueue' | 'messages';
   /** Super admin only. */
   superOnly?: boolean;
+  /** Drawn indented, as a child of the row above it. */
+  sub?: boolean;
+  /** Lit only on this exact page, not on its child routes. */
+  exact?: boolean;
 };
 
 type Group = {
@@ -127,7 +131,8 @@ export default function Sidebar() {
             { key: 'adminBroadcasts', href: '/admin/broadcasts', icon: MailIcon },
             { key: 'adminAnalytics',  href: '/admin/analytics',  icon: AnalyticsIcon },
             { key: 'activityLogs',    href: '/admin/logs',       icon: LogsIcon },
-            { key: 'superAdmin',      href: '/admin/super',      icon: SuperAdminIcon, superOnly: true },
+            { key: 'superAdmin',      href: '/admin/super',      icon: SuperAdminIcon, superOnly: true, exact: true },
+            { key: 'integrations',    href: '/admin/super/integrations', icon: IntegrationsIcon, superOnly: true, sub: true },
           ],
         },
         {
@@ -203,6 +208,7 @@ export default function Sidebar() {
     // An exact match, or a child route: /projects/detail keeps Projects lit.
     return here === path || here.startsWith(`${path}/`);
   };
+  const exactHref = (href: string) => normalise(href.split('#')[0]);
 
   /** A group is "live" when one of its rows is - it is never collapsed shut on top of the current page. */
   const groupIsLive = (group: Group) => group.items.some((i) => {
@@ -265,7 +271,7 @@ export default function Sidebar() {
                 const count = badgeFor(item.badge);
                 return (
                   <Link key={item.href} href={item.href} onClick={onNav}
-                    className={`nav-item ${isActive(item.href) ? 'active' : ''}`}>
+                    className={`nav-item ${item.sub ? 'nav-item-sub' : ''} ${(item.exact ? here === exactHref(item.href) : isActive(item.href)) ? 'active' : ''}`}>
                     {Icon ? <Icon /> : null}
                     <span>{t(`nav:main.${item.key}`)}</span>
                     {count > 0 && <NotifBadge count={count} style={{ marginInlineStart: 'auto' }} />}
@@ -386,6 +392,14 @@ function MailIcon() {
     </svg>
   );
 }
+function IntegrationsIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M9 7V3m6 4V3M7 7h10v4a5 5 0 0 1-10 0V7z"/><path d="M12 16v5"/>
+    </svg>
+  );
+}
+
 function SuperAdminIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">

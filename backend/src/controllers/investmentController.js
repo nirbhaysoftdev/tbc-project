@@ -52,15 +52,15 @@ const listProjects = async (req, res) => {
 
 const createInvestment = async (req, res) => {
   try {
-    const { userId, projectId, amount, investedAt, description } = req.body;
+    const { userId, projectId, amount, investedAt, description, note, category } = req.body;
     const investment = await engine.createInvestment({
-      userId, projectId, amount, investedAt, description, createdBy: req.user.id,
+      userId, projectId, amount, investedAt, description, note, category, createdBy: req.user.id,
     });
 
     await prisma.adminLog.create({
       data: {
         adminId: req.user.id, targetId: userId, action: 'CREATE_INVESTMENT',
-        details: { projectId, amount: investment.amount },
+        details: { projectId, amount: investment.amount, note: investment.note || null, category: investment.category },
       },
     }).catch(() => {});
 

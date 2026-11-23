@@ -249,6 +249,7 @@ const updateUser = async (req, res) => {
       metadata:    { fields: touched },
     });
 
+    if (userData.status === 'ACTIVE') require('../services/zohoCustomers').applyChoice(id, req.body.createZohoCustomer);
     res.json({ user: present(updated) });
   } catch (err) {
     console.error('updateUser:', err);

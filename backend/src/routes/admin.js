@@ -74,6 +74,11 @@ router.post('/users/:id/approve',   docUpload.array('documents', 5), adminContro
 router.post('/users/:id/reject',    requireSuperAdmin, adminController.rejectUser);
 
 // Members
+// Whether Zoho is on, so the member forms know to offer "Create Zoho customer".
+router.get('/zoho-status', async (req, res) => {
+  try { res.json({ active: await require('../services/zohoBooks').enabled() }); }
+  catch { res.json({ active: false }); }
+});
 router.get('/members',              adminController.getMembers);
 // Full money picture for one member (detail page) + the statement email it sends
 router.get('/members/:id/overview',       memberOverviewController.getMemberOverview);

@@ -28,6 +28,8 @@ const prisma = require('../utils/prismaClient');
 const walletService = require('./walletService');
 const mailer = require('./mailer');
 const notifier = require('./notifier');
+const receipts = require('./receipts');
+const { normalizeCategory, categoryLabel } = require('./projectCategories');
 
 /**
  * Send a member document after the money has actually been committed. Fire and
@@ -141,12 +143,17 @@ async function getEligibleCapitalForDate(userId, projectId, asOfDate, monthlyPro
  * the investment, its INVESTMENT transaction, bumps the project's raised total
  * and refreshes the wallet - all in one transaction.
  */
-async function createInvestment({ userId, projectId, amount, investedAt, createdBy, description, requestId }, client = null) {
+async function createInvestment({ userId, projectId, amount, investedAt, createdBy, description, requestId, note, category }, client = null) {
   const amt = parseFloat(amount);
   if (!userId) throw badRequest('User is required');
+  const noteText = note == null ? '' : String(note).trim();
+  if (noteText.length > 500) throw badRequest('Note must be 500 characters or fewer');
   if (!amt || amt <= 0) throw badRequest('Investment amount must be greater than zero');
 
   const project = await resolveProject(projectId, client || prisma);
+  // A project files the investment under its own category; only project-less
+  // capital takes the one it was given.
+  const categoryKey = project ? (project.category || null) : normalizeCategory(category);
   const when = investedAt ? new Date(investedAt) : new Date();
 
   // When a caller passes its own transaction we are only part of its unit of
@@ -159,6 +166,8 @@ async function createInvestment({ userId, projectId, amount, investedAt, created
         userId,
         projectId: project?.id || null,
         requestId: requestId || null,
+        category: categoryKey,
+        note: noteText || null,
         amount: money(amt),
         investedAt: when,
         status: 'ACTIVE',
@@ -171,7 +180,7 @@ async function createInvestment({ userId, projectId, amount, investedAt, created
         userId,
         type: 'CREDIT',
         category: 'INVESTMENT',
-        description: description || `Investment - ${projectLabel(project)}`,
+        description: description || `Investment - ${project ? projectLabel(project) : (categoryLabel(categoryKey) || projectLabel(project))}`,
         amount: money(amt),
         status: 'COMPLETED',
         projectId: project?.id || null,
@@ -189,17 +198,20 @@ async function createInvestment({ userId, projectId, amount, investedAt, created
     }
 
     await walletService.syncWallet(userId, tx);
+    // Queued in this same transaction: an investment always has its receipt.
+    await receipts.queueForInvestment(tx, created);
     return created;
   });
 
   if (ownsTransaction) {
+    receipts.kick();
     notifyMember(async () => {
       const user = await memberFor(userId);
       if (user?.email) {
         await mailer.sendInvestmentInvoiceEmail({
           user,
           amount: investment.amount,
-          projectTitle: project?.title || null,
+          projectTitle: project?.title || categoryLabel(investment.category),
           investedAt: investment.investedAt,
           investmentId: investment.id,
         });

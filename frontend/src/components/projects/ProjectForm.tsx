@@ -15,22 +15,19 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import MemberSelect, { Person } from './MemberSelect';
 import RichTextEditor from './RichTextEditor';
+import { prettyCategory } from './ProjectCard';
+import { PROJECT_CATEGORIES } from '@/lib/projectCategories';
 import ProjectDocuments from './ProjectDocuments';
 import { projectsAPI, mediaSrc } from '@/lib/api';
 import { checkFileSizes, documentLimitHint } from '@/lib/uploadLimits';
 import { useAuth } from '@/lib/auth';
 import { isSuperAdminRole } from '@/lib/roles';
 
-const CATEGORIES = [
-  'REAL_ESTATE', 'ENERGY', 'TECHNOLOGY', 'MANUFACTURING', 'HOSPITALITY',
-  'HEALTHCARE', 'LOGISTICS', 'AGRICULTURE', 'FINANCE', 'RETAIL',
-  'CONSTRUCTION', 'EDUCATION', 'MEDIA', 'OTHER',
-];
+const CATEGORIES = PROJECT_CATEGORIES;
 
 const STATUSES = ['DRAFT', 'ACTIVE', 'FUNDED', 'CLOSED', 'CANCELLED'];
 
-const pretty = (value: string) =>
-  value.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+const pretty = prettyCategory;
 
 const ACCEPT = 'image/jpeg,image/png,image/webp,image/gif,application/pdf,video/mp4,video/webm,video/quicktime';
 

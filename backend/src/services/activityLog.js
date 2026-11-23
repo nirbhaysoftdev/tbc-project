@@ -33,6 +33,7 @@ const ACTIVITY = {
   INVESTMENT_REQUEST_REJECTED:{ category: 'INVESTMENT', label: 'Investment request rejected' },
   INVESTMENT_COMPLETED:       { category: 'INVESTMENT', label: 'Investment completed' },
   INVESTMENT_CREATED:         { category: 'INVESTMENT', label: 'Capital booked by admin' },
+  INVESTMENT_NOTE_CHANGED:    { category: 'INVESTMENT', label: 'Investment note changed' },
   CAPITAL_RETURNED:           { category: 'INVESTMENT', label: 'Capital returned' },
   PROJECT_CREATED:            { category: 'INVESTMENT', label: 'Project created' },
 
@@ -114,6 +115,8 @@ const ACTIVITY = {
   // standing grant to read member data without a session, and "who gave out
   // that key?" is exactly the question this category exists to answer.
   API_KEY_CREATED:            { category: 'SUPER_ADMIN', label: 'API key issued' },
+  ZOHO_SETTINGS_UPDATED:      { category: 'SUPER_ADMIN', label: 'Zoho Books settings changed' },
+  ZOHO_CONNECTION_TESTED:     { category: 'SUPER_ADMIN', label: 'Zoho Books connection tested' },
   API_KEY_UPDATED:            { category: 'SUPER_ADMIN', label: 'API key changed' },
   API_KEY_ROTATED:            { category: 'SUPER_ADMIN', label: 'API key rotated' },
   API_KEY_REVOKED:            { category: 'SUPER_ADMIN', label: 'API key revoked' },
@@ -168,6 +171,7 @@ async function logActivity(entry) {
 // Activity types that also page a human. Super-admin-only matters go to super
 // admins; the actor is never told about their own action.
 const SUPER_ADMIN_ALERTS = new Set([
+  'ZOHO_SETTINGS_UPDATED',
   'API_KEY_CREATED', 'API_KEY_ROTATED', 'API_KEY_REVOKED', 'API_KEY_UPDATED',
   'ENQUIRY_RECIPIENT_CHANGED', 'SIGNUP_NOTIFY_CHANGED', 'PROFIT_REPORT_EMAIL_CHANGED',
   'INSURANCE_UPDATED', 'INSURANCE_DISABLED', 'INSURANCE_ENABLED',

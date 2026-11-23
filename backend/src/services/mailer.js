@@ -514,6 +514,35 @@ async function sendInvestmentInvoiceEmail({ user, amount, projectTitle, invested
   });
 }
 
+// Sent once the Zoho Books invoice exists and is paid, with Zoho's own PDF attached, so the
+// number the member quotes is the one in the accounts.
+async function sendReceiptEmail({ user, amount, projectTitle, investedAt, receiptNumber, pdf }) {
+  const body = `
+    <div style="font-size:14px;line-height:1.6;color:#aab0c0;padding-bottom:18px;">
+      Hi ${user.name || 'there'}, your invoice for the investment of
+      <strong style="color:#c8a84b;">${eur(amount)}</strong>
+      ${projectTitle ? `in <strong style="color:#c8a84b;">${projectTitle}</strong> ` : ''}is attached as a PDF.
+      You can also open it any time from Transactions in your portal.
+    </div>
+    <div style="font-size:13px;color:#e6e8ee;">Invoice <span style="font-family:'Courier New',monospace;">${receiptNumber || ''}</span> · ${longDate(investedAt)}</div>
+    <div style="text-align:center;padding-top:22px;">
+      ${goldButton(`${process.env.FRONTEND_URL || 'https://trillionbusinesscommunity.com'}/transactions`, 'View in your portal')}
+    </div>`;
+  return sendMail({
+    to: user.email,
+    subject: `Your invoice ${receiptNumber || ''} - ${eur(amount)}`.replace('  ', ' '),
+    text: `Hi ${user.name || ''}, your invoice ${receiptNumber || ''} for ${eur(amount)} is attached.\n\n`
+        + `Issued by ${COMPANY.legalName}.`,
+    html: shell({
+      title: 'Your invoice',
+      intro: 'Invoice for your investment, marked paid.',
+      bodyHtml: body,
+      footerNote: `Issued by ${COMPANY.legalName}. Please retain this document for your records.`,
+    }),
+    attachments: pdf ? [{ filename: `${receiptNumber || 'receipt'}.pdf`, content: pdf, contentType: 'application/pdf' }] : [],
+  });
+}
+
 // ── Profit statement ───────────────────────────
 function profitStatementHtml({ user, amount, projectTitle, rate, capitalBase, period, generatedAt, docNumber, isMonthly, label }) {
   const rows = [
@@ -1433,6 +1462,7 @@ module.exports = {
   sendAdminNewSignupNotification,
   sendMemberWelcomeEmail,
   sendInvestmentInvoiceEmail,
+  sendReceiptEmail,
   sendProfitStatementEmail,
   sendMonthlyProfitReportEmail,
   sendWithdrawalConfirmationEmail,

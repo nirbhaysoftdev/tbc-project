@@ -11,6 +11,8 @@ const path       = require('path');
 const authRoutes        = require('./routes/auth');
 const dashboardRoutes   = require('./routes/dashboard');
 const transactionRoutes = require('./routes/transactions');
+const receiptRoutes = require('./routes/receipts');
+const receiptWorker = require('./services/receipts');
 const adminRoutes       = require('./routes/admin');
 const adminEventsRoutes = require('./routes/adminEvents');
 const adminAnalyticsRoutes = require('./routes/adminAnalytics');
@@ -117,6 +119,7 @@ app.use('/api/track',        trackRoutes);
 app.use('/api/files',        filesRoutes);
 app.use('/api/dashboard',    dashboardRoutes);
 app.use('/api/transactions', transactionRoutes);
+app.use('/api/receipts', receiptRoutes);
 // BEFORE adminRoutes, and that order is load-bearing. routes/admin.js gates
 // its whole router with `router.use(authenticate, requireAdmin)`, which runs
 // for every request that enters it - including paths it does not define. The
@@ -216,6 +219,14 @@ app.listen(PORT, async () => {
       monthlyProfitWorker.start();
     } catch (err) {
       console.error(`   ✗  monthly profit worker not started - ${err.message}`);
+    }
+
+    // Issues each investment's Zoho Books receipt. Off (and silent) until the
+    // ZOHO_* variables are set; a failure only delays receipts.
+    try {
+      receiptWorker.start();
+    } catch (err) {
+      console.error(`   ✗  receipt worker not started - ${err.message}`);
     }
 
     // Headlines from publishers' RSS feeds. Failure only means older news.

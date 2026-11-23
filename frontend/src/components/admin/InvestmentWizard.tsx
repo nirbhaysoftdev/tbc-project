@@ -9,16 +9,20 @@ import { useEffect, useMemo, useState } from 'react';
 import { investmentAPI, formatEur, formatDate, formatDateLong, formatNumber } from '@/lib/api';
 import { Trans, useTranslation } from 'react-i18next';
 import SearchableSelect from '@/components/ui/SearchableSelect';
+import { prettyCategory } from '@/components/projects/ProjectCard';
+import { PROJECT_CATEGORIES } from '@/lib/projectCategories';
 
 type ActionType = 'INVESTMENT' | 'ONE_TIME_PROFIT' | 'MONTHLY_CONFIG' | 'INSURANCE';
 type Step = 1 | 2 | 3;
 
 interface Member { id: string; name: string; email: string; }
-interface Project { id: string; name: string; title?: string; category?: string; totalCapital?: number; investorCount?: number; }
+interface Project { id: string; name: string; title?: string; category?: string; status?: string; totalCapital?: number; investorCount?: number; }
 
 // Capital does not require a project. The picker uses an empty projectId for
 // that case, which the API accepts as "no project".
 const NO_PROJECT = '';
+// Marks a category entry in the investment picker, to tell it from a project id.
+const CAT_PREFIX = 'cat:';
 
 export default function InvestmentWizard({
   open, onClose, members, onSuccess, presetUserId, actions, onPickInsurance,
@@ -45,7 +49,7 @@ export default function InvestmentWizard({
   const todayIso = () => new Date().toISOString().slice(0, 10);
 
   const [form, setForm] = useState({
-    userId: '', projectId: '',
+    userId: '', projectId: '', category: '', note: '',
     amount: '', investedAt: todayIso(),
     profitType: 'ONE_TIME_PERCENT' as 'ONE_TIME_AMOUNT' | 'ONE_TIME_PERCENT',
     value: '', effectiveDate: todayIso(),
@@ -63,7 +67,7 @@ export default function InvestmentWizard({
     setStep(1);
     setActionType('');
     setForm({
-      userId: presetUserId || '', projectId: '',
+      userId: presetUserId || '', projectId: '', category: '', note: '',
       amount: '', investedAt: todayIso(),
       profitType: 'ONE_TIME_PERCENT', value: '', effectiveDate: todayIso(),
       rate: '', monthlyEffectiveFrom: todayIso(),
@@ -110,6 +114,7 @@ export default function InvestmentWizard({
   const validateStep2 = (): string => {
     if (!form.userId) return t('admin:wizard.errors.user');
     if (actionType === 'INVESTMENT') {
+      if (!form.projectId && !form.category) return t('admin:wizard.errors.projectOrCategory');
       if (!form.amount || parseFloat(form.amount) <= 0) return t('admin:wizard.errors.amount');
       if (!form.investedAt) return t('admin:wizard.errors.date');
     }
@@ -154,6 +159,8 @@ export default function InvestmentWizard({
         await investmentAPI.createInvestment({
           userId: form.userId, projectId,
           amount: form.amount, investedAt: form.investedAt,
+          category: form.projectId ? undefined : form.category || null,
+          note: form.note.trim() || null,
         });
         setSuccessMsg(t('admin:wizard.success.investment'));
       } else if (actionType === 'ONE_TIME_PROFIT') {
@@ -250,19 +257,57 @@ export default function InvestmentWizard({
                 options={members.map(m => ({ value: m.id, label: m.name, hint: m.email }))} />
             </div>
 
+            {actionType === 'INVESTMENT' ? (
+            <div className="form-group">
+              <label className="form-label">{t('admin:wizard.projectLabel')}</label>
+              {/* One list: the open projects, then a "Category" heading and the fixed
+                  categories (capital in a category, no specific deal). A project
+                  files itself under its own category. */}
+              <SearchableSelect style={{ width:'100%' }}
+                value={form.projectId || (form.category ? CAT_PREFIX + form.category : '')}
+                placeholder={loadingProjects ? t('common:state.loading') : t('admin:wizard.selectProjectOrCategory')}
+                onChange={v => setForm(p => {
+                  if (v.startsWith(CAT_PREFIX)) return { ...p, projectId: '', category: v.slice(CAT_PREFIX.length) };
+                  const proj = projects.find(x => x.id === v);
+                  return { ...p, projectId: v, category: proj?.category || '' };
+                })}
+                searchPlaceholder={t('common:action.search')} noMatchText={t('common:state.noResults')}
+                options={[
+                  ...projects.filter(p => p.status === 'ACTIVE').map(p => ({
+                    value: p.id,
+                    label: p.title || p.name,
+                  })),
+                  { value: '__category_heading', label: t('admin:wizard.categoryHint'), heading: true },
+                  ...PROJECT_CATEGORIES.map(c => ({
+                    value: CAT_PREFIX + c,
+                    label: prettyCategory(c),
+                  })),
+                ]} />
+              <p style={{ fontSize:11, color:'var(--text-muted)', marginTop:6 }}>
+                {t('admin:wizard.projectOrCategoryHint')}
+              </p>
+            </div>
+            ) : (
             <div className="form-group">
               <label className="form-label">{t('admin:wizard.projectLabel')}</label>
               <SearchableSelect style={{ width:'100%' }}
-                value={form.projectId} onChange={v => setForm(p => ({ ...p, projectId: v }))}
+                value={form.projectId}
+                onChange={v => setForm(p => ({ ...p, projectId: v }))}
                 searchPlaceholder={t('common:action.search')} noMatchText={t('common:state.noResults')}
                 options={[
                   { value: NO_PROJECT, label: loadingProjects ? t('common:state.loading') : t('admin:wizard.noProjectOption') },
-                  ...projects.map(p => ({ value: p.id, label: p.title || p.name })),
+                  ...projects
+                    .map(p => ({
+                      value: p.id,
+                      label: p.title || p.name,
+                      hint: [p.category && prettyCategory(p.category), p.status].filter(Boolean).join(' · '),
+                    })),
                 ]} />
               <p style={{ fontSize:11, color:'var(--text-muted)', marginTop:6 }}>
                 {t('admin:wizard.projectHint')}
               </p>
             </div>
+            )}
 
             {actionType === 'INVESTMENT' && (
               <>
@@ -275,6 +320,12 @@ export default function InvestmentWizard({
                   <label className="form-label">{t('admin:wizard.dateLabel')}</label>
                   <input className="form-input" type="date"
                     value={form.investedAt} onChange={e => setForm(p => ({ ...p, investedAt: e.target.value }))} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">{t('admin:wizard.noteLabel')}</label>
+                  <input className="form-input" type="text" maxLength={500}
+                    placeholder={t('admin:wizard.notePlaceholder')}
+                    value={form.note} onChange={e => setForm(p => ({ ...p, note: e.target.value }))} />
                 </div>
                 {previewCapital !== null && (
                   <p style={{ fontSize:12, color:'var(--text-muted)' }}>
@@ -386,10 +437,13 @@ export default function InvestmentWizard({
             <div><strong style={{ color:'var(--text-primary)' }}>{t('admin:wizard.reviewAction')}</strong>{' '}
               {actionType ? t(`admin:wizard.actions.${actionType}.title`) : ''}</div>
             <div><strong style={{ color:'var(--text-primary)' }}>{t('admin:wizard.reviewUser')}</strong> {selectedMember?.name} (<span className="ltr-embed">{selectedMember?.email}</span>)</div>
-            <div><strong style={{ color:'var(--text-primary)' }}>{t('admin:wizard.reviewProject')}</strong> {selectedProject ? (selectedProject.title || selectedProject.name) : t('admin:wizard.noProjectOption')}</div>
+            <div><strong style={{ color:'var(--text-primary)' }}>{t('admin:wizard.reviewProject')}</strong> {selectedProject ? (selectedProject.title || selectedProject.name) : form.category ? prettyCategory(form.category) : t('admin:wizard.noProjectOption')}</div>
 
             {actionType === 'INVESTMENT' && (
               <>
+                {form.note.trim() && (
+                  <div><strong style={{ color:'var(--text-primary)' }}>{t('admin:wizard.reviewNote')}</strong> {form.note.trim()}</div>
+                )}
                 <div><strong style={{ color:'var(--text-primary)' }}>{t('admin:wizard.reviewAmount')}</strong> <span className="ltr-embed">{formatEur(parseFloat(form.amount) || 0)}</span></div>
                 <div><strong style={{ color:'var(--text-primary)' }}>{t('admin:wizard.reviewDate')}</strong> {formatDate(form.investedAt)}</div>
               </>

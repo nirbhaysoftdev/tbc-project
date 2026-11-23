@@ -10,9 +10,11 @@
 // email is rendered server-side from that same payload, so "Email Now" sends
 // exactly what is on screen.
 import { Suspense, useEffect, useState } from 'react';
+import { prettyCategory } from '@/components/projects/ProjectCard';
 import { useRouter, useSearchParams } from 'next/navigation';
 import ProtectedLayout from '@/components/layout/ProtectedLayout';
-import { adminAPI, formatEur, formatNumber } from '@/lib/api';
+import ZohoSwitch from '@/components/admin/ZohoSwitch';
+import { adminAPI, zohoAPI, formatEur, formatNumber } from '@/lib/api';
 import {
   PortfolioChart, MonthlyActivityChart, ProjectSplitChart,
 } from '@/components/admin/MemberCharts';
@@ -191,6 +193,22 @@ function MemberDetailContent() {
   };
 
   // Freezing locks a member out of the platform.
+  const [zohoOn, setZohoOn] = useState(false);
+  useEffect(() => { if (isSuper) adminAPI.zohoStatus().then(r => setZohoOn(!!r.data.active)).catch(() => {}); }, [isSuper]);
+  const handleZoho = async () => {
+    if (!id) return;
+    setActing(true);
+    setActionErr('');
+    try {
+      await zohoAPI.setMember(id, member.zohoEnabled === false);
+      reload();
+    } catch (e: any) {
+      setActionErr(e.response?.data?.error || t('admin:memberDetail.actionFailed'));
+    } finally {
+      setActing(false);
+    }
+  };
+
   const handleFreeze = async () => {
     if (!id) return;
     setActing(true);
@@ -421,6 +439,10 @@ function MemberDetailContent() {
               {t('admin:members.openingBalance')}
             </button>
           )}
+          {isSuper && zohoOn && (
+            <ZohoSwitch on={member.zohoEnabled !== false} busy={acting} onToggle={handleZoho}
+              title={member.zohoCustomerId ? `Zoho customer ${member.zohoCustomerId}` : 'Not yet a Zoho customer'} />
+          )}
           {isSuper && (
             <button
               disabled={acting}
@@ -625,7 +647,7 @@ function MemberDetailContent() {
           align={[false, false, true, true, true, false]}
           empty={t('admin:memberDetail.noInvestments')}
           rows={[...investments.map((i: any) => [
-            i.project?.title || t('admin:memberDetail.noProject'),
+            i.project?.title || (i.category ? prettyCategory(i.category) : t('admin:memberDetail.noProject')),
             shortDate(i.investedAt),
             formatEur(i.amount),
             formatEur(i.returnedAmount || 0),

@@ -5,6 +5,7 @@
 // ledger of investments (capital) and profit records, and the entry point
 // into the new Investment/Profit wizard.
 import { useEffect, useState } from 'react';
+import { prettyCategory } from '@/components/projects/ProjectCard';
 import { investmentAPI, formatEur, formatDate, formatNumber } from '@/lib/api';
 import InvestmentWizard from './InvestmentWizard';
 import { useTranslation } from 'react-i18next';
@@ -146,7 +147,7 @@ export default function InvestmentsTab({ members }: { members: Member[] }) {
                 <tr key={inv.id}>
                   <td style={{ fontWeight:600, color:'var(--text-primary)' }}>{inv.user?.name}</td>
                   {/* The project TITLE arrives already localised from the API. */}
-                  <td>{inv.project?.title || <span style={{ color:'var(--text-muted)' }}>{t('admin:investments.noProject')}</span>}</td>
+                  <td>{inv.project?.title || (inv.category ? prettyCategory(inv.category) : <span style={{ color:'var(--text-muted)' }}>{t('admin:investments.noProject')}</span>)}</td>
                   <td className="ltr-embed">
                     {formatEur(inv.amount)}
                     {inv.returnedAmount > 0 && (

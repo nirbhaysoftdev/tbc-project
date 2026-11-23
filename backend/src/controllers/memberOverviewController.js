@@ -124,7 +124,7 @@ async function buildOverview(userId) {
     prisma.transaction.findMany({
       where: { userId },
       include: { project: { select: { id: true, title: true } } },
-      orderBy: { createdAt: 'desc' },
+      orderBy: [{ loggedAt: 'desc' }, { createdAt: 'desc' }],
       take: 200,
     }),
     prisma.withdrawRequest.findMany({ where: { userId }, orderBy: { createdAt: 'desc' } }),

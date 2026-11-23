@@ -212,6 +212,11 @@ enum InvestmentStatus {
 // ─── CORE USER ────────────────────────────────────────────────────────────────
 
 model User {
+  receipts      Receipt[]
+  /// The member's customer record in Zoho Books (services/zohoCustomers.js).
+  zohoCustomerId String?
+  // Per-member switch: false = nothing about this member reaches Zoho Books.
+  zohoEnabled    Boolean  @default(true)
   id            String       @id @default(uuid())
   name          String
   email         String       @unique
@@ -246,7 +251,7 @@ model User {
   profitConfigs     ProfitConfig[]
   insurancePolicy   InsurancePolicy?
   memberCard        MemberCard?
-profitRecords     ProfitRecord[]
+  profitRecords     ProfitRecord[]
 
   // Community
   profile            Profile?
@@ -287,13 +292,13 @@ profitRecords     ProfitRecord[]
   activityTargeted ActivityLog[] @relation("ActivityTarget")
 
   // Machine access
-  apiKeysCreated ApiKey[] @relation("ApiKeysCreated")
-  apiKeysRevoked ApiKey[] @relation("ApiKeysRevoked")
+  apiKeysCreated    ApiKey[]           @relation("ApiKeysCreated")
+  apiKeysRevoked    ApiKey[]           @relation("ApiKeysRevoked")
+  analyticsSessions AnalyticsSession[] @relation("AnalyticsSessionUser")
+  analyticsEvents   AnalyticsEvent[]   @relation("AnalyticsEventUser")
 
   @@index([deletedAt])
   @@map("users")
-  analyticsSessions AnalyticsSession[] @relation("AnalyticsSessionUser")
-  analyticsEvents   AnalyticsEvent[]   @relation("AnalyticsEventUser")
 }
 
 // ─── PROFILE ──────────────────────────────────────────────────────────────────
@@ -406,6 +411,9 @@ model Transaction {
   status       TransactionStatus    @default(COMPLETED)
   reference    String               @unique @default(uuid())
   createdAt    DateTime             @default(now())
+  /// When the row was written. `createdAt` is the transaction's effective date
+  /// (an investment's date can be backdated), so lists order by this instead.
+  loggedAt     DateTime             @default(now())
 
   // Project-aware investment/profit ledger fields (all optional - legacy manual
   // transactions and deal-room-unrelated rows leave these null).
@@ -419,6 +427,7 @@ model Transaction {
   user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   project Project? @relation(fields: [projectId], references: [id])
 
+  @@index([userId, loggedAt])
   @@map("transactions")
 }
 
@@ -434,6 +443,10 @@ model WalletInvestment {
   requestId       String?                @unique
   amount          Float
   returnedAmount  Float                  @default(0)
+  /// Deal Room category: the project's own, or one picked for project-less capital.
+  category        String?
+  /// Free-text remark an admin adds when booking the investment.
+  note            String?
   investedAt      DateTime
   status          WalletInvestmentStatus @default(ACTIVE)
   rejectionReason String?
@@ -444,6 +457,7 @@ model WalletInvestment {
   user    User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   project Project?           @relation(fields: [projectId], references: [id])
   request InvestmentRequest? @relation(fields: [requestId], references: [id])
+  receipt Receipt?
 
   @@index([userId, projectId])
   @@map("wallet_investments")
@@ -1562,7 +1576,7 @@ model AnalyticsSession {
   lastSeenAt  DateTime  @default(now())
   endedAt     DateTime?
 
-  user   User?             @relation("AnalyticsSessionUser", fields: [userId], references: [id], onDelete: SetNull)
+  user   User?            @relation("AnalyticsSessionUser", fields: [userId], references: [id], onDelete: SetNull)
   events AnalyticsEvent[]
 
   @@index([lastSeenAt])
@@ -1619,4 +1633,50 @@ model NewsItem {
   @@index([publishedAt])
   @@index([source, publishedAt])
   @@map("news_items")
+}
+
+enum ReceiptStatus {
+  PENDING
+  /// Created in Zoho as a draft and left there (draft mode): not sent, not paid, not emailed.
+  DRAFT
+  ISSUED
+  /// Gave up after RECEIPT_MAX_ATTEMPTS. A super admin can retry it.
+  DEAD
+}
+
+/// The Zoho Books INVOICE (with its payment recorded) for one investment. The
+/// model and column names say "receipt" from before it was an invoice:
+/// `zohoReceiptId` is the Zoho invoice id, `receiptNumber` the invoice number.
+/// Kept as is so no data had to move.
+/// (Originally: the Zoho Books sales receipt for one investment.) The row is written in the
+/// same transaction as the investment, so "invested but no receipt queued" is
+/// not a state that exists; a worker then issues it in Zoho. The PDF is never
+/// stored here: it is fetched from Zoho on request, so there is one copy.
+model Receipt {
+  id             String        @id @default(uuid())
+  investmentId   String        @unique
+  userId         String
+  amount         Float
+  currency       String        @default("EUR")
+  status         ReceiptStatus @default(PENDING)
+  zohoCustomerId String?
+  zohoReceiptId  String?
+  receiptNumber  String?
+  zohoPaymentId  String?
+  paymentRecordedAt DateTime?
+  attempts       Int           @default(0)
+  runAfter       DateTime      @default(now())
+  lockedAt       DateTime?
+  lastError      String?
+  issuedAt       DateTime?
+  emailedAt      DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  investment WalletInvestment @relation(fields: [investmentId], references: [id], onDelete: Cascade)
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, runAfter])
+  @@index([userId])
+  @@map("receipts")
 }

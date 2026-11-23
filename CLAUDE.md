@@ -114,7 +114,7 @@ Never run `db:reset` (drops the database) or `db:migrate` (that is
 | `FRONTEND_URL` | **A comma-separated list of every origin the portal is served from**, not one URL. The bundle calls the API at one absolute address, so a member who opened a hostname that is not on this list has every request blocked by CORS with no response body — which the UI can only report as a failed login, on one device, while the same credentials work everywhere else. Redirect to one canonical host in nginx as well; this list is what stops a mismatch being total. It is also the media stream's `Content-Security-Policy: frame-ancestors` source, and defaults to `http://localhost:3000`. Wrong in production and **every PDF, Word and image viewer renders nothing** while the rest of the portal looks healthy. |
 | `SMTP_*` | OTP, approvals, invoices and Connect Now enquiries all go through `services/mailer.js`. |
 | `DEFAULT_ENQUIRY_EMAIL` | Fallback recipient for enquiries when no address is configured in Admin → Enquiries. Optional; the code falls back to `codehands12@gmail.com`. |
-| `ADMIN_NOTIFY_EMAIL` | Fallback recipient for new-signup alerts when no address is set in Admin → Super Admin → Notifications. Optional, and unlike enquiries there is **no hardcoded default**: with neither the setting nor this variable, applications arrive with nobody told. The screen says so in red. |
+| `ADMIN_NOTIFY_EMAIL` | Fallback recipient for new-signup alerts when no address is set in Admin → Super Admin → Integrations → Notifications. Optional, and unlike enquiries there is **no hardcoded default**: with neither the setting nor this variable, applications arrive with nobody told. The screen says so in red. |
 
 `frontend` at **build time** (the frontend is a static export, so these are
 baked into the bundle - changing them later does nothing until you rebuild):
@@ -435,7 +435,7 @@ mailboxes involved. Two settings use it:
 | Setting | Key | Env fallback | Set in |
 |---|---|---|---|
 | Enquiry recipients | `enquiryRecipientEmail` | `DEFAULT_ENQUIRY_EMAIL` | Admin → Enquiries |
-| New-signup alerts | `signupNotifyEmail` | `ADMIN_NOTIFY_EMAIL` | Admin → Super Admin → Notifications |
+| New-signup alerts | `signupNotifyEmail` | `ADMIN_NOTIFY_EMAIL` | Admin → Super Admin → Integrations → Notifications |
 
 Both are portal-wide, both deliver every message to every address on the list,
 and both refuse an empty list. Reading is open to any admin; writing is super
@@ -607,7 +607,7 @@ unscoped key's response.
 
 ### The screen
 
-**Admin → Super Admin → API keys** (`components/admin/ApiKeysTab.tsx`). Super
+**Admin → Super Admin → Integrations → API keys** (`components/admin/ApiKeysTab.tsx`). Super
 admin only and structurally so: the page is wrapped in `<ProtectedLayout
 requireAdmin requireSuperAdmin>` and every endpoint it calls is behind
 `requireSuperAdmin`. Unlike `SignupNotifyTab` there is no read-only mode for an
@@ -963,3 +963,80 @@ Do not `prisma.notification.create` directly any more; it would skip the push.
   edits, impersonation...) - add a type to that set rather than calling the notifier again.
 - Not built yet: event reminders (needs a `remindedAt` column + interval) and new-device login alerts.
 
+
+## Invoices (Zoho Books)
+
+Every investment gets one Zoho Books **invoice** (euro only) with the payment
+recorded against it, so it shows as paid. It appears as an **Invoice** button on
+the investment's row in Transactions and is emailed to the member with Zoho's PDF
+attached. `services/receipts.js` is the queue and worker, `services/zohoBooks.js`
+the API client, `services/zohoCustomers.js` the customer link, `routes/receipts.js`
+the PDF endpoint. (The model, table and some names still say "receipt" from
+before it was an invoice: `Receipt.zohoReceiptId` is the Zoho invoice id and
+`receiptNumber` the invoice number.)
+
+- **Customers, per member:** `users.zohoEnabled` (default true) decides whether a
+  member is in Zoho Books at all. Off = no customer and no invoice for new
+  investments (`receipts.queueForInvestment` and `syncMember` check it; the bulk
+  sync skips them). At activation (`approveUser`, `createMember`, a super admin
+  setting ACTIVE) the admin sees a **Connect this member to Zoho Books** box,
+  ticked by default, shown only while Zoho is on (`GET /admin/zoho-status`). It
+  posts `createZohoCustomer`; ticked sets `zohoEnabled` and creates the customer
+  now (draft mode too, it is an explicit request), unticked sets it false. A
+  super admin flips it later on the member's page (`PUT /super-admin/zoho/members/:id`,
+  logged as `ZOHO_SETTINGS_UPDATED`). The global switch on the Zoho Books tab still
+  stops everything. A customer is matched by email before creating, and an
+  enabled member with no customer gets one with their first invoice. Migration
+  `20261124140000_user_zoho_enabled`. Invoices already queued are not recalled.
+- **Draft mode (the default).** `sendInvoices` is off until a super admin goes
+  **Live** on the Zoho Books tab (`ZOHO_SEND_INVOICES=true` is the env fallback).
+  In draft mode the invoice is created in Zoho as a **draft** (row status
+  `DRAFT`) and nothing else happens: not marked sent, no payment, no email, no
+  deposit account needed, and members see "Preparing". Going live affects new
+  investments only; **Send N drafts** then releases the existing ones, which
+  resumes from the saved invoice (it is reused, never created twice). Draft mode
+  touches Zoho only through an investment's own invoice: the activation hook and
+  **Sync existing members** are held back until live, so testing against a real
+  organisation creates no customers beyond the member being invoiced.
+- **Steps per invoice:** create the invoice, mark it sent, record the payment to
+  the configured deposit account, then email the PDF. Each step is saved, so a
+  failure resumes where it stopped. Both the invoice and the payment carry our
+  receipt id as `reference_number` and are looked up first, so nothing duplicates.
+  The row is `ISSUED` only once the payment is recorded.
+- **A deposit account is required** (Zoho needs the account to record a payment
+  to); until it is set the integration shows "Not configured".
+- **The queue is the `receipts` table**, written in the investment's own
+  transaction by `investmentEngine.createInvestment`, so an investment cannot
+  exist without its receipt queued. A worker in the API process issues it; a
+  Zoho outage delays the receipt and never touches the investment.
+- **No duplicates:** the Zoho receipt's `reference_number` is our receipt id and
+  is looked up before creating. After `RECEIPT_MAX_ATTEMPTS` (8) a row is `DEAD`
+  and a super admin can **Retry** it from the transaction list.
+- **Who can open one:** the member it belongs to and a super admin. An ordinary
+  admin cannot (404). The PDF is fetched from Zoho per request, never stored.
+- **Configured in the portal:** **Admin -> Super Admin -> Integrations -> Zoho Books**
+  (`components/admin/ZohoBooksTab.tsx`, `controllers/zohoController.js`, all
+  behind `requireSuperAdmin`). It holds the connection (data centre,
+  organisation id, client id, client secret, refresh token), the payment mode
+  and deposit account, an on/off switch, **Test connection**, and the receipt
+  queue with Retry. Stored as one JSON document in `SystemConfig`
+  (`zohoBooksConfig`, `services/zohoConfig.js`); the secret and refresh token are
+  AES-256-GCM encrypted (`services/secretBox.js`) and **write-only** - the API
+  never returns them. A blank field on save keeps the stored secret.
+- **Encryption key:** set `ZOHO_ENCRYPTION_KEY` once and never change it. Without
+  it the key is derived from `JWT_SECRET`, so rotating that makes the stored
+  credentials unreadable and they have to be entered again.
+- **Env fallback:** any field not set in the portal falls back to
+  `ZOHO_DC`, `ZOHO_ORG_ID`, `ZOHO_CLIENT_ID`, `ZOHO_CLIENT_SECRET`,
+  `ZOHO_REFRESH_TOKEN`, `ZOHO_DEPOSIT_ACCOUNT_ID`, `ZOHO_PAYMENT_MODE`; the portal
+  value wins once set. Refresh-token scopes: `ZohoBooks.contacts.CREATE,READ`,
+  `ZohoBooks.invoices.CREATE,READ` and `ZohoBooks.customerpayments.CREATE,READ`, plus optional `ZohoBooks.settings.READ`
+  (organisation name) and `ZohoBooks.banking.READ` (account dropdown).
+- **Off until Active:** with credentials or the deposit account missing, or the
+  switch off, nothing is queued, and investments made meanwhile never get an invoice. The worker always
+  runs and re-checks each tick, so switching on needs no restart.
+  The organisation's base currency must be EUR.
+- Reversing or undoing an investment does **not** void the Zoho invoice or its
+  payment; do that in Zoho Books.
+- Deploy: migrations `20261122180000_zoho_receipts` and `20261124100000_zoho_invoices_customers` and `20261124120000_receipt_draft_status`, restart, rebuild + rsync.
+- Tests: `backend/tests/receipts.test.js` (Zoho is a stubbed `fetch`).

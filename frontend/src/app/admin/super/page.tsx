@@ -27,9 +27,8 @@ import { superAdminAPI, formatDateTime } from '@/lib/api';
 import { openDocument } from '@/lib/openDocument';
 import { useAuth } from '@/lib/auth';
 import SuperProjectsTab from '@/components/admin/SuperProjectsTab';
-import SignupNotifyTab from '@/components/admin/SignupNotifyTab';
-import ApiKeysTab from '@/components/admin/ApiKeysTab';
 import ReportsTab from '@/components/admin/ReportsTab';
+import ReceiptsZohoTab from '@/components/admin/ReceiptsZohoTab';
 import InsuranceTab from '@/components/admin/InsuranceTab';
 import CardsTab from '@/components/admin/CardsTab';
 
@@ -121,7 +120,7 @@ const LABEL: React.CSSProperties = {
 function SuperAdminContent() {
   const { user: me } = useAuth();
 
-  const [tab, setTab] = useState<'users' | 'projects' | 'notifications' | 'insurance' | 'cards' | 'reports' | 'apikeys'>('users');
+  const [tab, setTab] = useState<'users' | 'projects' | 'insurance' | 'cards' | 'reports' | 'receipts'>('users');
 
   const [rows,    setRows]    = useState<UserRow[]>([]);
   const [search,  setSearch]  = useState('');
@@ -341,7 +340,7 @@ function SuperAdminContent() {
       <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid var(--border)',
                     marginBottom: 18 }}>
         {([['users', 'Accounts'], ['projects', 'Projects'],
-           ['notifications', 'Notifications'], ['insurance', 'Insurance'], ['cards', 'Card'], ['reports', 'Reports'], ['apikeys', 'API keys']] as const).map(([key, label]) => (
+           ['insurance', 'Insurance'], ['cards', 'Card'], ['reports', 'Reports'], ['receipts', 'Receipts & Zoho']] as const).map(([key, label]) => (
           <button key={key} onClick={() => setTab(key)}
             style={{
               padding: '9px 16px', fontSize: 13, cursor: 'pointer', background: 'none',
@@ -707,11 +706,10 @@ function SuperAdminContent() {
       )}
 
       {tab === 'projects'      && <SuperProjectsTab />}
-      {tab === 'notifications' && <SignupNotifyTab />}
       {tab === 'insurance'     && <InsuranceTab />}
       {tab === 'cards'         && <CardsTab />}
       {tab === 'reports'       && <ReportsTab />}
-      {tab === 'apikeys'       && <ApiKeysTab />}
+      {tab === 'receipts'      && <ReceiptsZohoTab />}
     </div>
   );
 }

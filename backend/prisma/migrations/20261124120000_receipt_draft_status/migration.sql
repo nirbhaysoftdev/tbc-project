@@ -1,0 +1,1 @@
+ALTER TYPE "ReceiptStatus" ADD VALUE 'DRAFT';

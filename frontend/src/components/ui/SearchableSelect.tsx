@@ -15,6 +15,8 @@ export interface SelectOption {
   label: string;
   /** Secondary text, searched too: an email, a category. */
   hint?: string;
+  /** A non-selectable group label. Hidden while searching. */
+  heading?: boolean;
 }
 
 interface Props {
@@ -44,16 +46,20 @@ export default function SearchableSelect({
   const inputRef = useRef<HTMLInputElement | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
 
-  const selected = options.find((o) => o.value === value);
+  const selected = options.find((o) => !o.heading && o.value === value);
 
   const filtered = useMemo(() => {
     const words = fold(query).split(/\s+/).filter(Boolean);
     if (words.length === 0) return options;
     return options.filter((o) => {
+      if (o.heading) return false;
       const hay = fold(`${o.label} ${o.hint || ''}`);
       return words.every((w) => hay.includes(w));
     });
   }, [options, query]);
+
+  // Headings are labels, not choices: the keyboard and the highlight skip them.
+  const choices = useMemo(() => filtered.filter((o) => !o.heading), [filtered]);
 
   useEffect(() => { setHighlight(0); }, [query, open]);
 
@@ -70,16 +76,16 @@ export default function SearchableSelect({
   // Keep the highlighted row in view while arrowing through a long list.
   useEffect(() => {
     if (!open) return;
-    (listRef.current?.children[highlight] as HTMLElement | undefined)?.scrollIntoView({ block: 'nearest' });
+    (listRef.current?.querySelector(`[data-idx="${highlight}"]`) as HTMLElement | null)?.scrollIntoView({ block: 'nearest' });
   }, [highlight, open]);
 
   const close = () => { setOpen(false); setQuery(''); };
   const commit = (o: SelectOption) => { onChange(o.value); close(); };
 
   const onKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'ArrowDown') { e.preventDefault(); setHighlight((h) => Math.min(h + 1, filtered.length - 1)); }
+    if (e.key === 'ArrowDown') { e.preventDefault(); setHighlight((h) => Math.min(h + 1, choices.length - 1)); }
     else if (e.key === 'ArrowUp') { e.preventDefault(); setHighlight((h) => Math.max(h - 1, 0)); }
-    else if (e.key === 'Enter') { e.preventDefault(); if (filtered[highlight]) commit(filtered[highlight]); }
+    else if (e.key === 'Enter') { e.preventDefault(); if (choices[highlight]) commit(choices[highlight]); }
     else if (e.key === 'Escape') { e.preventDefault(); close(); }
   };
 
@@ -113,9 +119,13 @@ export default function SearchableSelect({
             onKeyDown={onKeyDown}
           />
           <div className="ss-list" role="listbox" ref={listRef}>
-            {filtered.map((o, i) => (
+            {filtered.map((o, n) => {
+              if (o.heading) return <div key={`h${n}`} className="ss-note" style={{ fontWeight: 600, textAlign: 'left' }}>{o.label}</div>;
+              const i = choices.indexOf(o);
+              return (
               <button
-                key={o.value || `__${i}`}
+                key={o.value || `__${n}`}
+                data-idx={i}
                 type="button"
                 role="option"
                 aria-selected={o.value === value}
@@ -126,8 +136,9 @@ export default function SearchableSelect({
                 <span className="ss-label">{o.label}</span>
                 {o.hint && <span className="ss-hint">{o.hint}</span>}
               </button>
-            ))}
-            {filtered.length === 0 && <div className="ss-note">{noMatchText}</div>}
+              );
+            })}
+            {choices.length === 0 && <div className="ss-note">{noMatchText}</div>}
           </div>
         </div>
       )}

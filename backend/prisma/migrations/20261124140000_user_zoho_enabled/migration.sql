@@ -1,0 +1,1 @@
+ALTER TABLE "users" ADD COLUMN "zohoEnabled" BOOLEAN NOT NULL DEFAULT true;
