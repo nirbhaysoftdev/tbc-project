@@ -168,3 +168,7 @@ label{display:block;font-size:13px;font-weight:600;color:var(--navy);margin:0 0 
 .as-root #intro{grid-area:intro}
 .as-root #formCol{grid-area:form}
 .as-root #details{grid-area:details}
+
+.as-root .lang{display:flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;flex-shrink:0}
+.as-root .lang button{background:transparent;border:0;padding:6px 12px;font:700 12px inherit;font-family:inherit;color:var(--muted);cursor:pointer;letter-spacing:.04em}
+.as-root .lang button.on{background:var(--navy);color:#fff}
