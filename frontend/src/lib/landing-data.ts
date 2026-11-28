@@ -444,6 +444,7 @@ export const PARTNERS: Partner[] = [
   { name: 'Jo-crop', src: '/images/partners/webp/jo-corp.png', category: 'partner' },
   { name: 'Nat', src: '/images/partners/webp/nat.webp', category: 'partner' },
   { name: 'Sarni Oils', src: '/images/brands/Sarni.png', category: 'partner', industry: 'Petrol Oil & Gas' },
+  { name: 'UPS Randazzo', src: '/images/brands/ups-randazzo.webp', category: 'partner' },
   { name: 'Villa Florio', src: '/images/brands/villa-fl.png', category: 'partner', industry: 'Hotel & Restaurant' },
   { name: 'Si Vallé', src: '/images/brands/su-vall.png', category: 'partner' },
   { name: 'Sebex Aviations', src: '/images/partners/webp/sebex-aviations.webp' },
