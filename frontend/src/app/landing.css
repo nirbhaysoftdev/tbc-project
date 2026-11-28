@@ -3165,6 +3165,42 @@
   .lp-progress { display: none; }
 }
 
+/* ── Giving back · Eben Ezer ───────────────────── */
+
+.lp-eben-grid {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 56px;
+  align-items: center;
+}
+.lp-eben-video { min-width: 0; display: flex; justify-content: center; }
+.lp-eben-video video {
+  display: block;
+  width: 100%;
+  max-width: 360px;
+  height: auto;
+  aspect-ratio: 464 / 832;
+  background: #000;
+  border-radius: 20px;
+  border: 1px solid rgba(200,168,75,0.22);
+  box-shadow: 0 24px 60px rgba(0,0,0,0.35);
+}
+/* The logo is black on white, so it sits on its own white card. */
+.lp-eben-mark {
+  display: block;
+  width: 100%;
+  max-width: 240px;
+  margin: 4px 0 20px;
+  padding: 14px 18px;
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 20px 50px rgba(200,168,75,0.16);
+}
+.lp-eben-mark img { display: block; width: 100%; height: auto; }
+@media (max-width: 900px) {
+  .lp-eben-grid { grid-template-columns: 1fr; gap: 36px; }
+}
+
 /* ── Our project · ALADINO ─────────────────────── */
 
 .lp-aladino-grid {
