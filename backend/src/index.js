@@ -18,6 +18,7 @@ const adminEventsRoutes = require('./routes/adminEvents');
 const adminAnalyticsRoutes = require('./routes/adminAnalytics');
 const adminMonitoringRoutes = require('./routes/adminMonitoring');
 const trackRoutes        = require('./routes/track');
+const aladinoSharesRoutes = require('./routes/aladinoShares');
 const investmentRoutes  = require('./routes/investments');
 const emailBroadcastRoutes = require('./routes/emailBroadcasts');
 const superAdminRoutes  = require('./routes/superAdmin');
@@ -116,6 +117,7 @@ app.use('/api/i18n',         i18nRoutes);
 // Public, by design: page beats from visitors who are not signed in. Mounted
 // before the auth limiter - it has its own.
 app.use('/api/track',        trackRoutes);
+app.use('/api/aladino-shares', aladinoSharesRoutes);   // standalone public page, own admin token
 app.use('/api/files',        filesRoutes);
 app.use('/api/dashboard',    dashboardRoutes);
 app.use('/api/transactions', transactionRoutes);

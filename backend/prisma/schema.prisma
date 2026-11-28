@@ -1680,3 +1680,38 @@ model Receipt {
   @@index([userId])
   @@map("receipts")
 }
+
+enum AladinoShareStatus {
+  ACTIVE
+  CANCELLED
+}
+
+/// The Aladino Shares offering page (/aladino-shares). Deliberately standalone:
+/// no relation to `users`, no portal session. Bookings are keyed by the email
+/// the visitor typed, and that is the only link to anyone.
+/// One row, id "default".
+model AladinoShareSettings {
+  id            String   @id @default("default")
+  visible       Boolean  @default(true)
+  allowLookup   Boolean  @default(true)
+  totalShares   Int      @default(600)
+  pricePerShare Int      @default(5000)
+  valuation     Int      @default(38000000)
+  updatedAt     DateTime @updatedAt
+
+  @@map("aladino_share_settings")
+}
+
+model AladinoShareBooking {
+  id          String             @id @default(uuid())
+  name        String
+  email       String
+  shares      Int
+  status      AladinoShareStatus @default(ACTIVE)
+  cancelledAt DateTime?
+  createdAt   DateTime           @default(now())
+
+  @@index([email])
+  @@index([status, createdAt])
+  @@map("aladino_share_bookings")
+}

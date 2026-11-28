@@ -1040,3 +1040,29 @@ before it was an invoice: `Receipt.zohoReceiptId` is the Zoho invoice id and
   payment; do that in Zoho Books.
 - Deploy: migrations `20261122180000_zoho_receipts` and `20261124100000_zoho_invoices_customers` and `20261124120000_receipt_draft_status`, restart, rebuild + rsync.
 - Tests: `backend/tests/receipts.test.js` (Zoho is a stubbed `fetch`).
+
+## Aladino Shares (`/aladino-shares`)
+
+A public share-offering page, **independent of members and the portal**: no
+login, no `users` relation, no `ProtectedLayout`. A booking is a name, an email
+and a share count, and the email is its only link to anyone.
+
+| Piece | File |
+|---|---|
+| Public page / admin | `frontend/src/app/aladino-shares/page.tsx`, `.../admin/page.tsx` (components in `components/aladino-shares/`) |
+| Styles | `app/aladino-shares/aladino-shares.css`, every rule under `.as-root` so it cannot touch the rest of the site |
+| API client | `lib/aladinoShares.ts` - plain `fetch`, not the portal's axios (which attaches the member token and bounces 401 to `/login`) |
+| API | `routes/aladinoShares.js` → `services/aladinoShares.js`, mounted at `/api/aladino-shares` |
+| Tables | `aladino_share_settings` (one row, id `default`), `aladino_share_bookings` |
+
+- **Overbooking is prevented in the database**, not the app: every booking, undo,
+  restore and total change takes `pg_advisory_xact_lock` inside its transaction.
+- **The admin is its own account**, hardcoded in `services/aladinoShares.js`
+  (email + scrypt hash; `ALADINO_SHARES_ADMIN_EMAIL` / `_HASH` override). Login
+  returns a JWT with `scope: 'aladino-shares-admin'`; it is accepted only by
+  `/admin/*` there, and a portal token is refused there in turn.
+- Members never see other bookings. `my-bookings` returns only the rows for the
+  email typed and is limited to 10/min per address.
+- Deploy: migration `20261128140000_aladino_shares`, restart (new Prisma
+  models), rebuild + rsync. No nginx change: `/api` is already proxied and the
+  pages are part of the static export.
