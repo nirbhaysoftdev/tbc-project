@@ -1,6 +1,7 @@
 // Header and footer shared by the Aladino Shares pages.
 import '@/app/aladino-shares/aladino-shares.css';
 import type { ReactNode } from 'react';
+import type { Offering } from '@/lib/aladinoShares';
 
 export type Lang = 'en' | 'it';
 
@@ -16,8 +17,8 @@ const CHROME = {
 };
 
 // `lang` + `onLang` are passed by the public page only; the admin never sets them.
-export function Shell({ children, admin = false, action, lang = 'en', onLang }: {
-  children: ReactNode; admin?: boolean; action?: ReactNode; lang?: Lang; onLang?: (l: Lang) => void;
+export function Shell({ children, admin = false, action, lang = 'en', onLang, offering = 'aladino' }: {
+  children: ReactNode; admin?: boolean; action?: ReactNode; lang?: Lang; onLang?: (l: Lang) => void; offering?: Offering;
 }) {
   const c = CHROME[lang];
   return (
@@ -31,7 +32,7 @@ export function Shell({ children, admin = false, action, lang = 'en', onLang }: 
               <small>{admin ? 'Share bookings · Admin' : c.sub}</small>
             </div>
           </a>
-          {action ?? <div className="tag">ALADINO <i>by</i> TBC <span>· {c.offer}</span></div>}
+          {action ?? <div className="tag">{offering === 'aladino' ? 'ALADINO' : (lang === 'it' ? 'IMMOBILIARE' : 'REAL ESTATE')} <i>by</i> TBC <span>· {c.offer}</span></div>}
           {onLang && (
             <div className="lang" role="group" aria-label="Language">
               {(['en', 'it'] as Lang[]).map((l) => (

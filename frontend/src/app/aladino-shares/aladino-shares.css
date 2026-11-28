@@ -172,3 +172,12 @@ label{display:block;font-size:13px;font-weight:600;color:var(--navy);margin:0 0 
 .as-root .lang{display:flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;flex-shrink:0}
 .as-root .lang button{background:transparent;border:0;padding:6px 12px;font:700 12px inherit;font-family:inherit;color:var(--muted);cursor:pointer;letter-spacing:.04em}
 .as-root .lang button.on{background:var(--navy);color:#fff}
+
+.as-root .hero-logo{display:block;width:min(220px,60%);height:auto;margin:0 0 10px}
+.as-root .hero-img{margin:24px 0 0;border-radius:var(--r);overflow:hidden;border:2px solid var(--gold);box-shadow:var(--shadow);background:#0b0b0d}
+.as-root .hero-img img{display:block;width:100%;height:auto;max-height:340px;object-fit:cover}
+.as-root .hero-img.aladino img{object-position:50% 25%}
+.as-root .hero-img.real-estate img{object-fit:contain;max-height:380px;margin:0 auto}
+
+.as-root .src{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 9px;border-radius:99px;white-space:nowrap;background:#e8eef8;color:var(--navy)}
+.as-root .src.real-estate{background:var(--gold-l);color:#9a7412}

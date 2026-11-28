@@ -1689,9 +1689,9 @@ enum AladinoShareStatus {
 /// The Aladino Shares offering page (/aladino-shares). Deliberately standalone:
 /// no relation to `users`, no portal session. Bookings are keyed by the email
 /// the visitor typed, and that is the only link to anyone.
-/// One row, id "default".
+/// One row per offering; the id is the offering key ("aladino", "real-estate").
 model AladinoShareSettings {
-  id            String   @id @default("default")
+  id            String   @id
   visible       Boolean  @default(true)
   allowLookup   Boolean  @default(true)
   totalShares   Int      @default(600)
@@ -1704,6 +1704,8 @@ model AladinoShareSettings {
 
 model AladinoShareBooking {
   id          String             @id @default(uuid())
+  /// Which page it came from: the key of an offering in services/aladinoShares.js.
+  offering    String             @default("aladino")
   name        String
   email       String
   shares      Int
@@ -1713,5 +1715,6 @@ model AladinoShareBooking {
 
   @@index([email])
   @@index([status, createdAt])
+  @@index([offering, status])
   @@map("aladino_share_bookings")
 }

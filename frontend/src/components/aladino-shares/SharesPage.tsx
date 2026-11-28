@@ -5,7 +5,7 @@
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { Shell, Lang } from './Chrome';
 import {
-  DEFAULT_STATE, EMAIL_RE, ShareApiError, ShareState, eur, eurShort, fmtDate, pct, shareFetch,
+  DEFAULT_STATES, EMAIL_RE, Offering, ShareApiError, ShareState, eur, eurShort, fmtDate, pct, shareFetch,
 } from '@/lib/aladinoShares';
 
 const T = {
@@ -29,7 +29,7 @@ const T = {
     p2a: '€5,000 per share', p2b: ' · investment capital secured by Zurich',
     p3a: 'First come, first served', p3b: ' — allocated in order of reservation',
     p4a: 'After 6 months: exit with a ', p4b: 'minimum 10% guaranteed by TBC', p4c: ', or stay',
-    noteK: 'After this meeting', noteA: 'Any shares left will be offered to other community members after 7 days — ', noteB: 'not guaranteed', noteC: ', they may all be taken today.',
+    perShare: ' per share', noteK: 'After this meeting', noteA: 'Any shares left will be offered to other community members after 7 days — ', noteB: 'not guaranteed', noteC: ', they may all be taken today.',
   },
   it: {
     nameErr: 'Inserisci il tuo nome completo.', emailErr: 'Inserisci un indirizzo email valido.', minErr: 'Inserisci almeno 1 quota.',
@@ -51,16 +51,40 @@ const T = {
     p2a: '€5.000 per quota', p2b: ' · capitale d’investimento garantito da Zurich',
     p3a: 'Chi prima arriva, meglio alloggia', p3b: ' — assegnazione in ordine di prenotazione',
     p4a: 'Dopo 6 mesi: esci con un ', p4b: 'minimo del 10% garantito da TBC', p4c: ', oppure resta',
-    noteK: 'Dopo questo incontro', noteA: 'Le quote rimanenti saranno offerte ad altri membri della community dopo 7 giorni — ', noteB: 'non è garantito', noteC: ', potrebbero essere tutte assegnate oggi.',
+    perShare: ' per quota', noteK: 'Dopo questo incontro', noteA: 'Le quote rimanenti saranno offerte ad altri membri della community dopo 7 giorni — ', noteB: 'non è garantito', noteC: ', potrebbero essere tutte assegnate oggi.',
   },
 };
 
 interface Receipt { name: string; shares: number; value: number; pct: number }
 interface MyBooking { shares: number; amount: number; createdAt: string; status: 'active' | 'cancelled' }
 
-export default function SharesPage() {
+// What differs between the pages. Everything else is shared.
+const COPY = {
+  aladino: {
+    en: {
+      h1a: 'Own limited ', h1em: 'Aladino shares', lead: 'A once-only allocation for TBC members. First come, first served — reserve your shares below.',
+      ofX: (v: string) => `of Aladino Family at ${v} valuation`,
+    },
+    it: {
+      h1a: 'Possiedi quote limitate di ', h1em: 'Aladino', lead: 'Un’assegnazione unica per i membri TBC. Chi prima arriva, meglio alloggia — prenota le tue quote qui sotto.',
+      ofX: (v: string) => `di Aladino Family con valutazione di ${v}`,
+    },
+  },
+  'real-estate': {
+    en: {
+      h1a: 'Own limited ', h1em: 'Real estate shares', lead: 'A once-only allocation for TBC members in Mercedes-Benz Places · Binghatti City. First come, first served — reserve your shares below.',
+      ofX: (v: string) => `of Mercedes-Benz Places · Binghatti City at ${v} valuation`,
+    },
+    it: {
+      h1a: 'Possiedi quote ', h1em: 'immobiliari', lead: 'Un’assegnazione unica per i membri TBC in Mercedes-Benz Places · Binghatti City. Chi prima arriva, meglio alloggia — prenota le tue quote qui sotto.',
+      ofX: (v: string) => `di Mercedes-Benz Places · Binghatti City con valutazione di ${v}`,
+    },
+  },
+};
+
+export default function SharesPage({ offering = 'aladino' }: { offering?: Offering }) {
   const [lang, setLangState] = useState<Lang>('en');
-  const t = T[lang];
+  const t = { ...T[lang], ...COPY[offering][lang] };
   useEffect(() => {
     try { if (localStorage.getItem('as-lang') === 'it') setLangState('it'); } catch { /* storage blocked */ }
   }, []);
@@ -69,7 +93,7 @@ export default function SharesPage() {
     try { localStorage.setItem('as-lang', l); } catch { /* storage blocked */ }
   };
 
-  const [S, setS] = useState<ShareState>(DEFAULT_STATE);
+  const [S, setS] = useState<ShareState>(DEFAULT_STATES[offering]);
   const [loaded, setLoaded] = useState(false);
 
   const [name, setName] = useState('');
@@ -85,11 +109,11 @@ export default function SharesPage() {
 
   const refresh = useCallback(async () => {
     try {
-      const d = await shareFetch<ShareState>('/state');
+      const d = await shareFetch<ShareState>(`/state?offering=${offering}`);
       setS((prev) => ({ ...prev, ...d }));
       setLoaded(true);
     } catch { /* keep what is on screen */ }
-  }, []);
+  }, [offering]);
 
   useEffect(() => {
     refresh();
@@ -131,7 +155,7 @@ export default function SharesPage() {
     if (sh > S.availableShares) return setFormErr(t.onlyLeft(S.availableShares));
     setBusy(true);
     try {
-      const d = await shareFetch<{ state: ShareState }>('/book', { body: { name: nm, email: em, shares: sh } });
+      const d = await shareFetch<{ state: ShareState }>('/book', { body: { offering, name: nm, email: em, shares: sh } });
       setS((p) => ({ ...p, ...d.state }));
       setReceipt({ name: nm, shares: sh, value: sh * S.pricePerShare, pct: (sh * S.pricePerShare / S.valuation) * 100 });
     } catch (err) {
@@ -149,7 +173,7 @@ export default function SharesPage() {
     const em = lookupEmail.trim();
     if (!EMAIL_RE.test(em)) return setLookupErr(t.emailErr);
     try {
-      const d = await shareFetch<{ bookings: MyBooking[] }>('/my-bookings', { body: { email: em } });
+      const d = await shareFetch<{ bookings: MyBooking[] }>('/my-bookings', { body: { offering, email: em } });
       setMine(d.bookings);
     } catch (err) { setLookupErr((err as Error).message); }
   };
@@ -158,7 +182,7 @@ export default function SharesPage() {
   const myShares = active.reduce((s, b) => s + b.shares, 0);
 
   return (
-    <Shell lang={lang} onLang={setLang}>
+    <Shell offering={offering} lang={lang} onLang={setLang}>
       {closed ? (
         <div className="closed">
           <div className="card gold"><div className="card-b">
@@ -171,9 +195,20 @@ export default function SharesPage() {
         <div className="layout">
           <section id="intro">
             <div className="rule" />
+            {offering === 'aladino' && (
+              <img className="hero-logo" src="/images/aladino-lamp-logo.webp" alt="Aladino" width={220} height={123} />
+            )}
             <div className="eyebrow">{t.eyebrow}</div>
-            <h1 style={{ margin: '10px 0 12px' }}>{t.h1a}<em>{lang === 'it' ? t.h1b : 'Aladino shares'}</em>.</h1>
+            <h1 style={{ margin: '10px 0 12px' }}>{t.h1a}<em>{t.h1em}</em>.</h1>
             <p className="lead">{t.lead}</p>
+
+            <figure className={`hero-img ${offering}`}>
+              {offering === 'aladino' ? (
+                <img src="/images/aladino-shares-robot.webp" alt="Aladino retail assistant robot in a supermarket" width={1000} height={1000} />
+              ) : (
+                <img src="/images/real-estate-mercedes-places.webp" alt="Mercedes-Benz Places · Binghatti City" width={1200} height={950} />
+              )}
+            </figure>
 
             <div className="card gold" style={{ marginTop: 24 }}>
               <div className="card-h">{t.availNow} <span className="live">{t.live}</span></div>
@@ -240,7 +275,7 @@ export default function SharesPage() {
                     <div className="summary" aria-live="polite">
                       <div><small>{t.totalValue}</small><b className="val">{eur(value)}</b></div>
                       <div><small>{t.yourStake}</small><b>{pct((value / S.valuation) * 100)}</b></div>
-                      <div className="full">{t.ofAladino(eur(S.valuation))}</div>
+                      <div className="full">{t.ofX(eur(S.valuation))}</div>
                     </div>
 
                     <button className="btn" type="submit" disabled={busy || soldOut}>
@@ -297,13 +332,23 @@ export default function SharesPage() {
           </section>
 
           <section id="details">
-            <ul className="points">
-              <li>{t.p1a}<b>{S.totalShares}{t.p1b}</b>{t.p1c}</li>
-              <li><b>{t.p2a}</b>{t.p2b}</li>
-              <li><b>{t.p3a}</b>{t.p3b}</li>
-              <li>{t.p4a}<b>{t.p4b}</b>{t.p4c}</li>
-            </ul>
-            <div className="note"><b className="k">{t.noteK}</b>{t.noteA}<b>{t.noteB}</b>{t.noteC}</div>
+            {offering === 'aladino' ? (
+              <>
+                <ul className="points">
+                  <li>{t.p1a}<b>{S.totalShares}{t.p1b}</b>{t.p1c}</li>
+                  <li><b>{t.p2a}</b>{t.p2b}</li>
+                  <li><b>{t.p3a}</b>{t.p3b}</li>
+                  <li>{t.p4a}<b>{t.p4b}</b>{t.p4c}</li>
+                </ul>
+                <div className="note"><b className="k">{t.noteK}</b>{t.noteA}<b>{t.noteB}</b>{t.noteC}</div>
+              </>
+            ) : (
+              <ul className="points">
+                <li>{t.p1a}<b>{S.totalShares}{t.p1b}</b></li>
+                <li><b>{eur(S.pricePerShare)}{t.perShare}</b></li>
+                <li><b>{t.p3a}</b>{t.p3b}</li>
+              </ul>
+            )}
           </section>
         </div>
       )}

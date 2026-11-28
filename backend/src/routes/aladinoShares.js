@@ -32,7 +32,7 @@ const wrap = (fn) => async (req, res) => {
 
 // ── Public ────────────────────────────────────
 router.get('/state', wrap(async (req, res) => {
-  const s = await svc.publicState();
+  const s = await svc.publicState(req.query.offering);
   res.json(s.visible ? s : { visible: false });
 }));
 
@@ -42,7 +42,7 @@ router.post('/book', limit(20, 'Too many requests. Please wait a minute.'),
 // Looked up by email, so limited hard: it must not become a way to guess
 // which addresses have booked.
 router.post('/my-bookings', limit(10, 'Too many lookups. Please wait a minute.'),
-  wrap(async (req, res) => res.json(await svc.myBookings((req.body || {}).email))));
+  wrap(async (req, res) => res.json(await svc.myBookings((req.body || {}).email, (req.body || {}).offering))));
 
 // ── Admin ─────────────────────────────────────
 router.post('/admin/login', limit(5, 'Too many attempts. Try again in a minute.'),

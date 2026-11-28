@@ -4,10 +4,12 @@
 import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { Shell } from './Chrome';
 import {
-  ShareApiError, ShareBooking, ShareState, eur, fmtDate, pct, shareCsv, shareFetch,
+  OFFERING_LABEL, Offering, ShareApiError, ShareBooking, ShareState, eur, fmtDate, pct, shareCsv, shareFetch,
 } from '@/lib/aladinoShares';
 
-type Data = ShareState & { bookings: ShareBooking[] };
+type Data = { offerings: Record<Offering, ShareState>; bookings: ShareBooking[] };
+type Scope = 'all' | Offering;
+const OFFERINGS: Offering[] = ['aladino', 'real-estate'];
 type Filter = 'active' | 'cancelled' | 'all';
 const KEY = 'tbc_aladino_shares_admin';
 
@@ -21,6 +23,7 @@ export default function SharesAdmin() {
   const [ready, setReady] = useState(false);
   const [D, setD] = useState<Data | null>(null);
   const [filter, setFilter] = useState<Filter>('active');
+  const [scope, setScope] = useState<Scope>('all');
   const [msg, setMsg] = useState<{ t: string; ok: boolean } | null>(null);
   const [loginErr, setLoginErr] = useState('');
   const [email, setEmail] = useState('');
@@ -42,7 +45,6 @@ export default function SharesAdmin() {
     try {
       const d = await shareFetch<Data>('/admin/data', { token: tk });
       setD(d);
-      if (!totalFocus.current) setTotalIn(String(d.totalShares));
     } catch (e) {
       if ((e as ShareApiError).status === 401) logout();
     }
@@ -50,6 +52,10 @@ export default function SharesAdmin() {
 
   useEffect(() => { const t = readToken(); setToken(t); setReady(true); }, []);
   useEffect(() => { if (token) load(token); }, [token, load]);
+  // The total box follows the selected offering until the admin is typing in it.
+  useEffect(() => {
+    if (D && scope !== 'all' && !totalFocus.current) setTotalIn(String(D.offerings[scope].totalShares));
+  }, [D, scope]);
   useEffect(() => {
     if (!token) return;
     const id = setInterval(() => { if (!document.hidden) load(); }, 8000);
@@ -82,7 +88,11 @@ export default function SharesAdmin() {
       { cancel: 'Booking undone — shares returned to available.', restore: 'Booking restored.', delete: 'Request deleted.' }[action]);
   };
 
-  const list = D ? D.bookings.filter((b) => filter === 'all' || b.status === filter) : [];
+  const list = D ? D.bookings.filter((b) =>
+    (scope === 'all' || b.offering === scope) && (filter === 'all' || b.status === filter)) : [];
+  const S = D && scope !== 'all' ? D.offerings[scope] : null;
+  const live = D ? D.bookings.filter((b) => b.status === 'active') : [];
+  const worth = (b: ShareBooking) => b.shares * D!.offerings[b.offering].pricePerShare;
   const out = (
     <button className="btn ghost sm" onClick={logout}>Log out</button>
   );
@@ -117,57 +127,82 @@ export default function SharesAdmin() {
         <div>
           <div className="head">
             <div>
-              <div className="eyebrow">Admin · Aladino shares</div>
+              <div className="eyebrow">Admin · Share offerings</div>
               <h1>Share bookings</h1>
             </div>
             <div className="row">
-              <a className="btn ghost sm" href="/aladino-shares" target="_blank" rel="noopener">View public page ↗</a>
+              {OFFERINGS.map((o) => (
+                <a key={o} className="btn ghost sm" href={o === 'aladino' ? '/aladino-shares' : '/real-estate-shares'} target="_blank" rel="noopener">
+                  {OFFERING_LABEL[o]} page ↗
+                </a>
+              ))}
               <button className="btn ghost sm" onClick={() => token && shareCsv(token).catch((e) => flash(e.message, false))}>Export CSV</button>
             </div>
           </div>
           <div className={`msg${msg ? ' show ' + (msg.ok ? 'ok' : 'err') : ''}`} role="status">{msg?.t}</div>
 
-          <div className="stats" style={{ margin: '0 0 24px' }}>
-            <div className="stat g"><small>Available</small><b>{D.availableShares} / {D.totalShares}</b></div>
-            <div className="stat"><small>Booked shares</small><b>{D.bookedShares}</b></div>
-            <div className="stat"><small>Booked value</small><b>{eur(D.bookedShares * D.pricePerShare)}</b></div>
-            <div className="stat"><small>Booked stake</small><b>{pct((D.bookedShares * D.pricePerShare / D.valuation) * 100)}</b></div>
+          <div className="filters" style={{ marginBottom: 16 }} role="tablist" aria-label="Offering">
+            {([['all', 'All pages'], ['aladino', 'Aladino'], ['real-estate', 'Real estate']] as [Scope, string][]).map(([k, label]) => (
+              <button key={k} className={scope === k ? 'on' : ''} role="tab" aria-selected={scope === k} onClick={() => setScope(k)}>{label}</button>
+            ))}
           </div>
 
-          <div className="ctrl">
-            <div className="card"><div className="card-b switch">
-              <div>
-                <h2 style={{ fontSize: 17 }}>Public page <span className={`pill ${D.visible ? 'on' : 'off'}`}>{D.visible ? 'Visible' : 'Hidden'}</span></h2>
-                <p>When hidden, visitors see “Booking is currently closed” and no new bookings are accepted.</p>
-              </div>
-              <label className="tog" aria-label="Public page visible">
-                <input type="checkbox" checked={!!D.visible}
-                  onChange={(e) => setting({ visible: e.target.checked }, e.target.checked ? 'Public page is now visible.' : 'Public page hidden — bookings closed.')} />
-                <span />
-              </label>
-            </div></div>
-            <div className="card"><div className="card-b switch">
-              <div>
-                <h2 style={{ fontSize: 17 }}>Member booking lookup <span className={`pill ${D.allowLookup ? 'on' : 'off'}`}>{D.allowLookup ? 'On' : 'Off'}</span></h2>
-                <p>When on, members can enter their email on the public page to see only their own bookings.</p>
-              </div>
-              <label className="tog" aria-label="Member booking lookup">
-                <input type="checkbox" checked={D.allowLookup}
-                  onChange={(e) => setting({ allowLookup: e.target.checked }, e.target.checked ? 'Members can now look up their bookings.' : 'Member lookup turned off.')} />
-                <span />
-              </label>
-            </div></div>
-            <div className="card"><div className="card-b">
-              <h2 style={{ fontSize: 17, marginBottom: 4 }}>Total shares offered</h2>
-              <p style={{ fontSize: 13.5, color: 'var(--muted)', marginBottom: 10 }}>Available = total − booked. Can&apos;t go below booked shares.</p>
-              <form className="tot" onSubmit={(e) => { e.preventDefault(); setting({ totalShares: parseInt(totalIn, 10) }, 'Total shares updated.'); }}>
-                <input type="number" inputMode="numeric" min={0} step={1} value={totalIn}
-                  onFocus={() => { totalFocus.current = true; }} onBlur={() => { totalFocus.current = false; }}
-                  onChange={(e) => setTotalIn(e.target.value)} />
-                <button className="btn navy sm" style={{ height: 50 }} type="submit">Save</button>
-              </form>
-            </div></div>
-          </div>
+          {S ? (
+            <div className="stats" style={{ margin: '0 0 24px' }}>
+              <div className="stat g"><small>Available</small><b>{S.availableShares} / {S.totalShares}</b></div>
+              <div className="stat"><small>Booked shares</small><b>{S.bookedShares}</b></div>
+              <div className="stat"><small>Booked value</small><b>{eur(S.bookedShares * S.pricePerShare)}</b></div>
+              <div className="stat"><small>Booked stake</small><b>{pct((S.bookedShares * S.pricePerShare / S.valuation) * 100)}</b></div>
+            </div>
+          ) : (
+            <div className="stats" style={{ margin: '0 0 24px' }}>
+              {OFFERINGS.map((o, i) => (
+                <div key={o} className={`stat${i === 0 ? ' g' : ''}`}><small>{OFFERING_LABEL[o]} available</small>
+                  <b>{D.offerings[o].availableShares} / {D.offerings[o].totalShares}</b></div>
+              ))}
+              <div className="stat"><small>Active requests</small><b>{live.length}</b></div>
+              <div className="stat"><small>Booked value (all)</small><b>{eur(live.reduce((n, b) => n + worth(b), 0))}</b></div>
+            </div>
+          )}
+
+          {S ? (
+            <div className="ctrl">
+              <div className="card"><div className="card-b switch">
+                <div>
+                  <h2 style={{ fontSize: 17 }}>Public page <span className={`pill ${S.visible ? 'on' : 'off'}`}>{S.visible ? 'Visible' : 'Hidden'}</span></h2>
+                  <p>When hidden, visitors see “Booking is currently closed” and no new bookings are accepted.</p>
+                </div>
+                <label className="tog" aria-label="Public page visible">
+                  <input type="checkbox" checked={!!S.visible}
+                    onChange={(e) => setting({ offering: scope, visible: e.target.checked }, e.target.checked ? 'Public page is now visible.' : 'Public page hidden — bookings closed.')} />
+                  <span />
+                </label>
+              </div></div>
+              <div className="card"><div className="card-b switch">
+                <div>
+                  <h2 style={{ fontSize: 17 }}>Member booking lookup <span className={`pill ${S.allowLookup ? 'on' : 'off'}`}>{S.allowLookup ? 'On' : 'Off'}</span></h2>
+                  <p>When on, members can enter their email on the public page to see only their own bookings.</p>
+                </div>
+                <label className="tog" aria-label="Member booking lookup">
+                  <input type="checkbox" checked={S.allowLookup}
+                    onChange={(e) => setting({ offering: scope, allowLookup: e.target.checked }, e.target.checked ? 'Members can now look up their bookings.' : 'Member lookup turned off.')} />
+                  <span />
+                </label>
+              </div></div>
+              <div className="card"><div className="card-b">
+                <h2 style={{ fontSize: 17, marginBottom: 4 }}>Total shares offered</h2>
+                <p style={{ fontSize: 13.5, color: 'var(--muted)', marginBottom: 10 }}>Available = total − booked. Can&apos;t go below booked shares.</p>
+                <form className="tot" onSubmit={(e) => { e.preventDefault(); setting({ offering: scope, totalShares: parseInt(totalIn, 10) }, 'Total shares updated.'); }}>
+                  <input type="number" inputMode="numeric" min={0} step={1} value={totalIn}
+                    onFocus={() => { totalFocus.current = true; }} onBlur={() => { totalFocus.current = false; }}
+                    onChange={(e) => setTotalIn(e.target.value)} />
+                  <button className="btn navy sm" style={{ height: 50 }} type="submit">Save</button>
+                </form>
+              </div></div>
+            </div>
+          ) : (
+            <p className="hint" style={{ margin: '-8px 0 24px' }}>Pick Aladino or Real estate above to change that page&apos;s settings.</p>
+          )}
 
           <div className="card">
             <div className="card-h">
@@ -180,18 +215,19 @@ export default function SharesAdmin() {
             </div>
             <div className="card-b" style={{ paddingTop: 8 }}>
               <table>
-                <thead><tr><th>Date</th><th>Name</th><th>Email</th><th>Shares</th><th>Value</th><th>Stake</th><th className="act" /></tr></thead>
+                <thead><tr><th>Date</th><th>Source</th><th>Name</th><th>Email</th><th>Shares</th><th>Value</th><th>Stake</th><th className="act" /></tr></thead>
                 <tbody>
                   {list.length === 0 ? (
-                    <tr><td colSpan={7} className="empty">No requests yet.</td></tr>
+                    <tr><td colSpan={8} className="empty">No requests yet.</td></tr>
                   ) : list.map((b) => (
                     <tr key={b.id} className={b.status === 'cancelled' ? 'cx' : ''}>
                       <td data-l="Date">{fmtDate(b.createdAt)}</td>
+                      <td data-l="Source"><span className={`src ${b.offering}`}>{OFFERING_LABEL[b.offering]}</span></td>
                       <td data-l="Name">{b.name}</td>
                       <td data-l="Email" className="em">{b.email}</td>
                       <td data-l="Shares" className="n">{b.shares}</td>
-                      <td data-l="Value" className="n">{eur(b.shares * D.pricePerShare)}</td>
-                      <td data-l="Stake" className="n">{pct((b.shares * D.pricePerShare / D.valuation) * 100)}</td>
+                      <td data-l="Value" className="n">{eur(worth(b))}</td>
+                      <td data-l="Stake" className="n">{pct((worth(b) / D.offerings[b.offering].valuation) * 100)}</td>
                       <td className="act">
                         {b.status === 'active' ? (
                           <button className="btn sm red" onClick={() => act(b, 'cancel', `Undo ${b.name}'s booking of ${b.shares} shares? They go back to available.`)}>Undo</button>

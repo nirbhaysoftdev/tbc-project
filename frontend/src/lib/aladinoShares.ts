@@ -5,7 +5,12 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 const BASE = `${API_URL}/aladino-shares`;
 
+/** Which page a booking comes from; mirrors OFFERINGS in the backend service. */
+export type Offering = 'aladino' | 'real-estate';
+export const OFFERING_LABEL: Record<Offering, string> = { aladino: 'Aladino', 'real-estate': 'Real estate' };
+
 export interface ShareState {
+  offering?: Offering;
   visible?: boolean;
   allowLookup: boolean;
   totalShares: number;
@@ -17,6 +22,7 @@ export interface ShareState {
 
 export interface ShareBooking {
   id: string;
+  offering: Offering;
   name: string;
   email: string;
   shares: number;
@@ -24,9 +30,15 @@ export interface ShareBooking {
   createdAt: string;
 }
 
-export const DEFAULT_STATE: ShareState = {
-  visible: true, allowLookup: true, totalShares: 600, bookedShares: 0,
-  availableShares: 600, pricePerShare: 5000, valuation: 38000000,
+export const DEFAULT_STATES: Record<Offering, ShareState> = {
+  aladino: {
+    offering: 'aladino', visible: true, allowLookup: true, totalShares: 600, bookedShares: 0,
+    availableShares: 600, pricePerShare: 5000, valuation: 38000000,
+  },
+  'real-estate': {
+    offering: 'real-estate', visible: true, allowLookup: true, totalShares: 350, bookedShares: 0,
+    availableShares: 350, pricePerShare: 10000, valuation: 3500000,
+  },
 };
 
 export class ShareApiError extends Error {

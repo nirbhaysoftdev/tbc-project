@@ -1,7 +1,9 @@
 // src/services/aladinoShares.js
 //
-// The Aladino Shares offering (/aladino-shares): a public page where anyone
-// with the link can reserve shares, plus a small admin of its own.
+// The share offerings (/aladino-shares, /real-estate-shares): public pages where
+// anyone with the link can reserve shares, plus one small admin of its own that
+// sees every offering. Each offering has its own settings row and its own share
+// pool; a booking records which offering (which page) it came from.
 //
 // It is standalone on purpose. Nothing here reads `users` or the portal's
 // sessions, and the admin login below is not a portal login: it is one
@@ -11,7 +13,15 @@ const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const prisma = require('../utils/prismaClient');
 
-const SETTINGS_ID = 'default';
+// The offerings. The key is the settings row id and `aladino_share_bookings.offering`.
+// `defaults` only seeds a missing settings row; the migration inserts both rows.
+const OFFERINGS = {
+  aladino: { label: 'Aladino', defaults: { totalShares: 600, pricePerShare: 5000, valuation: 38000000 } },
+  'real-estate': { label: 'Real estate', defaults: { totalShares: 350, pricePerShare: 10000, valuation: 3500000 } },
+};
+const DEFAULT_OFFERING = 'aladino';
+/** Anything that is not a known offering is the Aladino page, as before. */
+const offeringOf = (v) => (Object.prototype.hasOwnProperty.call(OFFERINGS, v) ? v : DEFAULT_OFFERING);
 const SCOPE = 'aladino-shares-admin';
 const SESSION = '12h';
 // One number for pg_advisory_xact_lock. Serialises bookings and total changes so
@@ -27,17 +37,20 @@ const clean = (s, max) => String(s ?? '').replace(/[\u0000-\u001f]/g, '').trim()
 
 /* ── State ─────────────────────────────────────── */
 
-async function settingsOf(db) {
-  return (await db.aladinoShareSettings.findUnique({ where: { id: SETTINGS_ID } }))
-    || db.aladinoShareSettings.create({ data: { id: SETTINGS_ID } });
+async function settingsOf(db, offering) {
+  return (await db.aladinoShareSettings.findUnique({ where: { id: offering } }))
+    || db.aladinoShareSettings.create({ data: { id: offering, ...OFFERINGS[offering].defaults } });
 }
 
-async function bookedOf(db) {
-  const r = await db.aladinoShareBooking.aggregate({ where: { status: 'ACTIVE' }, _sum: { shares: true } });
+async function bookedOf(db, offering) {
+  const r = await db.aladinoShareBooking.aggregate({
+    where: { offering, status: 'ACTIVE' }, _sum: { shares: true },
+  });
   return r._sum.shares || 0;
 }
 
 const shape = (s, booked) => ({
+  offering: s.id,
   visible: s.visible,
   allowLookup: s.allowLookup,
   totalShares: s.totalShares,
@@ -47,14 +60,16 @@ const shape = (s, booked) => ({
   valuation: s.valuation,
 });
 
-async function publicState() {
-  const [s, booked] = [await settingsOf(prisma), await bookedOf(prisma)];
+async function publicState(offeringIn) {
+  const offering = offeringOf(offeringIn);
+  const [s, booked] = [await settingsOf(prisma, offering), await bookedOf(prisma, offering)];
   return shape(s, booked);
 }
 
 /* ── Visitors ──────────────────────────────────── */
 
 async function book(body) {
+  const offering = offeringOf(body.offering);
   const name = clean(body.name, 120);
   const email = clean(body.email, 160).toLowerCase();
   const shares = Number(body.shares);
@@ -66,16 +81,16 @@ async function book(body) {
 
   return prisma.$transaction(async (tx) => {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(${LOCK_KEY})`;
-    const s = await settingsOf(tx);
+    const s = await settingsOf(tx, offering);
     if (!s.visible) throw new ShareError(403, 'The offering is currently closed.');
-    const booked = await bookedOf(tx);
+    const booked = await bookedOf(tx, offering);
     const available = Math.max(0, s.totalShares - booked);
     if (shares > available) {
       throw new ShareError(409,
         available === 0 ? 'All shares have been booked.' : `Only ${available} shares are still available.`,
         { state: shape(s, booked) });
     }
-    const row = await tx.aladinoShareBooking.create({ data: { name, email, shares } });
+    const row = await tx.aladinoShareBooking.create({ data: { offering, name, email, shares } });
     return {
       ok: true,
       booking: { id: row.id, name, shares, amount: shares * s.pricePerShare },
@@ -86,12 +101,13 @@ async function book(body) {
 
 /** A visitor's own bookings, found by the email they booked with. Nobody
  *  else's row is ever returned. */
-async function myBookings(emailIn) {
+async function myBookings(emailIn, offeringIn) {
+  const offering = offeringOf(offeringIn);
   const email = clean(emailIn, 160).toLowerCase();
   if (!EMAIL_RE.test(email)) throw new ShareError(400, 'Please enter a valid email.');
-  const s = await settingsOf(prisma);
+  const s = await settingsOf(prisma, offering);
   if (!s.visible || !s.allowLookup) throw new ShareError(403, 'Booking lookup is currently disabled.');
-  const rows = await prisma.aladinoShareBooking.findMany({ where: { email }, orderBy: { createdAt: 'asc' } });
+  const rows = await prisma.aladinoShareBooking.findMany({ where: { offering, email }, orderBy: { createdAt: 'asc' } });
   return {
     bookings: rows.map((b) => ({
       shares: b.shares,
@@ -139,17 +155,19 @@ function requireShareAdmin(req, res, next) {
 }
 
 async function adminData() {
-  const [s, booked, rows] = await Promise.all([
-    settingsOf(prisma), bookedOf(prisma),
+  const keys = Object.keys(OFFERINGS);
+  const [states, rows] = await Promise.all([
+    Promise.all(keys.map(async (k) => shape(await settingsOf(prisma, k), await bookedOf(prisma, k)))),
     prisma.aladinoShareBooking.findMany({ orderBy: { createdAt: 'desc' } }),
   ]);
   return {
-    ...shape(s, booked),
-    bookings: rows.map((b) => ({ ...b, status: b.status.toLowerCase() })),
+    offerings: Object.fromEntries(keys.map((k, i) => [k, { ...states[i], label: OFFERINGS[k].label }])),
+    bookings: rows.map((b) => ({ ...b, offering: offeringOf(b.offering), status: b.status.toLowerCase() })),
   };
 }
 
 async function updateSettings(body) {
+  const offering = offeringOf(body.offering);
   return prisma.$transaction(async (tx) => {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(${LOCK_KEY})`;
     const data = {};
@@ -157,16 +175,16 @@ async function updateSettings(body) {
     if (typeof body.allowLookup === 'boolean') data.allowLookup = body.allowLookup;
     if (body.totalShares !== undefined) {
       const t = Number(body.totalShares);
-      const booked = await bookedOf(tx);
+      const booked = await bookedOf(tx, offering);
       if (!Number.isInteger(t) || t < 0) throw new ShareError(400, 'Total shares must be a whole number ≥ 0.');
       if (t < booked) {
         throw new ShareError(400, `Total can't be lower than already booked shares (${booked}). Undo bookings first.`);
       }
       data.totalShares = t;
     }
-    await settingsOf(tx);
-    const s = await tx.aladinoShareSettings.update({ where: { id: SETTINGS_ID }, data });
-    return shape(s, await bookedOf(tx));
+    await settingsOf(tx, offering);
+    const s = await tx.aladinoShareSettings.update({ where: { id: offering }, data });
+    return shape(s, await bookedOf(tx, offering));
   });
 }
 
@@ -175,8 +193,9 @@ async function bookingAction(id, action) {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(${LOCK_KEY})`;
     const b = await tx.aladinoShareBooking.findUnique({ where: { id } });
     if (!b) throw new ShareError(404, 'Booking not found.');
-    const s = await settingsOf(tx);
-    const booked = await bookedOf(tx);
+    const offering = offeringOf(b.offering);
+    const s = await settingsOf(tx, offering);
+    const booked = await bookedOf(tx, offering);
     if (action === 'cancel') {
       await tx.aladinoShareBooking.update({ where: { id }, data: { status: 'CANCELLED', cancelledAt: new Date() } });
     } else if (action === 'restore') {
@@ -188,29 +207,33 @@ async function bookingAction(id, action) {
       if (b.status === 'ACTIVE') throw new ShareError(400, 'Undo the booking before deleting it.');
       await tx.aladinoShareBooking.delete({ where: { id } });
     }
-    return shape(s, await bookedOf(tx));
+    return shape(s, await bookedOf(tx, offering));
   });
 }
 
 async function exportCsv() {
-  const [s, rows] = await Promise.all([
-    settingsOf(prisma),
+  const keys = Object.keys(OFFERINGS);
+  const [all, rows] = await Promise.all([
+    Promise.all(keys.map((k) => settingsOf(prisma, k))),
     prisma.aladinoShareBooking.findMany({ orderBy: { createdAt: 'desc' } }),
   ]);
+  const settings = Object.fromEntries(all.map((x) => [x.id, x]));
   const esc = (v) => {
     let t = String(v ?? '');
     if (/^[=+\-@\t\r]/.test(t)) t = "'" + t;   // block spreadsheet formula injection
     return `"${t.replace(/"/g, '""')}"`;
   };
-  const out = [['Date', 'Name', 'Email', 'Shares', 'Amount EUR', 'Stake %', 'Status']];
+  const out = [['Date', 'Source', 'Name', 'Email', 'Shares', 'Amount EUR', 'Stake %', 'Status']];
   for (const b of rows) {
-    out.push([b.createdAt.toISOString(), b.name, b.email, b.shares, b.shares * s.pricePerShare,
+    const o = offeringOf(b.offering);
+    const s = settings[o];
+    out.push([b.createdAt.toISOString(), OFFERINGS[o].label, b.name, b.email, b.shares, b.shares * s.pricePerShare,
       ((b.shares * s.pricePerShare) / s.valuation * 100).toFixed(4), b.status.toLowerCase()]);
   }
   return '﻿' + out.map((r) => r.map(esc).join(',')).join('\n');
 }
 
 module.exports = {
-  ShareError, publicState, book, myBookings,
+  ShareError, offeringOf, publicState, book, myBookings,
   login, requireShareAdmin, adminData, updateSettings, bookingAction, exportCsv,
 };
