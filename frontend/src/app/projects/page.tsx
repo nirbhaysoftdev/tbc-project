@@ -21,15 +21,12 @@ interface Facets {
   locations: { value: string; count: number }[];
   owners: { id: string; name: string }[];
   statuses: string[];
-  valuation: { min: number; max: number };
 }
 
 const SORTS = [
   { value: 'newest',           label: 'Newest first' },
   { value: 'oldest',           label: 'Oldest first' },
   { value: 'updated',          label: 'Recently updated' },
-  { value: 'valuation_desc',   label: 'Valuation: high to low' },
-  { value: 'valuation_asc',    label: 'Valuation: low to high' },
   { value: 'title_asc',        label: 'Name: A–Z' },
   { value: 'title_desc',       label: 'Name: Z–A' },
   { value: 'established_desc', label: 'Most recently established' },
@@ -37,13 +34,15 @@ const SORTS = [
 
 const PAGE_SIZE = 12;
 
+// The portfolio's combined valuation. Individual project valuations are not
+// shown anywhere in the portal; only this total is.
+const TOTAL_VALUATION_EUR = 190_000_000;
+
 const EMPTY_FILTERS = {
   category: '',
   location: '',
   status: '',
   ownerId: '',
-  minValuation: '',
-  maxValuation: '',
 };
 
 export default function ProjectsPage() {
@@ -149,8 +148,6 @@ export default function ProjectsPage() {
       const owner = facets?.owners.find((o) => o.id === filters.ownerId);
       chips.push({ key: 'ownerId', label: owner ? owner.name : 'Owner' });
     }
-    if (filters.minValuation) chips.push({ key: 'minValuation', label: `from ${formatEur(Number(filters.minValuation))}` });
-    if (filters.maxValuation) chips.push({ key: 'maxValuation', label: `up to ${formatEur(Number(filters.maxValuation))}` });
     return chips;
   }, [query, filters, facets]);
 
@@ -174,7 +171,7 @@ export default function ProjectsPage() {
           <div>
             <h1 className="pj-title">Projects</h1>
             <div className="pj-sub">
-              Explore the TBC project portfolio — valuations, teams, documents and progress.
+              Explore the TBC project portfolio — teams, documents and progress.
             </div>
           </div>
           {isAdmin && (
@@ -182,6 +179,11 @@ export default function ProjectsPage() {
               <Link href="/projects/new" className="pj-btn pj-btn-primary">+ New project</Link>
             </div>
           )}
+        </div>
+
+        <div className="pj-total">
+          <span className="pj-total-label">Total portfolio valuation</span>
+          <span className="pj-total-value">{formatEur(TOTAL_VALUATION_EUR)}</span>
         </div>
 
         {/* ── Search, filters, sort, view ── */}
@@ -238,19 +240,6 @@ export default function ProjectsPage() {
                 value={filters.ownerId} onChange={(v) => set('ownerId', v)}
                 searchPlaceholder="Search owners…"
                 options={[{ value: '', label: 'All owners' }, ...(facets?.owners || []).map((o) => ({ value: o.id, label: o.name }))]} />
-            </div>
-
-            <div className="pj-field">
-              <label className="pj-label">Valuation (€)</label>
-              <div className="pj-range">
-                <input className="pj-input" type="number" min={0} inputMode="numeric" placeholder="Min"
-                  value={filters.minValuation} onChange={(e) => set('minValuation', e.target.value)}
-                  aria-label="Minimum valuation in euros" />
-                <span style={{ color: 'var(--text-muted)' }}>–</span>
-                <input className="pj-input" type="number" min={0} inputMode="numeric" placeholder="Max"
-                  value={filters.maxValuation} onChange={(e) => set('maxValuation', e.target.value)}
-                  aria-label="Maximum valuation in euros" />
-              </div>
             </div>
 
             <div className="pj-field">

@@ -18,7 +18,7 @@ import LaunchPanel from '@/components/projects/LaunchPanel';
 import EnquiryModal from '@/components/enquiry/EnquiryModal';
 import { PersonAvatar, Person } from '@/components/projects/MemberSelect';
 import { prettyCategory } from '@/components/projects/ProjectCard';
-import { projectsAPI, mediaSrc, formatEur } from '@/lib/api';
+import { projectsAPI, mediaSrc } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import '@/styles/projects.css';
 import { isAdminRole } from '@/lib/roles';
@@ -187,12 +187,6 @@ function ProjectDetailInner() {
                 </span>
               </div>
             </div>
-            <div style={{ textAlign: 'end' }}>
-              <span className="pj-valuation-label">Valuation</span>
-              <span className="pj-valuation" style={{ fontSize: 22 }}>
-                {formatEur(project.valuationEur ?? project.valuation ?? project.targetAmount)}
-              </span>
-            </div>
           </div>
         </div>
 
@@ -219,9 +213,6 @@ function ProjectDetailInner() {
                 <div className="pj-panel">
                   <div className="pj-panel-title">At a glance</div>
                   <div className="pj-facts">
-                    <Fact label="Valuation">
-                      {formatEur(project.valuationEur ?? project.valuation ?? project.targetAmount)}
-                    </Fact>
                     <Fact label="Category">{prettyCategory(project.category)}</Fact>
                     <Fact label="Location">{project.location}</Fact>
                     <Fact label="Established">{project.establishedAt ? asDate(project.establishedAt) : null}</Fact>
@@ -379,7 +370,7 @@ function ProjectDetailInner() {
                       <div style={{ minWidth: 0 }}>
                         <div className="pj-person-name">{m.title}</div>
                         <div className="pj-person-role">
-                          {asDate(m.targetDate)}{m.amount ? ` · ${formatEur(m.amount)}` : ''}
+                          {asDate(m.targetDate)}
                         </div>
                       </div>
                     </div>

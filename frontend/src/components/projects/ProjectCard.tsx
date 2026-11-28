@@ -6,7 +6,7 @@
 // drift apart in what they show.
 import Link from 'next/link';
 import React from 'react';
-import { formatEur, mediaSrc } from '@/lib/api';
+import { mediaSrc } from '@/lib/api';
 
 export interface ProjectSummary {
   id: string;
@@ -72,7 +72,6 @@ export default function ProjectCard({
   view?: 'grid' | 'list';
 }) {
   const banner = bannerSrc(project);
-  const valuation = project.valuationEur ?? project.valuation ?? project.targetAmount ?? 0;
 
   return (
     // Query-string detail route, not /projects/<id>: the frontend is a static
@@ -117,11 +116,6 @@ export default function ProjectCard({
         {project.description && <p className="pj-card-desc">{project.description}</p>}
 
         <div className="pj-card-foot">
-          <div>
-            <span className="pj-valuation-label">Valuation</span>
-            <span className="pj-valuation">{formatEur(valuation)}</span>
-          </div>
-
           {project.owner && (
             <div className="pj-owner">
               <span className="pj-avatar" aria-hidden="true">

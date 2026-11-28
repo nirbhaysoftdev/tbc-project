@@ -52,6 +52,32 @@
   color: var(--text-secondary);
 }
 
+.pj-total {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+  padding: 18px 22px;
+  background: var(--bg-card, rgba(255,255,255,0.03));
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+.pj-total-label {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.pj-total-value {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--accent-gold);
+}
+
 .pj-head-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 
 /* ── Controls: search, filters, sort, view ────────────────────────────────── */
